@@ -19,65 +19,82 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-      SSH_HOST: ${{ secrets.SSH_HOST }}
       SSH_USER: ${{ secrets.SSH_USER }}
-      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
-      SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Runtime check
+      - name: Validate files
         run: |
           set -Eeuo pipefail
-          echo "Static HTML deployment; no application runtime is required."
 
-      - name: Install dependencies
-        run: |
-          set -Eeuo pipefail
-          echo "No dependencies to install."
-
-      - name: Static checks
-        run: |
-          set -Eeuo pipefail
           test -f index.html
           grep -q "<h1>Hello World!</h1>" index.html
 
-      - name: Run tests
+      - name: Build
         run: |
           set -Eeuo pipefail
-          echo "Static site test passed."
 
-      - name: Build production version
-        run: |
-          set -Eeuo pipefail
+          rm -rf dist
           mkdir -p dist
           cp index.html dist/index.html
 
-      - name: Prepare SSH securely
+      - name: Prepare SSH
+        shell: bash
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          set -Eeuo pipefail
+
+          test -n "$SSH_USER" || {
+            echo "::error::SSH_USER puuttuu"
+            exit 1
+          }
+
+          test -n "$SSH_HOST" || {
+            echo "::error::SSH_HOST puuttuu"
+            exit 1
+          }
+
+          test -n "$DEPLOY_PATH" || {
+            echo "::error::DEPLOY_PATH puuttuu"
+            exit 1
+          }
+
+          test -n "$SSH_KEY" || {
+            echo "::error::SSH_KEY puuttuu"
+            exit 1
+          }
+
+          install -d -m 700 "$HOME/.ssh"
+
+          printf '%s\n' "$SSH_KEY" > "$RUNNER_TEMP/deploy_key"
+          chmod 600 "$RUNNER_TEMP/deploy_key"
+
+          ssh-keyscan \
+            -T 10 \
+            -p 22 \
+            -H "$SSH_HOST" > "$HOME/.ssh/known_hosts"
+
+          test -s "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Test SSH connection
         shell: bash
         run: |
           set -Eeuo pipefail
 
-          test -n "$DEPLOY_PATH"
-          test -n "$SSH_HOST"
-          test -n "$SSH_USER"
-
-          install -d -m 700 "$HOME/.ssh"
-
-          printf '%s\n' '${{ secrets.SSH_KEY }}' > "$RUNNER_TEMP/deploy_key"
-          chmod 600 "$RUNNER_TEMP/deploy_key"
-
-          if [[ -n "${SSH_KNOWN_HOSTS:-}" ]]; then
-            printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
-          else
-            echo "SSH_KNOWN_HOSTS is not configured; retrieving host key with ssh-keyscan."
-            ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" > "$HOME/.ssh/known_hosts"
-          fi
-
-          chmod 600 "$HOME/.ssh/known_hosts"
+          ssh \
+            -i "$RUNNER_TEMP/deploy_key" \
+            -p 22 \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            "$SSH_USER@$SSH_HOST" \
+            "echo SSH connection successful"
 
       - name: Transfer files
         shell: bash
@@ -89,24 +106,22 @@ jobs:
             --verbose \
             --compress \
             --human-readable \
-            -e "ssh -i $RUNNER_TEMP/deploy_key -p $SSH_PORT -o BatchMode=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts" \
+            -e "ssh -i $RUNNER_TEMP/deploy_key -p 22 -o BatchMode=yes -o ConnectTimeout=15 -o UserKnownHostsFile=$HOME/.ssh/known_hosts" \
             dist/index.html \
             "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/index.html"
 
-      - name: Run server-side deployment commands
+      - name: Verify deployment
         shell: bash
         run: |
           set -Eeuo pipefail
 
           ssh \
             -i "$RUNNER_TEMP/deploy_key" \
-            -p "$SSH_PORT" \
+            -p 22 \
             -o BatchMode=yes \
+            -o ConnectTimeout=15 \
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
             "$SSH_USER@$SSH_HOST" \
-            "test -d '$DEPLOY_PATH' && chmod 644 '$DEPLOY_PATH/index.html'"
+            "test -f '$DEPLOY_PATH/index.html' && chmod 644 '$DEPLOY_PATH/index.html'"
 
-      - name: Deployment result
-        run: |
           echo "Deployment completed successfully."
-          echo "Published index.html to the configured DEPLOY_PATH."
