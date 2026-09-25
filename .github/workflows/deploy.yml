@@ -43,8 +43,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test -f index.html
-          grep -q "<h1" index.html
-          grep -q "</h1>" index.html
+          perl -0777 -ne 'exit(!(/<h1\b[^>]*>[\s\S]*?<\/h1>/i))' index.html
 
       - name: Run tests
         run: |
