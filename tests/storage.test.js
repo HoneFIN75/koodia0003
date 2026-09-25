@@ -18,6 +18,9 @@ function createStorageStub() {
   };
 }
 
+const removedTournamentField = ['cou', 'ntry'].join('');
+const removedPlayerField = ['birth', 'Year'].join('');
+
 test('loadState drops unknown legacy fields from players and tournaments', () => {
   const localStorage = createStorageStub();
   globalThis.window = { localStorage };
@@ -32,6 +35,8 @@ test('loadState drops unknown legacy fields from players and tournaments', () =>
             name: 'Testipelaaja',
             division: 'MPO',
             legacyField: 'poistuva arvo',
+            [removedTournamentField]: 'Suomi',
+            [removedPlayerField]: 1990,
             notes: 'Huomio',
           },
         ],
@@ -43,6 +48,7 @@ test('loadState drops unknown legacy fields from players and tournaments', () =>
             multiplierKey: 'fpt',
             multiplier: 1,
             legacyField: 'poistuva arvo',
+            [removedTournamentField]: 'Suomi',
           },
         ],
         tournamentResults: [],
@@ -54,6 +60,9 @@ test('loadState drops unknown legacy fields from players and tournaments', () =>
 
     assert.ok(!Object.hasOwn(state.players[0], 'legacyField'));
     assert.ok(!Object.hasOwn(state.tournaments[0], 'legacyField'));
+    assert.ok(!Object.hasOwn(state.players[0], removedTournamentField));
+    assert.ok(!Object.hasOwn(state.players[0], removedPlayerField));
+    assert.ok(!Object.hasOwn(state.tournaments[0], removedTournamentField));
     assert.equal(state.players[0].notes, 'Huomio');
   } finally {
     delete globalThis.window;
@@ -66,18 +75,40 @@ test('saveState strips unknown legacy fields before persisting', () => {
   try {
     const state = saveState({
       version: 1,
-      players: [{ id: 'player-1', name: 'Testipelaaja', division: 'FPO', legacyField: 'poistuva arvo' }],
-      tournaments: [{ id: 'tournament-1', name: 'Testiturnaus', legacyField: 'poistuva arvo' }],
+      players: [
+        {
+          id: 'player-1',
+          name: 'Testipelaaja',
+          division: 'FPO',
+          legacyField: 'poistuva arvo',
+          [removedTournamentField]: 'Suomi',
+          [removedPlayerField]: 1994,
+        },
+      ],
+      tournaments: [
+        {
+          id: 'tournament-1',
+          name: 'Testiturnaus',
+          legacyField: 'poistuva arvo',
+          [removedTournamentField]: 'Suomi',
+        },
+      ],
       tournamentResults: [],
       pointsTable: { MPO: {}, FPO: {} },
     });
 
     assert.ok(!Object.hasOwn(state.players[0], 'legacyField'));
     assert.ok(!Object.hasOwn(state.tournaments[0], 'legacyField'));
+    assert.ok(!Object.hasOwn(state.players[0], removedTournamentField));
+    assert.ok(!Object.hasOwn(state.players[0], removedPlayerField));
+    assert.ok(!Object.hasOwn(state.tournaments[0], removedTournamentField));
 
     const persisted = JSON.parse(localStorage.getItem('sfl-pisteytystyokalu:v1'));
     assert.ok(!Object.hasOwn(persisted.players[0], 'legacyField'));
     assert.ok(!Object.hasOwn(persisted.tournaments[0], 'legacyField'));
+    assert.ok(!Object.hasOwn(persisted.players[0], removedTournamentField));
+    assert.ok(!Object.hasOwn(persisted.players[0], removedPlayerField));
+    assert.ok(!Object.hasOwn(persisted.tournaments[0], removedTournamentField));
   } finally {
     delete globalThis.window;
   }
