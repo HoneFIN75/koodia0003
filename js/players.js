@@ -72,7 +72,6 @@ export function validatePlayerInput(input, players, currentId = null) {
     'worldRank',
     fieldErrors,
   );
-  const birthYear = normalizeOptionalPositiveInteger(input.birthYear, 'Syntymävuosi', 'birthYear', fieldErrors);
 
   if (!name) {
     addFieldError(fieldErrors, 'name', 'Pelaajan nimi on pakollinen.');
@@ -80,12 +79,6 @@ export function validatePlayerInput(input, players, currentId = null) {
 
   if (!DIVISIONS.includes(division)) {
     addFieldError(fieldErrors, 'division', 'Pelaajan sarjan pitää olla MPO tai FPO.');
-  }
-
-  if (birthYear !== '' && String(birthYear).length !== 4) {
-    addFieldError(fieldErrors, 'birthYear', 'Syntymävuoden pitää olla nelinumeroinen vuosiluku.');
-  } else if (birthYear !== '' && (birthYear < 1900 || birthYear > new Date().getFullYear() + 1)) {
-    addFieldError(fieldErrors, 'birthYear', 'Syntymävuosi ei ole realistinen.');
   }
 
   const duplicatePdgaNumber = players.find(
@@ -109,8 +102,6 @@ export function validatePlayerInput(input, players, currentId = null) {
     pdgaRating,
     worldRank,
     pdgaProfileUrl,
-    country: normalizeText(input.country),
-    birthYear,
     notes: normalizeText(input.notes),
   };
 }

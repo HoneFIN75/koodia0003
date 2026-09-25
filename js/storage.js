@@ -29,13 +29,47 @@ function sanitizePointsTable(pointsTable = {}) {
   };
 }
 
+function sanitizePlayer(player = {}) {
+  return {
+    id: player.id,
+    name: player.name,
+    division: player.division,
+    pdgaNumber: player.pdgaNumber,
+    pdgaRating: player.pdgaRating,
+    worldRank: player.worldRank,
+    pdgaProfileUrl: player.pdgaProfileUrl,
+    notes: player.notes,
+    createdAt: player.createdAt,
+    updatedAt: player.updatedAt,
+  };
+}
+
+function sanitizeTournament(tournament = {}) {
+  return {
+    id: tournament.id,
+    name: tournament.name,
+    pdgaEventId: tournament.pdgaEventId,
+    startDate: tournament.startDate,
+    endDate: tournament.endDate,
+    location: tournament.location,
+    status: tournament.status,
+    multiplierKey: tournament.multiplierKey,
+    multiplier: tournament.multiplier,
+    division: tournament.division,
+    externalUrl: tournament.externalUrl,
+    notes: tournament.notes,
+    createdAt: tournament.createdAt,
+    updatedAt: tournament.updatedAt,
+  };
+}
+
 function sanitizeState(candidate = {}) {
   const empty = createEmptyState();
 
   return {
     version: STORAGE_VERSION,
-    players: Array.isArray(candidate.players) ? candidate.players : empty.players,
-    tournaments: Array.isArray(candidate.tournaments) ? candidate.tournaments : empty.tournaments,
+    players: Array.isArray(candidate.players) ? candidate.players.map(sanitizePlayer) : empty.players,
+    tournaments: Array.isArray(candidate.tournaments) ? candidate.tournaments.map(sanitizeTournament) : empty.tournaments,
     tournamentResults: Array.isArray(candidate.tournamentResults)
       ? candidate.tournamentResults
       : empty.tournamentResults,

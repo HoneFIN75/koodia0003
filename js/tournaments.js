@@ -79,7 +79,6 @@ export function validateTournamentInput(input) {
     startDate,
     endDate,
     location: normalizeText(input.location),
-    country: normalizeText(input.country),
     status: normalizeText(input.status),
     ...multiplierData,
     division,

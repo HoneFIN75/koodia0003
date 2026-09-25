@@ -33,8 +33,6 @@ Sovellus on Suomen frisbeegolfliiton selainkäyttöinen MVP-työkalu MPO- ja FPO
 - `pdgaRating`
 - `worldRank`
 - `pdgaProfileUrl`
-- `country`
-- `birthYear`
 - `notes`
 - `createdAt`
 - `updatedAt`
@@ -47,7 +45,6 @@ Sovellus on Suomen frisbeegolfliiton selainkäyttöinen MVP-työkalu MPO- ja FPO
 - `startDate`
 - `endDate`
 - `location`
-- `country`
 - `status`
 - `multiplierKey`
 - `multiplier`
