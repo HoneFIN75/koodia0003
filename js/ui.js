@@ -72,17 +72,13 @@ function renderPlayerDetailCard(player) {
         <div><dt>Sarja</dt><dd>${escapeHtml(player.division)}</dd></div>
         <div><dt>PDGA-numero</dt><dd>${escapeHtml(player.pdgaNumber || '—')}</dd></div>
         <div><dt>PDGA-rating</dt><dd>${escapeHtml(player.pdgaRating || '—')}</dd></div>
-        <div><dt>Maailmanrankingsijoitus</dt><dd>${escapeHtml(player.worldRank || '—')}</dd></div>
+        <div><dt>Maailman ranking sijoitus</dt><dd>${escapeHtml(player.worldRank || '—')}</dd></div>
         <div><dt>PDGA-profiili</dt><dd>${
           player.pdgaProfileUrl
             ? `<a href="${escapeHtml(player.pdgaProfileUrl)}" target="_blank" rel="noopener noreferrer">Avaa profiili</a>`
             : '—'
         }</dd></div>
       </dl>
-      <div class="player-notes">
-        <strong>Muistiinpano</strong>
-        <p>${escapeHtml(player.notes || '—')}</p>
-      </div>
     </div>
   `;
 }
@@ -280,7 +276,7 @@ function renderSummarySection(dataState, uiState) {
                   <div><dt>Nimi</dt><dd>${escapeHtml(selectedPlayer.name)}</dd></div>
                   <div><dt>Sarja</dt><dd>${escapeHtml(selectedPlayer.division)}</dd></div>
                   <div><dt>PDGA-rating</dt><dd>${escapeHtml(selectedPlayer.pdgaRating || '—')}</dd></div>
-                  <div><dt>Maailmanrankingsijoitus</dt><dd>${escapeHtml(selectedPlayer.worldRank || '—')}</dd></div>
+                  <div><dt>Maailman ranking sijoitus</dt><dd>${escapeHtml(selectedPlayer.worldRank || '—')}</dd></div>
                   <div><dt>Turnauksia</dt><dd>${formatNumber(selectedRankingEntry?.tournamentCount || 0)}</dd></div>
                   <div><dt>Kokonaispisteet</dt><dd>${formatNumber(selectedRankingEntry?.totalPoints || 0)} p</dd></div>
                   <div><dt>PDGA-profiili</dt><dd>${
@@ -501,7 +497,7 @@ function renderPlayerSection(dataState, uiState) {
                 ${renderFieldError(uiState.playerFormErrors, 'pdgaRating')}
               </div>
               <div class="form-field">
-                <label for="player-world-rank">Maailmanrankingsijoitus</label>
+                <label for="player-world-rank">Maailman ranking sijoitus</label>
                 <input
                   id="player-world-rank"
                   name="worldRank"
@@ -522,7 +518,6 @@ function renderPlayerSection(dataState, uiState) {
                 />
                 ${renderFieldError(uiState.playerFormErrors, 'pdgaProfileUrl')}
               </div>
-              <div class="form-field full-width"><label for="player-notes">Muistiinpano</label><textarea id="player-notes" name="notes">${escapeHtml(formPlayer?.notes || '')}</textarea></div>
             </div>
             <div class="form-actions">
               <button type="submit" class="button">${editingPlayer ? 'Tallenna muutokset' : 'Lisää pelaaja'}</button>
@@ -645,7 +640,7 @@ function renderTournamentSection(dataState, uiState) {
               <div class="form-field"><label for="tournament-multiplier">Multiplier *</label><select id="tournament-multiplier" name="multiplierKey" required><option value="">Valitse multiplier</option>${renderMultiplierOptions(editingTournament?.multiplierKey || '')}</select></div>
               <div class="form-field"><label for="tournament-start-date">Alkamispäivä *</label><input id="tournament-start-date" name="startDate" type="date" required value="${escapeHtml(editingTournament?.startDate || '')}" /></div>
               <div class="form-field"><label for="tournament-end-date">Päättymispäivä</label><input id="tournament-end-date" name="endDate" type="date" value="${escapeHtml(editingTournament?.endDate || '')}" /></div>
-              <div class="form-field"><label for="tournament-division">Sarjarajaus</label><select id="tournament-division" name="division"><option value="">Ei rajattu</option>${DIVISIONS.map((division) => `<option value="${division}" ${editingTournament?.division === division ? 'selected' : ''}>${division}</option>`).join('')}</select><span class="form-help">Tulosten pelaajavalinta rajataan tähän sarjaan, jos arvo on annettu.</span></div>
+              <div class="form-field"><label for="tournament-division">Sarjarajaus</label><select id="tournament-division" name="division"><option value="">Ei rajattu</option>${DIVISIONS.map((division) => `<option value="${division}" ${editingTournament?.division === division ? 'selected' : ''}>${division}</option>`).join('')}</select></div>
               <div class="form-field"><label for="tournament-pdga-event-id">PDGA-kilpailutunnus</label><input id="tournament-pdga-event-id" name="pdgaEventId" value="${escapeHtml(editingTournament?.pdgaEventId || '')}" /></div>
               <div class="form-field"><label for="tournament-location">Sijainti</label><input id="tournament-location" name="location" value="${escapeHtml(editingTournament?.location || '')}" /></div>
               <div class="form-field"><label for="tournament-status">Status</label><input id="tournament-status" name="status" value="${escapeHtml(editingTournament?.status || '')}" /></div>
@@ -728,9 +723,9 @@ function renderTournamentSection(dataState, uiState) {
           selectedTournament
             ? `
               <div class="three-column">
-                <div class="card stat-card"><span class="eyebrow">Turnaus</span><strong>${escapeHtml(selectedTournament.name)}</strong><span class="section-subtitle">${formatDate(selectedTournament.startDate)}${selectedTournament.endDate ? ` – ${formatDate(selectedTournament.endDate)}` : ''}</span></div>
+                <div class="card stat-card"><span class="eyebrow">Turnaus</span><strong>${escapeHtml(selectedTournament.name)}</strong><span class="section-subtitle">${formatDate(selectedTournament.startDate)}</span></div>
                 <div class="card stat-card"><span class="eyebrow">Multiplier</span><strong>${formatNumber(selectedTournament.multiplier)}x</strong><span class="section-subtitle">${escapeHtml(getMultiplierLabel(selectedTournament.multiplierKey || selectedTournament.multiplier))}</span></div>
-                <div class="card stat-card"><span class="eyebrow">Sarjarajaus</span><strong>${escapeHtml(selectedTournament.division || 'Ei rajattu')}</strong><span class="section-subtitle">Tuloksiin voi valita vain sallitun sarjan pelaajia.</span></div>
+                <div class="card stat-card"><span class="eyebrow">Sarjarajaus</span><strong>${escapeHtml(selectedTournament.division || 'Ei rajattu')}</strong><span class="section-subtitle">Tuloksiin kelpaavat pelaajat</span></div>
               </div>
               <div class="two-column">
                 <form id="result-form" class="panel">
