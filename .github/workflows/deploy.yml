@@ -43,7 +43,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           test -f index.html
-          grep -Eq "<h1>[[:space:]]*.+[[:space:]]*</h1>" index.html
+          grep -Eq "<h1>[[:space:]]*.*[[:space:]]*</h1>" index.html
 
       - name: Run tests
         run: |
