@@ -8,12 +8,14 @@ test('creates an MPO player', () => {
     division: 'MPO',
     pdgaNumber: '12345',
     pdgaRating: '1012',
+    legacyField: 'poistuva arvo',
   });
 
   assert.equal(player.name, 'Matti Meikäläinen');
   assert.equal(player.division, 'MPO');
   assert.equal(player.pdgaNumber, 12345);
   assert.equal(player.pdgaRating, 1012);
+  assert.ok(!Object.hasOwn(player, 'legacyField'));
 });
 
 test('creates an FPO player', () => {

@@ -73,8 +73,6 @@ function renderPlayerDetailCard(player) {
         <div><dt>PDGA-numero</dt><dd>${escapeHtml(player.pdgaNumber || '—')}</dd></div>
         <div><dt>PDGA-rating</dt><dd>${escapeHtml(player.pdgaRating || '—')}</dd></div>
         <div><dt>Maailmanrankingsijoitus</dt><dd>${escapeHtml(player.worldRank || '—')}</dd></div>
-        <div><dt>Maa</dt><dd>${escapeHtml(player.country || '—')}</dd></div>
-        <div><dt>Syntymävuosi</dt><dd>${escapeHtml(player.birthYear || '—')}</dd></div>
         <div><dt>PDGA-profiili</dt><dd>${
           player.pdgaProfileUrl
             ? `<a href="${escapeHtml(player.pdgaProfileUrl)}" target="_blank" rel="noopener noreferrer">Avaa profiili</a>`
@@ -283,7 +281,6 @@ function renderSummarySection(dataState, uiState) {
                   <div><dt>Sarja</dt><dd>${escapeHtml(selectedPlayer.division)}</dd></div>
                   <div><dt>PDGA-rating</dt><dd>${escapeHtml(selectedPlayer.pdgaRating || '—')}</dd></div>
                   <div><dt>Maailmanrankingsijoitus</dt><dd>${escapeHtml(selectedPlayer.worldRank || '—')}</dd></div>
-                  <div><dt>Maa</dt><dd>${escapeHtml(selectedPlayer.country || '—')}</dd></div>
                   <div><dt>Turnauksia</dt><dd>${formatNumber(selectedRankingEntry?.tournamentCount || 0)}</dd></div>
                   <div><dt>Kokonaispisteet</dt><dd>${formatNumber(selectedRankingEntry?.totalPoints || 0)} p</dd></div>
                   <div><dt>PDGA-profiili</dt><dd>${
@@ -514,18 +511,6 @@ function renderPlayerSection(dataState, uiState) {
                 />
                 ${renderFieldError(uiState.playerFormErrors, 'worldRank')}
               </div>
-              <div class="form-field"><label for="player-country">Maa</label><input id="player-country" name="country" value="${escapeHtml(formPlayer?.country || '')}" /></div>
-              <div class="form-field">
-                <label for="player-birth-year">Syntymävuosi</label>
-                <input
-                  id="player-birth-year"
-                  name="birthYear"
-                  inputmode="numeric"
-                  ${getFieldAttributes(uiState.playerFormErrors, 'birthYear')}
-                  value="${escapeHtml(formPlayer?.birthYear || '')}"
-                />
-                ${renderFieldError(uiState.playerFormErrors, 'birthYear')}
-              </div>
               <div class="form-field full-width">
                 <label for="player-profile-url">PDGA-profiilin URL</label>
                 <input
@@ -663,7 +648,6 @@ function renderTournamentSection(dataState, uiState) {
               <div class="form-field"><label for="tournament-division">Sarjarajaus</label><select id="tournament-division" name="division"><option value="">Ei rajattu</option>${DIVISIONS.map((division) => `<option value="${division}" ${editingTournament?.division === division ? 'selected' : ''}>${division}</option>`).join('')}</select><span class="form-help">Tulosten pelaajavalinta rajataan tähän sarjaan, jos arvo on annettu.</span></div>
               <div class="form-field"><label for="tournament-pdga-event-id">PDGA-kilpailutunnus</label><input id="tournament-pdga-event-id" name="pdgaEventId" value="${escapeHtml(editingTournament?.pdgaEventId || '')}" /></div>
               <div class="form-field"><label for="tournament-location">Sijainti</label><input id="tournament-location" name="location" value="${escapeHtml(editingTournament?.location || '')}" /></div>
-              <div class="form-field"><label for="tournament-country">Maa</label><input id="tournament-country" name="country" value="${escapeHtml(editingTournament?.country || '')}" /></div>
               <div class="form-field"><label for="tournament-status">Status</label><input id="tournament-status" name="status" value="${escapeHtml(editingTournament?.status || '')}" /></div>
               <div class="form-field"><label for="tournament-external-url">Ulkoinen URL</label><input id="tournament-external-url" name="externalUrl" type="url" value="${escapeHtml(editingTournament?.externalUrl || '')}" /></div>
               <div class="form-field full-width"><label for="tournament-notes">Muistiinpano</label><textarea id="tournament-notes" name="notes">${escapeHtml(editingTournament?.notes || '')}</textarea></div>
