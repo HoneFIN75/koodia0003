@@ -1,5 +1,13 @@
 export const DIVISIONS = ['MPO', 'FPO'];
 
+export class PlayerValidationError extends Error {
+  constructor(fieldErrors) {
+    super(Object.values(fieldErrors)[0] || 'Pelaajan tiedoissa on virheitä.');
+    this.name = 'PlayerValidationError';
+    this.fieldErrors = fieldErrors;
+  }
+}
+
 function createId(prefix = 'player') {
   return `${prefix}-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
 }
@@ -8,51 +16,76 @@ function normalizeText(value) {
   return String(value ?? '').trim();
 }
 
-function normalizeOptionalInteger(value, label) {
+function addFieldError(fieldErrors, fieldName, message) {
+  if (!fieldErrors[fieldName]) {
+    fieldErrors[fieldName] = message;
+  }
+}
+
+function normalizeOptionalPositiveInteger(value, label, fieldName, fieldErrors) {
   const normalized = normalizeText(value);
   if (!normalized) {
     return '';
   }
 
+  if (!/^\d+$/.test(normalized)) {
+    addFieldError(fieldErrors, fieldName, `${label} pitää olla positiivinen kokonaisluku.`);
+    return '';
+  }
+
   const parsed = Number(normalized);
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new Error(`${label} pitää olla nolla tai positiivinen kokonaisluku.`);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    addFieldError(fieldErrors, fieldName, `${label} pitää olla positiivinen kokonaisluku.`);
+    return '';
   }
 
   return parsed;
 }
 
-function normalizeOptionalUrl(value, label) {
+function normalizeOptionalUrl(value, label, fieldName, fieldErrors) {
   const normalized = normalizeText(value);
   if (!normalized) {
     return '';
   }
 
   try {
-    return new URL(normalized).toString();
+    const parsed = new URL(normalized);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('invalid protocol');
+    }
+    return parsed.toString();
   } catch {
-    throw new Error(`${label} ei ole kelvollinen verkko-osoite.`);
+    addFieldError(fieldErrors, fieldName, `${label} ei ole kelvollinen verkko-osoite.`);
+    return '';
   }
 }
 
 export function validatePlayerInput(input, players, currentId = null) {
+  const fieldErrors = {};
   const name = normalizeText(input.name);
   const division = normalizeText(input.division).toUpperCase();
-  const pdgaNumber = normalizeOptionalInteger(input.pdgaNumber, 'PDGA-numero');
-  const pdgaRating = normalizeOptionalInteger(input.pdgaRating, 'PDGA-rating');
-  const worldRank = normalizeOptionalInteger(input.worldRank, 'Maailmanrankingsijoitus');
-  const birthYear = normalizeOptionalInteger(input.birthYear, 'Syntymävuosi');
+  const pdgaNumber = normalizeOptionalPositiveInteger(input.pdgaNumber, 'PDGA-numero', 'pdgaNumber', fieldErrors);
+  const pdgaRating = normalizeOptionalPositiveInteger(input.pdgaRating, 'PDGA-rating', 'pdgaRating', fieldErrors);
+  const worldRank = normalizeOptionalPositiveInteger(
+    input.worldRank,
+    'Maailmanrankingsijoitus',
+    'worldRank',
+    fieldErrors,
+  );
+  const birthYear = normalizeOptionalPositiveInteger(input.birthYear, 'Syntymävuosi', 'birthYear', fieldErrors);
 
   if (!name) {
-    throw new Error('Pelaajan nimi on pakollinen.');
+    addFieldError(fieldErrors, 'name', 'Pelaajan nimi on pakollinen.');
   }
 
   if (!DIVISIONS.includes(division)) {
-    throw new Error('Pelaajan sarjan pitää olla MPO tai FPO.');
+    addFieldError(fieldErrors, 'division', 'Pelaajan sarjan pitää olla MPO tai FPO.');
   }
 
-  if (birthYear !== '' && (birthYear < 1900 || birthYear > new Date().getFullYear() + 1)) {
-    throw new Error('Syntymävuosi ei ole realistinen.');
+  if (birthYear !== '' && String(birthYear).length !== 4) {
+    addFieldError(fieldErrors, 'birthYear', 'Syntymävuoden pitää olla nelinumeroinen vuosiluku.');
+  } else if (birthYear !== '' && (birthYear < 1900 || birthYear > new Date().getFullYear() + 1)) {
+    addFieldError(fieldErrors, 'birthYear', 'Syntymävuosi ei ole realistinen.');
   }
 
   const duplicatePdgaNumber = players.find(
@@ -60,7 +93,13 @@ export function validatePlayerInput(input, players, currentId = null) {
   );
 
   if (duplicatePdgaNumber) {
-    throw new Error('PDGA-numero on jo käytössä toisella pelaajalla.');
+    addFieldError(fieldErrors, 'pdgaNumber', 'PDGA-numero on jo käytössä toisella pelaajalla.');
+  }
+
+  const pdgaProfileUrl = normalizeOptionalUrl(input.pdgaProfileUrl, 'PDGA-profiilin URL', 'pdgaProfileUrl', fieldErrors);
+
+  if (Object.keys(fieldErrors).length > 0) {
+    throw new PlayerValidationError(fieldErrors);
   }
 
   return {
@@ -69,7 +108,7 @@ export function validatePlayerInput(input, players, currentId = null) {
     pdgaNumber,
     pdgaRating,
     worldRank,
-    pdgaProfileUrl: normalizeOptionalUrl(input.pdgaProfileUrl, 'PDGA-profiilin URL'),
+    pdgaProfileUrl,
     country: normalizeText(input.country),
     birthYear,
     notes: normalizeText(input.notes),
@@ -105,6 +144,15 @@ export function findPlayer(players, playerId) {
   return players.find((player) => player.id === playerId) || null;
 }
 
+export function removePlayer(players, playerId) {
+  const existingPlayer = findPlayer(players, playerId);
+  if (!existingPlayer) {
+    throw new Error('Poistettavaa pelaajaa ei löytynyt.');
+  }
+
+  return players.filter((player) => player.id !== playerId);
+}
+
 export function sortPlayersByName(players) {
   return [...players].sort((left, right) => left.name.localeCompare(right.name, 'fi'));
 }
@@ -115,4 +163,23 @@ export function filterPlayersByDivision(players, division) {
   }
 
   return sortPlayersByName(players.filter((player) => player.division === division));
+}
+
+export function searchPlayers(players, query) {
+  const normalizedQuery = normalizeText(query).toLocaleLowerCase('fi');
+  if (!normalizedQuery) {
+    return sortPlayersByName(players);
+  }
+
+  return sortPlayersByName(
+    players.filter((player) => {
+      const nameMatch = player.name.toLocaleLowerCase('fi').includes(normalizedQuery);
+      const pdgaMatch = String(player.pdgaNumber || '').includes(normalizedQuery);
+      return nameMatch || pdgaMatch;
+    }),
+  );
+}
+
+export function getVisiblePlayers(players, { division = 'ALL', query = '' } = {}) {
+  return searchPlayers(filterPlayersByDivision(players, division), query);
 }
