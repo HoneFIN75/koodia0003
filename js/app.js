@@ -1,5 +1,5 @@
-import { loadState, saveState } from './storage.js';
-import { createPlayer, updatePlayer, findPlayer } from './players.js';
+import { createEmptyState, loadState, saveState } from './storage.js';
+import { createPlayer, updatePlayer, findPlayer, removePlayer } from './players.js';
 import { createTournament, updateTournament, findTournament } from './tournaments.js';
 import {
   createTournamentResult,
@@ -11,18 +11,26 @@ import { renderApp, bindUi } from './ui.js';
 
 const root = document.querySelector('#app');
 
-let dataState = loadState();
+let dataState = createEmptyState();
 let uiState = {
   activeView: 'summary',
   navOpen: false,
   rankingFilter: 'ALL',
   summaryFilter: 'ALL',
   summaryPlayerId: '',
+  selectedPlayerId: '',
+  playerSearch: '',
+  playerDivisionFilter: 'ALL',
   playerFormId: null,
+  playerFormErrors: {},
+  playerFormDraft: null,
+  playersStatus: 'loading',
+  playersError: '',
   tournamentFormId: null,
   selectedTournamentId: '',
   resultFormId: null,
   pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
+  confirmationDialog: null,
   feedback: null,
 };
 
@@ -70,58 +78,109 @@ const handlers = {
     uiState.summaryPlayerId = playerId;
     render();
   },
+  setPlayerSearch(query) {
+    uiState.playerSearch = query;
+    render();
+  },
+  setPlayerDivisionFilter(filter) {
+    uiState.playerDivisionFilter = filter;
+    render();
+  },
+  viewPlayer(playerId) {
+    uiState.activeView = 'players';
+    uiState.selectedPlayerId = playerId;
+    uiState.feedback = null;
+    render();
+  },
   submitPlayer(formData) {
     try {
       const values = formDataToObject(formData);
+      uiState.playerFormErrors = {};
+      uiState.playerFormDraft = null;
       if (values.id) {
         dataState.players = dataState.players.map((player) =>
           player.id === values.id ? updatePlayer(dataState.players, values.id, values) : player,
         );
         uiState.playerFormId = null;
+        uiState.selectedPlayerId = values.id;
         persistAndRender('Pelaajan tiedot päivitettiin.');
       } else {
         const newPlayer = createPlayer(dataState.players, values);
         dataState.players = [...dataState.players, newPlayer];
         uiState.summaryPlayerId = newPlayer.id;
+        uiState.selectedPlayerId = newPlayer.id;
         persistAndRender('Pelaaja lisättiin.');
       }
     } catch (error) {
+      if (error?.fieldErrors) {
+        uiState.playerFormErrors = error.fieldErrors;
+        uiState.playerFormDraft = formDataToObject(formData);
+        uiState.feedback = { type: 'error', text: 'Korjaa pelaajan tiedot ja yritä uudelleen.' };
+        render();
+        return;
+      }
       setError(error);
     }
   },
   resetPlayerForm() {
     uiState.playerFormId = null;
+    uiState.playerFormErrors = {};
+    uiState.playerFormDraft = null;
     render();
   },
   editPlayer(playerId) {
     uiState.activeView = 'players';
     uiState.playerFormId = playerId;
+    uiState.selectedPlayerId = playerId;
+    uiState.playerFormErrors = {};
+    uiState.playerFormDraft = null;
     uiState.feedback = null;
     render();
   },
-  deletePlayer(playerId) {
+  requestDeletePlayer(playerId) {
     const player = findPlayer(dataState.players, playerId);
     if (!player) {
       return;
     }
 
-    const confirmed = window.confirm(`Poistetaanko pelaaja ${player.name}? Samalla poistuvat kaikki pelaajan turnaustulokset.`);
-    if (!confirmed) {
+    uiState.confirmationDialog = { type: 'delete-player', playerId };
+    uiState.feedback = null;
+    render();
+  },
+  closeConfirmationDialog() {
+    uiState.confirmationDialog = null;
+    render();
+  },
+  confirmDeletePlayer() {
+    const playerId = uiState.confirmationDialog?.playerId;
+    if (!playerId) {
       return;
     }
 
-    dataState.players = dataState.players.filter((entry) => entry.id !== playerId);
-    dataState.tournamentResults = dataState.tournamentResults.filter((result) => result.playerId !== playerId);
-    if (uiState.playerFormId === playerId) {
-      uiState.playerFormId = null;
+    try {
+      dataState.players = removePlayer(dataState.players, playerId);
+      dataState.tournamentResults = dataState.tournamentResults.filter((result) => result.playerId !== playerId);
+      if (uiState.playerFormId === playerId) {
+        uiState.playerFormId = null;
+      }
+      if (uiState.summaryPlayerId === playerId) {
+        uiState.summaryPlayerId = '';
+      }
+      if (uiState.selectedPlayerId === playerId) {
+        uiState.selectedPlayerId = '';
+      }
+      if (uiState.resultFormId && dataState.tournamentResults.every((result) => result.id !== uiState.resultFormId)) {
+        uiState.resultFormId = null;
+      }
+      uiState.confirmationDialog = null;
+      persistAndRender('Pelaaja poistettiin.');
+    } catch (error) {
+      uiState.confirmationDialog = null;
+      setError(error);
     }
-    if (uiState.summaryPlayerId === playerId) {
-      uiState.summaryPlayerId = '';
-    }
-    if (uiState.resultFormId && dataState.tournamentResults.every((result) => result.id !== uiState.resultFormId)) {
-      uiState.resultFormId = null;
-    }
-    persistAndRender('Pelaaja poistettiin.');
+  },
+  retryPlayersLoad() {
+    initializeDataState();
   },
   submitTournament(formData) {
     try {
@@ -300,6 +359,24 @@ const handlers = {
   },
 };
 
+function initializeDataState() {
+  uiState.playersStatus = 'loading';
+  uiState.playersError = '';
+  render();
+
+  window.setTimeout(() => {
+    try {
+      dataState = loadState();
+      uiState.playersStatus = 'ready';
+    } catch (error) {
+      dataState = createEmptyState();
+      uiState.playersStatus = 'error';
+      uiState.playersError = error instanceof Error ? error.message : 'Pelaajien lataaminen epäonnistui.';
+    }
+    render();
+  }, 0);
+}
+
 window.addEventListener('resize', () => {
   if (window.innerWidth > 780 && !uiState.navOpen) {
     render();
@@ -307,3 +384,4 @@ window.addEventListener('resize', () => {
 });
 
 render();
+initializeDataState();

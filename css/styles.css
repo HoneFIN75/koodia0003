@@ -426,6 +426,10 @@ legend {
   gap: var(--spacing-md);
 }
 
+.compact-grid {
+  margin-bottom: var(--spacing-md);
+}
+
 .form-field {
   display: grid;
   gap: var(--spacing-xs);
@@ -450,6 +454,13 @@ textarea {
   color: var(--color-text);
 }
 
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 3px rgba(161, 52, 52, 0.12);
+}
+
 textarea {
   min-height: 7rem;
   resize: vertical;
@@ -459,6 +470,11 @@ textarea {
 .form-help {
   font-size: 0.875rem;
   color: var(--color-text-muted);
+}
+
+.field-error {
+  color: var(--color-error);
+  font-size: 0.875rem;
 }
 
 .message {
@@ -557,6 +573,44 @@ textarea {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--spacing-sm) var(--spacing-lg);
+}
+
+.player-detail-layout {
+  display: grid;
+  gap: var(--spacing-lg);
+}
+
+.player-notes {
+  display: grid;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.player-notes p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--spacing-md);
+  background: rgba(16, 34, 47, 0.45);
+  z-index: 40;
+}
+
+.dialog-panel {
+  width: min(100%, 34rem);
+  padding: var(--spacing-lg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
 }
 
 .definition-list dt {

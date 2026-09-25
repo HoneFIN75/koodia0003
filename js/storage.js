@@ -1,7 +1,7 @@
 const STORAGE_KEY = 'sfl-pisteytystyokalu:v1';
 const STORAGE_VERSION = 1;
 
-function createEmptyState() {
+export function createEmptyState() {
   return {
     version: STORAGE_VERSION,
     players: [],
@@ -60,9 +60,7 @@ export function loadState() {
     const parsed = JSON.parse(raw);
     return sanitizeState(parsed);
   } catch {
-    const empty = createEmptyState();
-    storage.setItem(STORAGE_KEY, JSON.stringify(empty));
-    return empty;
+    throw new Error('Tallennetun datan lukeminen epäonnistui. Tyhjennä selaintiedot ja lataa sivu uudelleen.');
   }
 }
 
