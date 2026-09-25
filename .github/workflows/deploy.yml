@@ -27,20 +27,40 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Validate files
         run: |
           set -Eeuo pipefail
 
           test -f index.html
-          grep -q "<h1>Hello World!</h1>" index.html
+          test -f package.json
+          test -d css
+          test -d js
+          test -d assets
+          test -d tests
+
+      - name: Run tests
+        run: npm test
 
       - name: Build
+        run: npm run build
+
+      - name: Verify build output
         run: |
           set -Eeuo pipefail
 
-          rm -rf dist
-          mkdir -p dist
-          cp index.html dist/index.html
+          test -f dist/index.html
+          test -d dist/css
+          test -d dist/js
+          test -d dist/assets
 
       - name: Prepare SSH
         shell: bash
@@ -106,9 +126,10 @@ jobs:
             --verbose \
             --compress \
             --human-readable \
+            --delete \
             -e "ssh -i $RUNNER_TEMP/deploy_key -p 22 -o BatchMode=yes -o ConnectTimeout=15 -o UserKnownHostsFile=$HOME/.ssh/known_hosts" \
-            dist/index.html \
-            "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/index.html"
+            dist/ \
+            "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/"
 
       - name: Verify deployment
         shell: bash
@@ -122,6 +143,6 @@ jobs:
             -o ConnectTimeout=15 \
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
             "$SSH_USER@$SSH_HOST" \
-            "test -f '$DEPLOY_PATH/index.html' && chmod 644 '$DEPLOY_PATH/index.html'"
+            "test -f '$DEPLOY_PATH/index.html' && find '$DEPLOY_PATH' -type f -exec chmod 644 {} +"
 
           echo "Deployment completed successfully."

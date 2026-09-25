@@ -1,0 +1,11 @@
+{
+  "name": "sfl-pisteytystyokalu",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Suomen frisbeegolfliiton selainpohjainen MVP kilpailupisteiden hallintaan.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "build": "node scripts/build.mjs"
+  }
+}
