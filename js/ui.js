@@ -1,5 +1,6 @@
 import { DIVISIONS, getVisiblePlayers } from './players.js';
 import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, MULTIPLIER_OPTIONS, sortTournaments } from './tournaments.js';
+import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS } from './pdga.js';
 import { listPointsTableEntries, getBasePoints } from './scoring.js';
 import { buildRanking, getTopRanking, getPlayerResults } from './ranking.js';
 
@@ -87,24 +88,30 @@ function getTournamentFieldSelector(fieldName) {
   return fieldSelectors[fieldName] || '#tournament-name';
 }
 
-function renderPlayerDetailCard(player) {
+function renderLinkButton(url, label, ariaLabel = '') {
+  if (!url) {
+    return '—';
+  }
+
+  return `<a class="secondary-link-button" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer"${ariaLabel ? ` aria-label="${escapeHtml(ariaLabel)}"` : ''}>${escapeHtml(label)}</a>`;
+}
+
+function renderPlayerDetailCard(player, settings) {
   if (!player) {
     return renderEmptyState('Valitse pelaaja listalta nähdäksesi tietosivun.');
   }
+
+  const pdgaProfileUrl = buildPdgaPlayerUrl(settings, player);
 
   return `
     <div class="player-detail-layout">
       <dl class="definition-list">
         <div><dt>Nimi</dt><dd>${escapeHtml(player.name)}</dd></div>
         <div><dt>Sarja</dt><dd>${escapeHtml(player.division)}</dd></div>
-        <div><dt>PDGA-numero</dt><dd>${escapeHtml(player.pdgaNumber || '—')}</dd></div>
+        <div><dt>PDGA-tunnus</dt><dd>${escapeHtml(player.pdgaNumber || '—')}</dd></div>
         <div><dt>PDGA-rating</dt><dd>${escapeHtml(player.pdgaRating || '—')}</dd></div>
         <div><dt>Maailman ranking sijoitus</dt><dd>${escapeHtml(player.worldRank || '—')}</dd></div>
-        <div><dt>PDGA-profiili</dt><dd>${
-          player.pdgaProfileUrl
-            ? `<a href="${escapeHtml(player.pdgaProfileUrl)}" target="_blank" rel="noopener noreferrer">Avaa profiili</a>`
-            : '—'
-        }</dd></div>
+        <div><dt>PDGA-profiili</dt><dd>${renderLinkButton(pdgaProfileUrl, 'Avaa PDGA')}</dd></div>
       </dl>
     </div>
   `;
@@ -137,6 +144,7 @@ function renderNav(activeView) {
     { id: 'players', label: 'Pelaajat' },
     { id: 'tournaments', label: 'Turnaukset' },
     { id: 'points', label: 'Pistetaulukot' },
+    { id: 'settings', label: 'Asetukset' },
   ];
 
   return `
@@ -194,6 +202,7 @@ function renderSummarySection(dataState, uiState) {
   const maxPoints = topTen[0]?.totalPoints || 0;
   const selectedPlayerId = uiState.summaryPlayerId || ranking[0]?.id || dataState.players[0]?.id || '';
   const selectedPlayer = dataState.players.find((player) => player.id === selectedPlayerId) || null;
+  const playerPdgaUrl = selectedPlayer ? buildPdgaPlayerUrl(dataState.settings, selectedPlayer) : '';
   const selectedPlayerResults = selectedPlayer
     ? getPlayerResults({
         playerId: selectedPlayer.id,
@@ -306,11 +315,7 @@ function renderSummarySection(dataState, uiState) {
                   <div><dt>Maailman ranking sijoitus</dt><dd>${escapeHtml(selectedPlayer.worldRank || '—')}</dd></div>
                   <div><dt>Turnauksia</dt><dd>${formatNumber(selectedRankingEntry?.tournamentCount || 0)}</dd></div>
                   <div><dt>Kokonaispisteet</dt><dd>${formatNumber(selectedRankingEntry?.totalPoints || 0)} p</dd></div>
-                  <div><dt>PDGA-profiili</dt><dd>${
-                    selectedPlayer.pdgaProfileUrl
-                      ? `<a href="${escapeHtml(selectedPlayer.pdgaProfileUrl)}" target="_blank" rel="noopener noreferrer">Avaa profiili</a>`
-                      : '—'
-                  }</dd></div>
+                  <div><dt>PDGA-profiili</dt><dd>${renderLinkButton(playerPdgaUrl, 'Avaa PDGA')}</dd></div>
                 </dl>
               `
               : renderEmptyState('Lisää ensin pelaajia, jotta perustietokortti voidaan näyttää.')
@@ -438,13 +443,14 @@ function renderPlayerSection(dataState, uiState) {
     query: uiState.playerSearch,
   });
   const selectedPlayer = dataState.players.find((player) => player.id === uiState.selectedPlayerId) || null;
+  const selectedPlayerPdgaUrl = selectedPlayer ? buildPdgaPlayerUrl(dataState.settings, selectedPlayer) : '';
 
   return `
     <section class="section" id="section-players" ${uiState.activeView === 'players' ? '' : 'hidden'} aria-labelledby="players-title">
       <div class="section-heading">
         <div>
           <h2 id="players-title">Pelaajat</h2>
-          <p class="section-subtitle">Hallitse pelaajia, hae nimellä tai PDGA-numerolla ja avaa pelaajan tietosivu.</p>
+          <p class="section-subtitle">Hallitse pelaajia, hae nimellä tai PDGA-tunnuksella ja avaa pelaajan tietosivu.</p>
         </div>
       </div>
       <article class="panel">
@@ -457,6 +463,7 @@ function renderPlayerSection(dataState, uiState) {
             selectedPlayer
               ? `
                 <div class="inline-actions">
+                  ${selectedPlayerPdgaUrl ? renderLinkButton(selectedPlayerPdgaUrl, 'PDGA', 'Avaa pelaajan PDGA-profiili uudessa välilehdessä') : ''}
                   <button type="button" class="secondary-button" data-edit-player="${escapeHtml(selectedPlayer.id)}">Muokkaa</button>
                   <button type="button" class="danger-button" data-delete-player="${escapeHtml(selectedPlayer.id)}">Poista</button>
                 </div>
@@ -477,7 +484,7 @@ function renderPlayerSection(dataState, uiState) {
                   </div>
                 </div>
               `
-              : renderPlayerDetailCard(selectedPlayer)
+              : renderPlayerDetailCard(selectedPlayer, dataState.settings)
         }
       </article>
       <div class="two-column">
@@ -502,7 +509,7 @@ function renderPlayerSection(dataState, uiState) {
                 ${renderFieldError(uiState.playerFormErrors, 'division')}
               </div>
               <div class="form-field">
-                <label for="player-pdga-number">PDGA-numero</label>
+                <label for="player-pdga-number">PDGA-pelaajatunnus</label>
                 <input
                   id="player-pdga-number"
                   name="pdgaNumber"
@@ -510,6 +517,7 @@ function renderPlayerSection(dataState, uiState) {
                   ${getFieldAttributes(uiState.playerFormErrors, 'pdgaNumber')}
                   value="${escapeHtml(formPlayer?.pdgaNumber || '')}"
                 />
+                <span class="help-text">Syötä vain tunnus. PDGA-linkki muodostetaan keskitetysti asetuksista.</span>
                 ${renderFieldError(uiState.playerFormErrors, 'pdgaNumber')}
               </div>
               <div class="form-field">
@@ -534,17 +542,6 @@ function renderPlayerSection(dataState, uiState) {
                 />
                 ${renderFieldError(uiState.playerFormErrors, 'worldRank')}
               </div>
-              <div class="form-field full-width">
-                <label for="player-profile-url">PDGA-profiilin URL</label>
-                <input
-                  id="player-profile-url"
-                  name="pdgaProfileUrl"
-                  type="url"
-                  ${getFieldAttributes(uiState.playerFormErrors, 'pdgaProfileUrl')}
-                  value="${escapeHtml(formPlayer?.pdgaProfileUrl || '')}"
-                />
-                ${renderFieldError(uiState.playerFormErrors, 'pdgaProfileUrl')}
-              </div>
             </div>
             <div class="form-actions">
               <button type="submit" class="button">${editingPlayer ? 'Tallenna muutokset' : 'Lisää pelaaja'}</button>
@@ -556,7 +553,7 @@ function renderPlayerSection(dataState, uiState) {
           <div class="section-heading">
             <div>
               <h3>Pelaajalista</h3>
-              <p class="section-subtitle">Suodata sarjan mukaan tai hae nimellä ja PDGA-numerolla.</p>
+              <p class="section-subtitle">Suodata sarjan mukaan tai hae nimellä ja PDGA-tunnuksella.</p>
             </div>
             <div class="status-chip">${formatNumber(visiblePlayers.length)} / ${formatNumber(dataState.players.length)} pelaajaa</div>
           </div>
@@ -568,7 +565,7 @@ function renderPlayerSection(dataState, uiState) {
                 type="search"
                 data-player-search
                 value="${escapeHtml(uiState.playerSearch)}"
-                placeholder="Hae nimellä tai PDGA-numerolla"
+                placeholder="Hae nimellä tai PDGA-tunnuksella"
               />
             </div>
             <div class="form-field">
@@ -645,6 +642,7 @@ function renderTournamentSection(dataState, uiState) {
   const selectedPlayer = editingResult
     ? dataState.players.find((player) => player.id === editingResult.playerId) || null
     : null;
+  const selectedTournamentPdgaUrl = selectedTournament ? buildPdgaEventUrl(dataState.settings, selectedTournament) : '';
   const resultPreviewBasePoints = selectedTournament && selectedPlayer
     ? getBasePoints(dataState.pointsTable, selectedPlayer.division, editingResult?.place || 1)
     : null;
@@ -665,6 +663,7 @@ function renderTournamentSection(dataState, uiState) {
               ${orderedTournaments
                 .map((tournament) => {
                   const resultCount = dataState.tournamentResults.filter((result) => result.tournamentId === tournament.id).length;
+                  const pdgaEventUrl = buildPdgaEventUrl(dataState.settings, tournament);
                   return `
                     <article class="card tournament-card${selectedTournament?.id === tournament.id ? ' tournament-card-selected' : ''}">
                       <div class="tournament-card-head">
@@ -686,6 +685,7 @@ function renderTournamentSection(dataState, uiState) {
                             ? `<a href="${escapeHtml(tournament.externalUrl)}" target="_blank" rel="noopener noreferrer">Avaa kilpailusivu</a>`
                             : '—'
                         }</dd></div>
+                        <div><dt>PDGA</dt><dd>${renderLinkButton(pdgaEventUrl, 'Avaa PDGA')}</dd></div>
                       </dl>
                       ${
                         tournament.notes
@@ -693,6 +693,7 @@ function renderTournamentSection(dataState, uiState) {
                           : '<p class="tournament-description muted">Kuvausta ei ole lisätty.</p>'
                       }
                       <div class="table-actions">
+                        ${pdgaEventUrl ? renderLinkButton(pdgaEventUrl, 'PDGA', 'Avaa turnauksen PDGA-sivu uudessa välilehdessä') : ''}
                         <button type="button" class="secondary-button" data-select-tournament="${escapeHtml(tournament.id)}">Tulokset</button>
                         <button type="button" class="secondary-button" data-edit-tournament="${escapeHtml(tournament.id)}">Muokkaa</button>
                         <button type="button" class="danger-button" data-delete-tournament="${escapeHtml(tournament.id)}">Poista</button>
@@ -732,6 +733,7 @@ function renderTournamentSection(dataState, uiState) {
                 <div class="card stat-card"><span class="eyebrow">Multiplier</span><strong>${formatNumber(selectedTournament.multiplier)}x</strong><span class="section-subtitle">${escapeHtml(getMultiplierLabel(selectedTournament.multiplierKey || selectedTournament.multiplier))}</span></div>
                 <div class="card stat-card"><span class="eyebrow">Sarjarajaus</span><strong>${escapeHtml(selectedTournament.division || 'Ei rajattu')}</strong><span class="section-subtitle">Tuloksiin kelpaavat pelaajat</span></div>
               </div>
+              ${selectedTournamentPdgaUrl ? `<div class="inline-actions">${renderLinkButton(selectedTournamentPdgaUrl, 'Avaa turnauksen PDGA-sivu', 'Avaa turnauksen PDGA-sivu uudessa välilehdessä')}</div>` : ''}
               <div class="two-column">
                 <form id="result-form" class="panel">
                   <h4>${editingResult ? 'Muokkaa turnaustulosta' : 'Lisää turnaustulos'}</h4>
@@ -934,7 +936,15 @@ function renderTournamentDialog(dataState, uiState) {
             </div>
             <div class="form-field">
               <label for="tournament-pdga-event-id">PDGA-kilpailutunnus</label>
-              <input id="tournament-pdga-event-id" name="pdgaEventId" value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'pdgaEventId'))}" />
+              <input
+                id="tournament-pdga-event-id"
+                name="pdgaEventId"
+                inputmode="numeric"
+                ${getFieldAttributes(fieldErrors, 'pdgaEventId')}
+                value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'pdgaEventId'))}"
+              />
+              <span class="help-text">Syötä vain tunnus. PDGA-linkki muodostetaan keskitetysti asetuksista.</span>
+              ${renderFieldError(fieldErrors, 'pdgaEventId')}
             </div>
             <div class="form-field">
               <label for="tournament-status">Status</label>
@@ -953,6 +963,72 @@ function renderTournamentDialog(dataState, uiState) {
         </form>
       </div>
     </div>
+  `;
+}
+
+function renderSettingsSection(dataState, uiState) {
+  const formValues = {
+    ...DEFAULT_PDGA_SETTINGS,
+    ...dataState.settings,
+    ...(uiState.settingsFormDraft || {}),
+  };
+  const fieldErrors = uiState.settingsFormErrors || {};
+
+  return `
+    <section class="section" id="section-settings" ${uiState.activeView === 'settings' ? '' : 'hidden'} aria-labelledby="settings-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="settings-title">Asetukset</h2>
+          <p class="section-subtitle">Yhteiset asetukset vaikuttavat kaikkiin nykyisiin ja tuleviin PDGA-linkkeihin.</p>
+        </div>
+      </div>
+      <div class="two-column">
+        <form id="settings-form" class="panel">
+          <h3>PDGA-linkkien perusosoitteet</h3>
+          <div class="form-grid">
+            <div class="form-field full-width">
+              <label for="settings-player-base-url">PDGA-pelaajaosoitteen perus-URL *</label>
+              <input
+                id="settings-player-base-url"
+                name="playerBaseUrl"
+                type="url"
+                required
+                ${getFieldAttributes(fieldErrors, 'playerBaseUrl')}
+                value="${escapeHtml(formValues.playerBaseUrl)}"
+              />
+              <span class="help-text">Oletus: ${escapeHtml(DEFAULT_PDGA_SETTINGS.playerBaseUrl)}</span>
+              ${renderFieldError(fieldErrors, 'playerBaseUrl')}
+            </div>
+            <div class="form-field full-width">
+              <label for="settings-event-base-url">PDGA-kilpailuosoitteen perus-URL *</label>
+              <input
+                id="settings-event-base-url"
+                name="eventBaseUrl"
+                type="url"
+                required
+                ${getFieldAttributes(fieldErrors, 'eventBaseUrl')}
+                value="${escapeHtml(formValues.eventBaseUrl)}"
+              />
+              <span class="help-text">Oletus: ${escapeHtml(DEFAULT_PDGA_SETTINGS.eventBaseUrl)}</span>
+              ${renderFieldError(fieldErrors, 'eventBaseUrl')}
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button">Tallenna asetukset</button>
+            <button type="button" class="secondary-button" data-reset-settings-form>Palauta tallennetut arvot</button>
+          </div>
+        </form>
+        <article class="panel">
+          <h3>Miten PDGA-linkit toimivat?</h3>
+          <ul>
+            <li>Pelaajille tallennetaan vain PDGA-pelaajatunnus.</li>
+            <li>Turnauksille tallennetaan vain PDGA-kilpailutunnus.</li>
+            <li>Linkit muodostetaan automaattisesti muodossa perusosoite + tunnus.</li>
+            <li>Vanhoista täydellisistä PDGA-osoitteista poimitaan tunnus automaattisesti latauksen yhteydessä.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
   `;
 }
 
@@ -1112,6 +1188,7 @@ export function renderApp(root, dataState, uiState) {
         ${renderPlayerSection(dataState, uiState)}
         ${renderTournamentSection(dataState, uiState)}
         ${renderPointsSection(dataState, uiState)}
+        ${renderSettingsSection(dataState, uiState)}
       </main>
       <footer class="site-footer">
         <div class="site-footer-inner">
@@ -1136,6 +1213,13 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelectorAll('[data-view-target]').forEach((button) => {
     button.addEventListener('click', () => handlers.changeView(button.dataset.viewTarget));
   });
+
+  root.querySelector('#settings-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handlers.submitSettings(new FormData(event.currentTarget));
+  });
+
+  root.querySelector('[data-reset-settings-form]')?.addEventListener('click', () => handlers.resetSettingsForm());
 
   root.querySelectorAll('[data-ranking-filter]').forEach((button) => {
     button.addEventListener('click', () => handlers.setRankingFilter(button.dataset.rankingFilter));

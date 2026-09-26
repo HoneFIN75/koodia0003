@@ -1,6 +1,7 @@
 import { createEmptyState, loadState, saveState } from './storage.js';
 import { createPlayer, updatePlayer, findPlayer, removePlayer } from './players.js';
 import { createTournament, updateTournament, findTournament, TournamentValidationError } from './tournaments.js';
+import { SettingsValidationError, validateSettingsInput } from './pdga.js';
 import {
   createTournamentResult,
   updateTournamentResult,
@@ -36,6 +37,8 @@ let uiState = {
   pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
   confirmationDialog: null,
   feedback: null,
+  settingsFormErrors: {},
+  settingsFormDraft: null,
 };
 
 function persistAndRender(successMessage = '') {
@@ -68,6 +71,29 @@ const handlers = {
   changeView(view) {
     uiState.activeView = view;
     uiState.navOpen = false;
+    render();
+  },
+  submitSettings(formData) {
+    try {
+      dataState.settings = validateSettingsInput(formDataToObject(formData));
+      uiState.settingsFormErrors = {};
+      uiState.settingsFormDraft = null;
+      persistAndRender('Asetukset tallennettiin.');
+    } catch (error) {
+      if (error instanceof SettingsValidationError) {
+        uiState.settingsFormErrors = error.fieldErrors;
+        uiState.settingsFormDraft = formDataToObject(formData);
+        uiState.feedback = { type: 'error', text: 'Korjaa asetusten tiedot ja yritä uudelleen.' };
+        render();
+        return;
+      }
+
+      setError(error);
+    }
+  },
+  resetSettingsForm() {
+    uiState.settingsFormErrors = {};
+    uiState.settingsFormDraft = null;
     render();
   },
   setRankingFilter(filter) {

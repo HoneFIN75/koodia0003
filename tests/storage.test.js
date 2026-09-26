@@ -37,6 +37,7 @@ test('loadState drops unknown legacy fields from players and tournaments', () =>
             legacyField: 'poistuva arvo',
             [removedTournamentField]: 'Suomi',
             [removedPlayerField]: 1990,
+            pdgaProfileUrl: 'https://www.pdga.com/player/45678',
             notes: 'Huomio',
           },
         ],
@@ -44,6 +45,7 @@ test('loadState drops unknown legacy fields from players and tournaments', () =>
           {
             id: 'tournament-1',
             name: 'Testiturnaus',
+            externalUrl: 'https://www.pdga.com/tour/event/98765',
             startDate: '2026-01-01',
             multiplierKey: 'fpt',
             multiplier: 1,
@@ -64,9 +66,16 @@ test('loadState drops unknown legacy fields from players and tournaments', () =>
     assert.ok(!Object.hasOwn(state.players[0], removedTournamentField));
     assert.ok(!Object.hasOwn(state.players[0], removedPlayerField));
     assert.ok(!Object.hasOwn(state.tournaments[0], removedTournamentField));
+    assert.ok(!Object.hasOwn(state.players[0], 'pdgaProfileUrl'));
     assert.equal(state.players[0].notes, 'Huomio');
+    assert.equal(state.players[0].pdgaNumber, 45678);
+    assert.equal(state.tournaments[0].pdgaEventId, 98765);
     assert.equal(state.tournaments[0].venue, 'Keskuspuisto');
     assert.equal(state.tournaments[0].displayOrder, 999);
+    assert.deepEqual(state.settings, {
+      playerBaseUrl: 'https://www.pdga.com/player/',
+      eventBaseUrl: 'https://www.pdga.com/tour/event/',
+    });
   } finally {
     delete globalThis.window;
   }
@@ -86,6 +95,7 @@ test('saveState strips unknown legacy fields before persisting', () => {
           legacyField: 'poistuva arvo',
           [removedTournamentField]: 'Suomi',
           [removedPlayerField]: 1994,
+          pdgaProfileUrl: 'https://www.pdga.com/player/76543',
         },
       ],
       tournaments: [
@@ -96,9 +106,14 @@ test('saveState strips unknown legacy fields before persisting', () => {
           venue: 'Keskuspuisto',
           legacyField: 'poistuva arvo',
           [removedTournamentField]: 'Suomi',
+          pdgaEventUrl: 'https://www.pdga.com/tour/event/321',
         },
       ],
       tournamentResults: [],
+      settings: {
+        playerBaseUrl: 'https://www.pdga.com/player',
+        eventBaseUrl: 'https://www.pdga.com/tour/event',
+      },
       pointsTable: { MPO: {}, FPO: {} },
     });
 
@@ -107,17 +122,31 @@ test('saveState strips unknown legacy fields before persisting', () => {
     assert.ok(!Object.hasOwn(state.players[0], removedTournamentField));
     assert.ok(!Object.hasOwn(state.players[0], removedPlayerField));
     assert.ok(!Object.hasOwn(state.tournaments[0], removedTournamentField));
+    assert.ok(!Object.hasOwn(state.players[0], 'pdgaProfileUrl'));
+    assert.equal(state.players[0].pdgaNumber, 76543);
+    assert.equal(state.tournaments[0].pdgaEventId, 321);
     assert.equal(state.tournaments[0].displayOrder, 4);
     assert.equal(state.tournaments[0].venue, 'Keskuspuisto');
+    assert.deepEqual(state.settings, {
+      playerBaseUrl: 'https://www.pdga.com/player/',
+      eventBaseUrl: 'https://www.pdga.com/tour/event/',
+    });
 
-    const persisted = JSON.parse(localStorage.getItem('sfl-pisteytystyokalu:v1'));
+    const persisted = JSON.parse(localStorage.getItem('sfl-pisteytystyokalu:v2'));
     assert.ok(!Object.hasOwn(persisted.players[0], 'legacyField'));
     assert.ok(!Object.hasOwn(persisted.tournaments[0], 'legacyField'));
     assert.ok(!Object.hasOwn(persisted.players[0], removedTournamentField));
     assert.ok(!Object.hasOwn(persisted.players[0], removedPlayerField));
     assert.ok(!Object.hasOwn(persisted.tournaments[0], removedTournamentField));
+    assert.ok(!Object.hasOwn(persisted.players[0], 'pdgaProfileUrl'));
+    assert.equal(persisted.players[0].pdgaNumber, 76543);
+    assert.equal(persisted.tournaments[0].pdgaEventId, 321);
     assert.equal(persisted.tournaments[0].displayOrder, 4);
     assert.equal(persisted.tournaments[0].venue, 'Keskuspuisto');
+    assert.deepEqual(persisted.settings, {
+      playerBaseUrl: 'https://www.pdga.com/player/',
+      eventBaseUrl: 'https://www.pdga.com/tour/event/',
+    });
   } finally {
     delete globalThis.window;
   }
