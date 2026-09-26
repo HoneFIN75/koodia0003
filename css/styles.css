@@ -594,6 +594,58 @@ textarea {
   color: var(--color-text-muted);
 }
 
+.tournament-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.tournament-card {
+  display: grid;
+  gap: var(--spacing-md);
+  align-content: start;
+}
+
+.tournament-card-selected {
+  border-color: rgba(13, 95, 115, 0.45);
+  box-shadow: 0 12px 32px rgba(13, 95, 115, 0.14);
+}
+
+.tournament-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: var(--spacing-md);
+}
+
+.tournament-card-head h3 {
+  margin: var(--spacing-2xs) 0 var(--spacing-xs);
+}
+
+.tournament-meta-list {
+  display: grid;
+  gap: var(--spacing-sm);
+  margin: 0;
+}
+
+.tournament-meta-list div {
+  display: grid;
+  gap: var(--spacing-2xs);
+}
+
+.tournament-meta-list dt {
+  font-weight: 600;
+}
+
+.tournament-meta-list dd {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.tournament-description {
+  margin: 0;
+}
+
 .dialog-backdrop {
   position: fixed;
   inset: 0;
@@ -611,6 +663,12 @@ textarea {
   border-radius: var(--border-radius);
   background: var(--color-surface);
   box-shadow: var(--shadow);
+}
+
+.dialog-panel-wide {
+  width: min(100%, 48rem);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
 }
 
 .definition-list dt {
@@ -679,12 +737,17 @@ textarea {
   .three-column,
   .two-column,
   .form-grid,
-  .definition-list {
+  .definition-list,
+  .tournament-grid {
     grid-template-columns: 1fr;
   }
 
   .section-heading {
     align-items: start;
+  }
+
+  .tournament-card-head {
+    flex-direction: column;
   }
 
   .hidden-mobile {

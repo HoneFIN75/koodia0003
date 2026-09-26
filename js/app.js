@@ -1,6 +1,6 @@
 import { createEmptyState, loadState, saveState } from './storage.js';
 import { createPlayer, updatePlayer, findPlayer, removePlayer } from './players.js';
-import { createTournament, updateTournament, findTournament } from './tournaments.js';
+import { createTournament, updateTournament, findTournament, TournamentValidationError } from './tournaments.js';
 import {
   createTournamentResult,
   updateTournamentResult,
@@ -26,7 +26,11 @@ let uiState = {
   playerFormDraft: null,
   playersStatus: 'loading',
   playersError: '',
+  tournamentDialogOpen: false,
   tournamentFormId: null,
+  tournamentFormErrors: {},
+  tournamentFormDraft: null,
+  tournamentFormFocusTarget: '',
   selectedTournamentId: '',
   resultFormId: null,
   pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
@@ -185,29 +189,67 @@ const handlers = {
   submitTournament(formData) {
     try {
       const values = formDataToObject(formData);
+      uiState.tournamentFormErrors = {};
+      uiState.tournamentFormDraft = null;
       if (values.id) {
         dataState.tournaments = dataState.tournaments.map((tournament) =>
           tournament.id === values.id ? updateTournament(dataState.tournaments, values.id, values) : tournament,
         );
+        uiState.tournamentDialogOpen = false;
         uiState.tournamentFormId = null;
+        uiState.tournamentFormFocusTarget = '';
         persistAndRender('Turnauksen tiedot päivitettiin.');
       } else {
         const tournament = createTournament(values);
         dataState.tournaments = [...dataState.tournaments, tournament];
+        uiState.tournamentDialogOpen = false;
         uiState.selectedTournamentId = tournament.id;
-        persistAndRender('Turnaus lisättiin.');
+        uiState.tournamentFormFocusTarget = '';
+        persistAndRender('Turnaus lisätty onnistuneesti.');
       }
     } catch (error) {
+      if (error instanceof TournamentValidationError) {
+        uiState.tournamentFormErrors = error.fieldErrors;
+        uiState.tournamentFormDraft = formDataToObject(formData);
+        uiState.tournamentFormFocusTarget = Object.keys(error.fieldErrors)[0] || 'name';
+        uiState.feedback = { type: 'error', text: 'Korjaa turnauksen tiedot ja yritä uudelleen.' };
+        render();
+        return;
+      }
       setError(error);
     }
   },
-  resetTournamentForm() {
+  openTournamentDialog() {
+    uiState.activeView = 'tournaments';
+    uiState.tournamentDialogOpen = true;
     uiState.tournamentFormId = null;
+    uiState.tournamentFormErrors = {};
+    uiState.tournamentFormDraft = null;
+    uiState.tournamentFormFocusTarget = 'name';
+    uiState.feedback = null;
+    render();
+  },
+  closeTournamentDialog() {
+    uiState.tournamentDialogOpen = false;
+    uiState.tournamentFormId = null;
+    uiState.tournamentFormErrors = {};
+    uiState.tournamentFormDraft = null;
+    uiState.tournamentFormFocusTarget = '';
+    render();
+  },
+  resetTournamentForm() {
+    uiState.tournamentFormErrors = {};
+    uiState.tournamentFormDraft = null;
+    uiState.tournamentFormFocusTarget = '';
     render();
   },
   editTournament(tournamentId) {
     uiState.activeView = 'tournaments';
+    uiState.tournamentDialogOpen = true;
     uiState.tournamentFormId = tournamentId;
+    uiState.tournamentFormErrors = {};
+    uiState.tournamentFormDraft = null;
+    uiState.tournamentFormFocusTarget = 'name';
     uiState.feedback = null;
     render();
   },
@@ -225,7 +267,11 @@ const handlers = {
     dataState.tournaments = dataState.tournaments.filter((entry) => entry.id !== tournamentId);
     dataState.tournamentResults = dataState.tournamentResults.filter((result) => result.tournamentId !== tournamentId);
     if (uiState.tournamentFormId === tournamentId) {
+      uiState.tournamentDialogOpen = false;
       uiState.tournamentFormId = null;
+      uiState.tournamentFormErrors = {};
+      uiState.tournamentFormDraft = null;
+      uiState.tournamentFormFocusTarget = '';
     }
     if (uiState.selectedTournamentId === tournamentId) {
       uiState.selectedTournamentId = '';
