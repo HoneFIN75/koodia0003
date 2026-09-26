@@ -37,6 +37,7 @@ test('loadState drops unknown legacy fields from players and tournaments', () =>
             legacyField: 'poistuva arvo',
             [removedTournamentField]: 'Suomi',
             [removedPlayerField]: 1990,
+            pdgaProfileUrl: 'https://www.pdga.com/player/12345',
             notes: 'Huomio',
           },
         ],
@@ -48,6 +49,7 @@ test('loadState drops unknown legacy fields from players and tournaments', () =>
             multiplierKey: 'fpt',
             multiplier: 1,
             venue: 'Keskuspuisto',
+            externalUrl: 'https://www.pdga.com/tour/event/98765',
             legacyField: 'poistuva arvo',
             [removedTournamentField]: 'Suomi',
           },
@@ -64,9 +66,13 @@ test('loadState drops unknown legacy fields from players and tournaments', () =>
     assert.ok(!Object.hasOwn(state.players[0], removedTournamentField));
     assert.ok(!Object.hasOwn(state.players[0], removedPlayerField));
     assert.ok(!Object.hasOwn(state.tournaments[0], removedTournamentField));
+    assert.equal(state.players[0].pdgaPlayerId, '12345');
+    assert.equal(state.tournaments[0].pdgaEventId, '98765');
     assert.equal(state.players[0].notes, 'Huomio');
     assert.equal(state.tournaments[0].venue, 'Keskuspuisto');
     assert.equal(state.tournaments[0].displayOrder, 999);
+    assert.equal(state.settings.pdgaPlayerBaseUrl, 'https://www.pdga.com/player/');
+    assert.equal(state.settings.pdgaEventBaseUrl, 'https://www.pdga.com/tour/event/');
   } finally {
     delete globalThis.window;
   }
@@ -100,6 +106,10 @@ test('saveState strips unknown legacy fields before persisting', () => {
       ],
       tournamentResults: [],
       pointsTable: { MPO: {}, FPO: {} },
+      settings: {
+        pdgaPlayerBaseUrl: 'https://custom.example/player',
+        pdgaEventBaseUrl: 'https://custom.example/event',
+      },
     });
 
     assert.ok(!Object.hasOwn(state.players[0], 'legacyField'));
@@ -109,6 +119,8 @@ test('saveState strips unknown legacy fields before persisting', () => {
     assert.ok(!Object.hasOwn(state.tournaments[0], removedTournamentField));
     assert.equal(state.tournaments[0].displayOrder, 4);
     assert.equal(state.tournaments[0].venue, 'Keskuspuisto');
+    assert.equal(state.settings.pdgaPlayerBaseUrl, 'https://custom.example/player/');
+    assert.equal(state.settings.pdgaEventBaseUrl, 'https://custom.example/event/');
 
     const persisted = JSON.parse(localStorage.getItem('sfl-pisteytystyokalu:v1'));
     assert.ok(!Object.hasOwn(persisted.players[0], 'legacyField'));
@@ -118,6 +130,8 @@ test('saveState strips unknown legacy fields before persisting', () => {
     assert.ok(!Object.hasOwn(persisted.tournaments[0], removedTournamentField));
     assert.equal(persisted.tournaments[0].displayOrder, 4);
     assert.equal(persisted.tournaments[0].venue, 'Keskuspuisto');
+    assert.equal(persisted.settings.pdgaPlayerBaseUrl, 'https://custom.example/player/');
+    assert.equal(persisted.settings.pdgaEventBaseUrl, 'https://custom.example/event/');
   } finally {
     delete globalThis.window;
   }
