@@ -1,5 +1,3 @@
-import { isValidPdgaId, normalizePdgaId } from './pdga.js';
-
 export const MULTIPLIER_OPTIONS = [
   { key: 'fpt-status', label: 'Finnish Pro Tour Status', value: 0.5 },
   { key: 'fpt', label: 'Finnish Pro Tour', value: 1 },
@@ -35,6 +33,24 @@ function normalizeText(value) {
 function addFieldError(fieldErrors, fieldName, message) {
   if (!fieldErrors[fieldName]) {
     fieldErrors[fieldName] = message;
+  }
+}
+
+function normalizeOptionalUrl(value, label, fieldName, fieldErrors) {
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    return '';
+  }
+
+  try {
+    const parsed = new URL(normalized);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('invalid protocol');
+    }
+    return parsed.toString();
+  } catch {
+    addFieldError(fieldErrors, fieldName, `${label} ei ole kelvollinen verkko-osoite.`);
+    return '';
   }
 }
 
@@ -110,10 +126,7 @@ export function validateTournamentInput(input) {
     );
   }
 
-  const pdgaEventId = normalizePdgaId(input.pdgaEventId);
-  if (pdgaEventId && !isValidPdgaId(pdgaEventId)) {
-    addFieldError(fieldErrors, 'pdgaEventId', 'PDGA-tapahtuma-ID pitää olla positiivinen kokonaisluku.');
-  }
+  const externalUrl = normalizeOptionalUrl(input.externalUrl, 'Linkki kilpailusivulle', 'externalUrl', fieldErrors);
 
   if (Object.keys(fieldErrors).length > 0) {
     throw new TournamentValidationError(fieldErrors);
@@ -121,7 +134,7 @@ export function validateTournamentInput(input) {
 
   return {
     name,
-    pdgaEventId,
+    pdgaEventId: normalizeText(input.pdgaEventId),
     startDate,
     endDate,
     displayOrder,
@@ -130,6 +143,7 @@ export function validateTournamentInput(input) {
     status: normalizeText(input.status),
     ...multiplierData,
     division,
+    externalUrl,
     notes: normalizeText(input.notes),
   };
 }

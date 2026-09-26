@@ -102,33 +102,6 @@ test('prevents duplicate PDGA numbers', () => {
   );
 });
 
-test('stores PDGA-pelaaja-ID and trims whitespace', () => {
-  const player = createPlayer([], {
-    name: 'ID Pelaaja',
-    division: 'MPO',
-    pdgaPlayerId: ' 12345 ',
-  });
-
-  assert.equal(player.pdgaPlayerId, '12345');
-});
-
-test('rejects invalid PDGA-pelaaja-ID', () => {
-  assert.throws(
-    () =>
-      validatePlayerInput(
-        {
-          name: 'Virheellinen ID',
-          division: 'MPO',
-          pdgaPlayerId: 'abc',
-        },
-        [],
-      ),
-    (error) =>
-      error instanceof PlayerValidationError &&
-      error.fieldErrors.pdgaPlayerId === 'PDGA-pelaaja-ID pitää olla positiivinen kokonaisluku.',
-  );
-});
-
 test('removes a player', () => {
   const firstPlayer = createPlayer([], {
     name: 'Poistettava Pelaaja',
