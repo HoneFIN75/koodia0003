@@ -121,5 +121,5 @@ test('renderApp shows deployment version below home page title', () => {
   renderApp(root, createEmptyState(), createUiState());
 
   assert.match(root.innerHTML, /<h1 id="summary-title">SFL Pisteytystyökalu<\/h1>\s*<p class="section-subtitle">/);
-  assert.match(root.innerHTML, new RegExp(`Versio: ${DEPLOYMENT_VERSION.replace('.', '\\.')}`));
+  assert.ok(root.innerHTML.includes(`Versio: ${DEPLOYMENT_VERSION}`));
 });
