@@ -1,6 +1,6 @@
 import { createEmptyState, loadState, saveState } from './storage.js';
 import { createPlayer, updatePlayer, findPlayer, removePlayer, canRequestPlayerDeletion } from './players.js';
-import { createTournament, updateTournament, findTournament, TournamentValidationError } from './tournaments.js';
+import { createTournament, updateTournament, findTournament, filterAndSortTournaments, TournamentValidationError } from './tournaments.js';
 import { SettingsValidationError, validateSettingsInput } from './pdga.js';
 import {
   createTournamentResult,
@@ -366,7 +366,25 @@ const handlers = {
       return;
     }
 
-    dataState.tournaments = dataState.tournaments.filter((entry) => entry.id !== tournamentId);
+    const currentVisibleTournamentIds = filterAndSortTournaments(dataState.tournaments, {
+      search: uiState.tournamentSearch,
+      status: uiState.tournamentStatusFilter,
+      sortField: uiState.tournamentSortField,
+      sortDirection: uiState.tournamentSortDirection,
+    }).map((tournament) => tournament.id);
+    const deletedTournamentIndex = currentVisibleTournamentIds.indexOf(tournamentId);
+    const remainingTournaments = dataState.tournaments.filter((entry) => entry.id !== tournamentId);
+    const nextVisibleTournamentIds = filterAndSortTournaments(remainingTournaments, {
+      search: uiState.tournamentSearch,
+      status: uiState.tournamentStatusFilter,
+      sortField: uiState.tournamentSortField,
+      sortDirection: uiState.tournamentSortDirection,
+    }).map((tournament) => tournament.id);
+    const nextTournamentId = nextVisibleTournamentIds[
+      Math.min(deletedTournamentIndex === -1 ? 0 : deletedTournamentIndex, Math.max(nextVisibleTournamentIds.length - 1, 0))
+    ];
+
+    dataState.tournaments = remainingTournaments;
     dataState.tournamentResults = dataState.tournamentResults.filter((result) => result.tournamentId !== tournamentId);
     uiState.tournamentDialogOpen = false;
     uiState.tournamentFormId = null;
@@ -377,7 +395,9 @@ const handlers = {
       uiState.selectedTournamentId = '';
     }
     uiState.confirmationDialog = null;
-    uiState.pendingFocusSelector = '[data-open-tournament-dialog]';
+    uiState.pendingFocusSelector = nextTournamentId
+      ? `[data-edit-tournament="${nextTournamentId}"]`
+      : '[data-open-tournament-dialog]';
     persistAndRender('Turnaus poistettiin.');
   },
   selectTournament(tournamentId) {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createEmptyState } from '../js/storage.js';
-import { renderApp } from '../js/ui.js';
+import { bindUi, renderApp } from '../js/ui.js';
 
 function createRootStub() {
   return {
@@ -10,6 +10,64 @@ function createRootStub() {
       return null;
     },
   };
+}
+
+function createFocusableElement() {
+  return {
+    listeners: {},
+    dataset: {},
+    addEventListener(eventName, handler) {
+      this.listeners[eventName] = handler;
+    },
+    focus() {
+      global.document.activeElement = this;
+    },
+    getAttribute() {
+      return null;
+    },
+    hasAttribute() {
+      return false;
+    },
+    querySelectorAll() {
+      return [];
+    },
+  };
+}
+
+function createInteractiveRoot(selectors = {}) {
+  return {
+    __dialogKeydownHandler: null,
+    querySelector(selector) {
+      return selectors[selector] || null;
+    },
+    querySelectorAll() {
+      return [];
+    },
+  };
+}
+
+function installDocumentStub() {
+  const originalDocument = global.document;
+  global.document = {
+    activeElement: null,
+    addEventListener() {},
+    removeEventListener() {},
+  };
+
+  return () => {
+    global.document = originalDocument;
+  };
+}
+
+function createNoopHandlers() {
+  return new Proxy(
+    {},
+    {
+      get() {
+        return () => {};
+      },
+    },
+  );
 }
 
 function createUiState(overrides = {}) {
@@ -477,4 +535,39 @@ test('renderApp shows tournament delete confirmation copy for multiple linked re
   );
 
   assert.match(root.innerHTML, /Samalla poistetaan 2 turnaustulosta eikä toimintoa voi peruuttaa\./);
+});
+
+test('bindUi moves focus into the tournament dialog field', () => {
+  const restoreDocument = installDocumentStub();
+  const tournamentNameField = createFocusableElement();
+  const root = createInteractiveRoot({
+    '#tournament-name': tournamentNameField,
+  });
+  const uiState = createUiState({
+    tournamentDialogOpen: true,
+    tournamentFormFocusTarget: 'name',
+  });
+
+  bindUi(root, createEmptyState(), uiState, createNoopHandlers());
+
+  assert.equal(global.document.activeElement, tournamentNameField);
+  assert.equal(uiState.tournamentFormFocusTarget, '');
+  restoreDocument();
+});
+
+test('bindUi restores focus to the pending control after confirmation dialog closes', () => {
+  const restoreDocument = installDocumentStub();
+  const deleteButton = createFocusableElement();
+  const root = createInteractiveRoot({
+    '[data-delete-tournament="tournament-1"]': deleteButton,
+  });
+  const uiState = createUiState({
+    pendingFocusSelector: '[data-delete-tournament="tournament-1"]',
+  });
+
+  bindUi(root, createEmptyState(), uiState, createNoopHandlers());
+
+  assert.equal(global.document.activeElement, deleteButton);
+  assert.equal(uiState.pendingFocusSelector, '');
+  restoreDocument();
 });
