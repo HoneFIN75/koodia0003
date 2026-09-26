@@ -1,5 +1,5 @@
 import { createEmptyState, loadState, saveState } from './storage.js';
-import { createPlayer, updatePlayer, findPlayer, removePlayer } from './players.js';
+import { createPlayer, updatePlayer, findPlayer, removePlayer, canRequestPlayerDeletion, removePlayerResults } from './players.js';
 import { createTournament, updateTournament, findTournament, TournamentValidationError } from './tournaments.js';
 import { SettingsValidationError, validateSettingsInput } from './pdga.js';
 import {
@@ -171,7 +171,7 @@ const handlers = {
   },
   requestDeletePlayer(playerId) {
     const player = findPlayer(dataState.players, playerId);
-    if (!player || uiState.playerFormId !== playerId) {
+    if (!player || !canRequestPlayerDeletion(uiState.playerFormId, playerId)) {
       return;
     }
 
@@ -191,7 +191,7 @@ const handlers = {
 
     try {
       dataState.players = removePlayer(dataState.players, playerId);
-      dataState.tournamentResults = dataState.tournamentResults.filter((result) => result.playerId !== playerId);
+      dataState.tournamentResults = removePlayerResults(dataState.tournamentResults, playerId);
       if (uiState.playerFormId === playerId) {
         uiState.playerFormId = null;
         uiState.playerFormErrors = {};
