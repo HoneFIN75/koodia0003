@@ -151,3 +151,48 @@ test('saveState strips unknown legacy fields before persisting', () => {
     delete globalThis.window;
   }
 });
+
+test('loadState prefers legacy data over empty v2 state during migration', () => {
+  const localStorage = createStorageStub();
+  globalThis.window = { localStorage };
+  try {
+    localStorage.setItem(
+      'sfl-pisteytystyokalu:v1',
+      JSON.stringify({
+        version: 1,
+        players: [
+          {
+            id: 'player-1',
+            name: 'Migrated Player',
+            division: 'MPO',
+            pdgaProfileUrl: 'https://www.pdga.com/player/11223',
+          },
+        ],
+        tournaments: [],
+        tournamentResults: [],
+        pointsTable: { MPO: {}, FPO: {} },
+      }),
+    );
+    localStorage.setItem(
+      'sfl-pisteytystyokalu:v2',
+      JSON.stringify({
+        version: 2,
+        players: [],
+        tournaments: [],
+        tournamentResults: [],
+        settings: {
+          playerBaseUrl: 'https://www.pdga.com/player/',
+          eventBaseUrl: 'https://www.pdga.com/tour/event/',
+        },
+        pointsTable: { MPO: {}, FPO: {} },
+      }),
+    );
+
+    const state = loadState();
+
+    assert.equal(state.players.length, 1);
+    assert.equal(state.players[0].pdgaNumber, 11223);
+  } finally {
+    delete globalThis.window;
+  }
+});

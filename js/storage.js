@@ -94,22 +94,39 @@ function sanitizeState(candidate = {}) {
   };
 }
 
+function hasStateData(state) {
+  return (
+    state.players.length > 0 ||
+    state.tournaments.length > 0 ||
+    state.tournamentResults.length > 0 ||
+    Object.keys(state.pointsTable.MPO).length > 0 ||
+    Object.keys(state.pointsTable.FPO).length > 0 ||
+    state.settings.playerBaseUrl !== DEFAULT_PDGA_SETTINGS.playerBaseUrl ||
+    state.settings.eventBaseUrl !== DEFAULT_PDGA_SETTINGS.eventBaseUrl
+  );
+}
+
 export function loadState() {
   const storage = getLocalStorage();
   if (!storage) {
     return createEmptyState();
   }
 
-  const raw = storage.getItem(STORAGE_KEY) || LEGACY_STORAGE_KEYS.map((key) => storage.getItem(key)).find(Boolean);
-  if (!raw) {
+  const currentRaw = storage.getItem(STORAGE_KEY);
+  const legacyRaw = LEGACY_STORAGE_KEYS.map((key) => storage.getItem(key)).find(Boolean);
+  if (!currentRaw && !legacyRaw) {
     const empty = createEmptyState();
     storage.setItem(STORAGE_KEY, JSON.stringify(empty));
     return empty;
   }
 
   try {
-    const parsed = JSON.parse(raw);
-    const sanitized = sanitizeState(parsed);
+    const currentState = currentRaw ? sanitizeState(JSON.parse(currentRaw)) : null;
+    const legacyState = legacyRaw ? sanitizeState(JSON.parse(legacyRaw)) : null;
+    const sanitized = currentState && (!legacyState || hasStateData(currentState) || !hasStateData(legacyState))
+      ? currentState
+      : legacyState;
+
     storage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
     return sanitized;
   } catch {
