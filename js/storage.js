@@ -36,10 +36,17 @@ function sanitizePointsTable(pointsTable = {}) {
 
 function sanitizePlayer(player = {}) {
   const pdgaNumber = extractPdgaPlayerId(player.pdgaNumber) || extractPdgaPlayerId(player.pdgaProfileUrl);
+  const normalizedName = String(player.name || '').trim();
+  const [fallbackFirstName = '', ...fallbackLastNameParts] = normalizedName.split(/\s+/);
+  const firstName = String(player.firstName || fallbackFirstName).trim();
+  const lastName = String(player.lastName || fallbackLastNameParts.join(' ')).trim();
+  const name = String(player.name || `${firstName} ${lastName}`).trim();
 
   return {
     id: player.id,
-    name: player.name,
+    firstName,
+    lastName,
+    name,
     division: player.division,
     pdgaNumber,
     pdgaRating: player.pdgaRating,

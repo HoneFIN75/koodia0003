@@ -39,11 +39,18 @@ function formatDeploymentTimestamp(value) {
     return escapeHtml(value);
   }
 
-  return `${new Intl.DateTimeFormat('fi-FI', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'UTC',
-  }).format(parsedDate)} UTC`;
+  const parts = new Intl.DateTimeFormat('fi-FI', {
+    timeZone: 'Europe/Helsinki',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(parsedDate);
+
+  const valueByType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${valueByType.year}-${valueByType.month}-${valueByType.day} ${valueByType.hour}:${valueByType.minute}`;
 }
 
 function renderDeploymentInfo(deploymentInfo) {
@@ -68,6 +75,10 @@ function getMultiplierLabel(multiplier) {
 
 function renderEmptyState(message) {
   return `<div class="message warning" role="status">${escapeHtml(message)}</div>`;
+}
+
+function renderValueOrDash(value) {
+  return value === '' || value === null || value === undefined ? '—' : String(value);
 }
 
 function renderFieldError(fieldErrors, fieldName) {
@@ -461,45 +472,92 @@ function renderRankingSection(dataState, uiState) {
   `;
 }
 
+function getPlayerNameParts(player = {}) {
+  const firstName = String(player.firstName || '').trim();
+  const lastName = String(player.lastName || '').trim();
+  if (firstName || lastName) {
+    return { firstName, lastName };
+  }
+
+  const [fallbackFirstName = '', ...fallbackLastNameParts] = String(player.name || '').trim().split(/\s+/);
+  return {
+    firstName: fallbackFirstName,
+    lastName: fallbackLastNameParts.join(' '),
+  };
+}
+
+function getPlayerFieldSelector(fieldName) {
+  const fieldSelectors = {
+    firstName: '#player-first-name',
+    lastName: '#player-last-name',
+    pdgaNumber: '#player-pdga-number',
+    division: '#player-division',
+    pdgaRating: '#player-pdga-rating',
+    worldRank: '#player-world-rank',
+  };
+
+  return fieldSelectors[fieldName] || '#player-first-name';
+}
+
 function renderPlayerSection(dataState, uiState) {
-  const editingPlayer = dataState.players.find((player) => player.id === uiState.playerFormId) || null;
-  const draftPlayer = uiState.playerFormDraft || {};
-  const formPlayer = editingPlayer ? { ...editingPlayer, ...draftPlayer } : draftPlayer;
   const visiblePlayers = getVisiblePlayers(dataState.players, {
     division: uiState.playerDivisionFilter,
     query: uiState.playerSearch,
+    sortField: uiState.playerSortField,
+    sortDirection: uiState.playerSortDirection,
   });
-  const selectedPlayer = dataState.players.find((player) => player.id === uiState.selectedPlayerId) || null;
-  const selectedPlayerPdgaUrl = selectedPlayer ? buildPdgaPlayerUrl(dataState.settings, selectedPlayer) : '';
 
   return `
     <section class="section" id="section-players" ${uiState.activeView === 'players' ? '' : 'hidden'} aria-labelledby="players-title">
       <div class="section-heading">
         <div>
           <h2 id="players-title">Pelaajat</h2>
-          <p class="section-subtitle">Hallitse pelaajia, hae nimellä tai PDGA-tunnuksella ja avaa pelaajan tietosivu.</p>
+          <p class="section-subtitle">Pelaajalista on tämän sivun pääsisältö. Hae ja lajittele nimellä tai PDGA-tunnuksella.</p>
         </div>
+        <button type="button" class="button" data-open-player-dialog>Lisää pelaaja</button>
       </div>
       <article class="panel">
         <div class="section-heading">
-          <div>
-            <h3>Pelaajan tietosivu</h3>
-            <p class="section-subtitle">Kaikki pelaajan perustiedot yhdessä näkymässä.</p>
+          <div class="status-chip">${formatNumber(visiblePlayers.length)} / ${formatNumber(dataState.players.length)} pelaajaa</div>
+        </div>
+        <div class="form-grid compact-grid">
+          <div class="form-field">
+            <label for="player-search">Haku</label>
+            <input
+              id="player-search"
+              type="search"
+              data-player-search
+              value="${escapeHtml(uiState.playerSearch)}"
+              placeholder="Hae nimellä tai PDGA ID:llä"
+            />
           </div>
-          ${
-            selectedPlayer
-              ? `
-                <div class="inline-actions">
-                  ${selectedPlayerPdgaUrl ? renderLinkButton(selectedPlayerPdgaUrl, 'PDGA', 'Avaa pelaajan PDGA-profiili uudessa välilehdessä') : ''}
-                  <button type="button" class="secondary-button" data-edit-player="${escapeHtml(selectedPlayer.id)}">Muokkaa</button>
-                </div>
-              `
-              : ''
-          }
+          <div class="form-field">
+            <label for="player-sort-field">Lajittelukenttä</label>
+            <select id="player-sort-field" data-player-sort-field>
+              <option value="name" ${uiState.playerSortField === 'name' ? 'selected' : ''}>Pelaajan nimi</option>
+              <option value="pdgaNumber" ${uiState.playerSortField === 'pdgaNumber' ? 'selected' : ''}>PDGA ID</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="player-sort-direction">Lajittelusuunta</label>
+            <select id="player-sort-direction" data-player-sort-direction>
+              <option value="asc" ${uiState.playerSortDirection === 'asc' ? 'selected' : ''}>Nouseva</option>
+              <option value="desc" ${uiState.playerSortDirection === 'desc' ? 'selected' : ''}>Laskeva</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="player-division-filter">Sarja</label>
+            <select id="player-division-filter" data-player-division-filter>
+              <option value="ALL" ${uiState.playerDivisionFilter === 'ALL' ? 'selected' : ''}>Kaikki</option>
+              ${DIVISIONS.map(
+                (division) => `<option value="${division}" ${uiState.playerDivisionFilter === division ? 'selected' : ''}>${division}</option>`,
+              ).join('')}
+            </select>
+          </div>
         </div>
         ${
           uiState.playersStatus === 'loading'
-            ? '<div class="message" role="status" aria-live="polite">Ladataan pelaajia…</div>'
+            ? '<div class="message" role="status" aria-live="polite">Ladataan pelaajalistaa…</div>'
             : uiState.playersStatus === 'error'
               ? `
                 <div class="message error" role="alert">
@@ -510,149 +568,147 @@ function renderPlayerSection(dataState, uiState) {
                   </div>
                 </div>
               `
-              : renderPlayerDetailCard(selectedPlayer, dataState.settings)
+              : dataState.players.length === 0
+                ? renderEmptyState('Pelaajia ei ole vielä lisätty.')
+                : visiblePlayers.length
+                  ? `
+                    <div class="table-wrap">
+                      <table class="table players-table">
+                        <thead>
+                          <tr>
+                            <th>Pelaajan nimi</th>
+                            <th>PDGA ID</th>
+                            <th>Divisioona</th>
+                            <th>Rating</th>
+                            <th>World Ranking</th>
+                            <th>Muokkaa</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${visiblePlayers
+                            .map((player) => {
+                              const playerPdgaUrl = buildPdgaPlayerUrl(dataState.settings, player);
+                              return `
+                                <tr>
+                                  <td data-label="Pelaajan nimi">${
+                                    playerPdgaUrl
+                                      ? `<a href="${escapeHtml(playerPdgaUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(player.name)}</a>`
+                                      : escapeHtml(player.name)
+                                  }</td>
+                                  <td data-label="PDGA ID">${escapeHtml(renderValueOrDash(player.pdgaNumber))}</td>
+                                  <td data-label="Divisioona">${escapeHtml(player.division)}</td>
+                                  <td data-label="Rating">${escapeHtml(renderValueOrDash(player.pdgaRating))}</td>
+                                  <td data-label="World Ranking">${escapeHtml(renderValueOrDash(player.worldRank))}</td>
+                                  <td data-label="Muokkaa"><button type="button" class="secondary-button" data-edit-player="${escapeHtml(player.id)}">Muokkaa</button></td>
+                                </tr>
+                              `;
+                            })
+                            .join('')}
+                        </tbody>
+                      </table>
+                    </div>
+                  `
+                  : renderEmptyState('Hakuehdoilla ei löytynyt pelaajia.')
         }
       </article>
-      <div class="two-column">
-        <article class="panel">
-          <h3>${editingPlayer ? 'Muokkaa pelaajaa' : 'Lisää pelaaja'}</h3>
-          <form id="player-form">
-            <input type="hidden" name="id" value="${escapeHtml(formPlayer?.id || editingPlayer?.id || '')}" />
-            <div class="form-grid">
-              <div class="form-field">
-                <label for="player-name">Nimi *</label>
-                <input id="player-name" name="name" required ${getFieldAttributes(uiState.playerFormErrors, 'name')} value="${escapeHtml(formPlayer?.name || '')}" />
-                ${renderFieldError(uiState.playerFormErrors, 'name')}
-              </div>
-              <div class="form-field">
-                <label for="player-division">Sarja *</label>
-                <select id="player-division" name="division" required ${getFieldAttributes(uiState.playerFormErrors, 'division')}>
-                  <option value="">Valitse sarja</option>
-                  ${DIVISIONS.map(
-                    (division) => `<option value="${division}" ${formPlayer?.division === division ? 'selected' : ''}>${division}</option>`,
-                  ).join('')}
-                </select>
-                ${renderFieldError(uiState.playerFormErrors, 'division')}
-              </div>
-              <div class="form-field">
-                <label for="player-pdga-number">PDGA-pelaajatunnus</label>
-                <input
-                  id="player-pdga-number"
-                  name="pdgaNumber"
-                  inputmode="numeric"
-                  ${getFieldAttributes(uiState.playerFormErrors, 'pdgaNumber')}
-                  value="${escapeHtml(formPlayer?.pdgaNumber || '')}"
-                />
-                <span class="help-text">Syötä vain tunnus. PDGA-linkki muodostetaan keskitetysti asetuksista.</span>
-                ${renderFieldError(uiState.playerFormErrors, 'pdgaNumber')}
-              </div>
-              <div class="form-field">
-                <label for="player-pdga-rating">PDGA-rating</label>
-                <input
-                  id="player-pdga-rating"
-                  name="pdgaRating"
-                  inputmode="numeric"
-                  ${getFieldAttributes(uiState.playerFormErrors, 'pdgaRating')}
-                  value="${escapeHtml(formPlayer?.pdgaRating || '')}"
-                />
-                ${renderFieldError(uiState.playerFormErrors, 'pdgaRating')}
-              </div>
-              <div class="form-field">
-                <label for="player-world-rank">Maailman ranking sijoitus</label>
-                <input
-                  id="player-world-rank"
-                  name="worldRank"
-                  inputmode="numeric"
-                  ${getFieldAttributes(uiState.playerFormErrors, 'worldRank')}
-                  value="${escapeHtml(formPlayer?.worldRank || '')}"
-                />
-                ${renderFieldError(uiState.playerFormErrors, 'worldRank')}
-              </div>
-            </div>
-            <div class="form-actions">
-              <button type="submit" class="button">${editingPlayer ? 'Tallenna muutokset' : 'Lisää pelaaja'}</button>
-              <button type="button" class="secondary-button" data-reset-player-form>${editingPlayer ? 'Peruuta muokkaus' : 'Tyhjennä lomake'}</button>
-              ${editingPlayer ? `<button type="button" class="danger-button" data-delete-player="${escapeHtml(editingPlayer.id)}">Poista pelaaja</button>` : ''}
-            </div>
-          </form>
-        </article>
-        <article class="panel">
-          <div class="section-heading">
-            <div>
-              <h3>Pelaajalista</h3>
-              <p class="section-subtitle">Suodata sarjan mukaan tai hae nimellä ja PDGA-tunnuksella.</p>
-            </div>
-            <div class="status-chip">${formatNumber(visiblePlayers.length)} / ${formatNumber(dataState.players.length)} pelaajaa</div>
+    </section>
+  `;
+}
+
+function renderPlayerDialog(dataState, uiState) {
+  if (!uiState.playerDialogOpen) {
+    return '';
+  }
+
+  const editingPlayer = dataState.players.find((player) => player.id === uiState.playerFormId) || null;
+  const draftPlayer = uiState.playerFormDraft || {};
+  const formPlayer = editingPlayer ? { ...editingPlayer, ...draftPlayer } : draftPlayer;
+  const nameParts = getPlayerNameParts(formPlayer);
+
+  return `
+    <div class="dialog-backdrop" data-player-dialog-backdrop>
+      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="player-dialog-title" data-player-dialog-panel tabindex="-1">
+        <div class="section-heading">
+          <div>
+            <h2 id="player-dialog-title">${editingPlayer ? 'Muokkaa pelaajaa' : 'Lisää pelaaja'}</h2>
+            <p class="section-subtitle">Täytä pelaajan tiedot. Pakolliset kentät on merkitty tähdellä.</p>
           </div>
-          <div class="form-grid compact-grid">
-            <div class="form-field full-width">
-              <label for="player-search">Haku</label>
-              <input
-                id="player-search"
-                type="search"
-                data-player-search
-                value="${escapeHtml(uiState.playerSearch)}"
-                placeholder="Hae nimellä tai PDGA-tunnuksella"
-              />
+        </div>
+        <form id="player-form">
+          <input type="hidden" name="id" value="${escapeHtml(formPlayer?.id || editingPlayer?.id || '')}" />
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="player-first-name">Etunimi *</label>
+              <input id="player-first-name" name="firstName" required ${getFieldAttributes(uiState.playerFormErrors, 'firstName')} value="${escapeHtml(nameParts.firstName)}" />
+              ${renderFieldError(uiState.playerFormErrors, 'firstName')}
             </div>
             <div class="form-field">
-              <label for="player-division-filter">Sarjasuodatus</label>
-              <select id="player-division-filter" data-player-division-filter>
-                <option value="ALL" ${uiState.playerDivisionFilter === 'ALL' ? 'selected' : ''}>Kaikki</option>
+              <label for="player-last-name">Sukunimi *</label>
+              <input id="player-last-name" name="lastName" required ${getFieldAttributes(uiState.playerFormErrors, 'lastName')} value="${escapeHtml(nameParts.lastName)}" />
+              ${renderFieldError(uiState.playerFormErrors, 'lastName')}
+            </div>
+            <div class="form-field">
+              <label for="player-pdga-number">PDGA ID *</label>
+              <input
+                id="player-pdga-number"
+                name="pdgaNumber"
+                required
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                ${getFieldAttributes(uiState.playerFormErrors, 'pdgaNumber')}
+                value="${escapeHtml(formPlayer?.pdgaNumber || '')}"
+              />
+              ${renderFieldError(uiState.playerFormErrors, 'pdgaNumber')}
+            </div>
+            <div class="form-field">
+              <label for="player-division">Divisioona *</label>
+              <select id="player-division" name="division" required ${getFieldAttributes(uiState.playerFormErrors, 'division')}>
+                <option value="">Valitse divisioona</option>
                 ${DIVISIONS.map(
-                  (division) => `<option value="${division}" ${uiState.playerDivisionFilter === division ? 'selected' : ''}>${division}</option>`,
+                  (division) => `<option value="${division}" ${formPlayer?.division === division ? 'selected' : ''}>${division}</option>`,
                 ).join('')}
               </select>
+              ${renderFieldError(uiState.playerFormErrors, 'division')}
+            </div>
+            <div class="form-field">
+              <label for="player-pdga-rating">Rating</label>
+              <input
+                id="player-pdga-rating"
+                name="pdgaRating"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                ${getFieldAttributes(uiState.playerFormErrors, 'pdgaRating')}
+                value="${escapeHtml(formPlayer?.pdgaRating || '')}"
+              />
+              ${renderFieldError(uiState.playerFormErrors, 'pdgaRating')}
+            </div>
+            <div class="form-field">
+              <label for="player-world-rank">World Ranking</label>
+              <input
+                id="player-world-rank"
+                name="worldRank"
+                type="number"
+                inputmode="numeric"
+                min="1"
+                step="1"
+                ${getFieldAttributes(uiState.playerFormErrors, 'worldRank')}
+                value="${escapeHtml(formPlayer?.worldRank || '')}"
+              />
+              ${renderFieldError(uiState.playerFormErrors, 'worldRank')}
             </div>
           </div>
-          ${
-            uiState.playersStatus === 'loading'
-              ? '<div class="message" role="status" aria-live="polite">Ladataan pelaajalistaa…</div>'
-              : uiState.playersStatus === 'error'
-                ? '<div class="message error" role="alert">Pelaajalistaa ei voitu näyttää latausvirheen vuoksi.</div>'
-                : dataState.players.length === 0
-                  ? renderEmptyState('Pelaajia ei ole vielä lisätty.')
-                  : visiblePlayers.length
-              ? `
-                <div class="table-wrap">
-                  <table class="table">
-                    <thead>
-                      <tr>
-                        <th>Nimi</th>
-                        <th>Sarja</th>
-                        <th>PDGA</th>
-                        <th>Rating</th>
-                        <th>Toiminnot</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${visiblePlayers
-                        .map(
-                          (player) => `
-                            <tr>
-                              <td><button type="button" class="ghost-button" data-view-player="${escapeHtml(player.id)}">${escapeHtml(player.name)}</button></td>
-                              <td>${escapeHtml(player.division)}</td>
-                              <td>${escapeHtml(player.pdgaNumber || '—')}</td>
-                              <td>${escapeHtml(player.pdgaRating || '—')}</td>
-                              <td>
-                                <div class="table-actions">
-                                  <button type="button" class="ghost-button" data-view-player="${escapeHtml(player.id)}">Avaa tiedot</button>
-                                  <button type="button" class="secondary-button" data-edit-player="${escapeHtml(player.id)}">Muokkaa</button>
-                                </div>
-                              </td>
-                            </tr>
-                          `,
-                        )
-                        .join('')}
-                    </tbody>
-                  </table>
-                </div>
-              `
-              : renderEmptyState('Hakuehdoilla ei löytynyt pelaajia.')
-          }
-        </article>
+          <div class="form-actions">
+            <button type="submit" class="button">${editingPlayer ? 'Tallenna muutokset' : 'Lisää pelaaja'}</button>
+            <button type="button" class="ghost-button" data-dismiss-player-dialog>Peruuta</button>
+            ${editingPlayer ? `<button type="button" class="danger-button" data-delete-player="${escapeHtml(editingPlayer.id)}">Poista pelaaja</button>` : ''}
+          </div>
+        </form>
       </div>
-    </section>
+    </div>
   `;
 }
 
@@ -1173,7 +1229,7 @@ function renderConfirmationDialog(dataState, uiState) {
 
   return `
     <div class="dialog-backdrop" data-close-confirm-dialog>
-      <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description">
+      <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel>
         <div class="section-heading">
           <div>
             <h2 id="confirm-dialog-title">Poista pelaaja</h2>
@@ -1223,6 +1279,7 @@ export function renderApp(root, dataState, uiState) {
           <div>Lopullinen brändivahvistus, logoaineisto ja mahdollinen backend-tietokanta toteutetaan myöhemmässä vaiheessa.</div>
         </div>
       </footer>
+      ${renderPlayerDialog(dataState, uiState)}
       ${renderTournamentDialog(dataState, uiState)}
       ${renderConfirmationDialog(dataState, uiState)}
     </div>
@@ -1268,6 +1325,16 @@ export function bindUi(root, dataState, uiState, handlers) {
     handlers.setPlayerDivisionFilter(event.target.value);
   });
 
+  root.querySelector('[data-player-sort-field]')?.addEventListener('change', (event) => {
+    handlers.setPlayerSortField(event.target.value);
+  });
+
+  root.querySelector('[data-player-sort-direction]')?.addEventListener('change', (event) => {
+    handlers.setPlayerSortDirection(event.target.value);
+  });
+
+  root.querySelector('[data-open-player-dialog]')?.addEventListener('click', () => handlers.openPlayerDialog());
+
   root.querySelector('[data-retry-players-load]')?.addEventListener('click', () => handlers.retryPlayersLoad());
 
   root.querySelector('#player-form')?.addEventListener('submit', (event) => {
@@ -1275,14 +1342,12 @@ export function bindUi(root, dataState, uiState, handlers) {
     handlers.submitPlayer(new FormData(event.currentTarget));
   });
 
-  root.querySelector('[data-reset-player-form]')?.addEventListener('click', () => handlers.resetPlayerForm());
+  root.querySelector('[data-dismiss-player-dialog]')?.addEventListener('click', () => handlers.closePlayerDialog());
+  root.querySelector('[data-player-dialog-backdrop]')?.addEventListener('click', () => handlers.closePlayerDialog());
+  root.querySelector('[data-player-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
 
   root.querySelectorAll('[data-edit-player]').forEach((button) => {
     button.addEventListener('click', () => handlers.editPlayer(button.dataset.editPlayer));
-  });
-
-  root.querySelectorAll('[data-view-player]').forEach((button) => {
-    button.addEventListener('click', () => handlers.viewPlayer(button.dataset.viewPlayer));
   });
 
   root.querySelectorAll('[data-delete-player]').forEach((button) => {
@@ -1347,8 +1412,8 @@ export function bindUi(root, dataState, uiState, handlers) {
   });
 
   root.querySelector('[data-close-confirm-dialog]')?.addEventListener('click', () => handlers.closeConfirmationDialog());
-  root.querySelector('.dialog-panel')?.addEventListener('click', (event) => event.stopPropagation());
-  root.querySelector('.dialog-panel')?.addEventListener('keydown', (event) => {
+  root.querySelector('[data-confirm-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
+  root.querySelector('[data-confirm-dialog-panel]')?.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
       handlers.closeConfirmationDialog();
@@ -1357,19 +1422,27 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-cancel-confirm-dialog]')?.addEventListener('click', () => handlers.closeConfirmationDialog());
   root.querySelector('[data-confirm-delete-player]')?.addEventListener('click', () => handlers.confirmDeletePlayer());
 
-  if (root.__tournamentDialogKeydownHandler) {
-    document.removeEventListener('keydown', root.__tournamentDialogKeydownHandler);
-    root.__tournamentDialogKeydownHandler = null;
+  if (root.__dialogKeydownHandler) {
+    document.removeEventListener('keydown', root.__dialogKeydownHandler);
+    root.__dialogKeydownHandler = null;
   }
 
-  if (uiState.tournamentDialogOpen) {
-    root.__tournamentDialogKeydownHandler = (event) => {
+  if (uiState.tournamentDialogOpen || uiState.playerDialogOpen || uiState.confirmationDialog) {
+    root.__dialogKeydownHandler = (event) => {
       if (event.key === 'Escape') {
         event.preventDefault();
+        if (uiState.confirmationDialog) {
+          handlers.closeConfirmationDialog();
+          return;
+        }
+        if (uiState.playerDialogOpen) {
+          handlers.closePlayerDialog();
+          return;
+        }
         handlers.closeTournamentDialog();
       }
     };
-    document.addEventListener('keydown', root.__tournamentDialogKeydownHandler);
+    document.addEventListener('keydown', root.__dialogKeydownHandler);
   }
 
   if (uiState.tournamentDialogOpen && uiState.tournamentFormFocusTarget) {
@@ -1377,6 +1450,11 @@ export function bindUi(root, dataState, uiState, handlers) {
     uiState.tournamentFormFocusTarget = '';
   } else if (uiState.tournamentDialogOpen) {
     root.querySelector('[data-tournament-dialog-panel]')?.focus();
+  } else if (uiState.playerDialogOpen && uiState.playerDialogFocusTarget) {
+    root.querySelector(getPlayerFieldSelector(uiState.playerDialogFocusTarget))?.focus();
+    uiState.playerDialogFocusTarget = '';
+  } else if (uiState.playerDialogOpen) {
+    root.querySelector('[data-player-dialog-panel]')?.focus();
   } else if (uiState.confirmationDialog) {
     root.querySelector('[data-cancel-confirm-dialog]')?.focus();
   }
