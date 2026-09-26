@@ -68,6 +68,20 @@ function getTournamentFormValue(formValues, editingTournament, fieldName, fallba
   return editingTournament?.[fieldName] ?? fallback;
 }
 
+function getTournamentFieldSelector(fieldName) {
+  const fieldSelectors = {
+    name: '#tournament-name',
+    startDate: '#tournament-start-date',
+    displayOrder: '#tournament-display-order',
+    multiplierKey: '#tournament-multiplier',
+    division: '#tournament-division',
+    externalUrl: '#tournament-external-url',
+    endDate: '#tournament-end-date',
+  };
+
+  return fieldSelectors[fieldName] || '#tournament-name';
+}
+
 function renderPlayerDetailCard(player) {
   if (!player) {
     return renderEmptyState('Valitse pelaaja listalta nähdäksesi tietosivun.');
@@ -805,7 +819,7 @@ function renderTournamentDialog(dataState, uiState) {
   const fieldErrors = uiState.tournamentFormErrors || {};
 
   return `
-    <div class="dialog-backdrop" data-close-tournament-dialog>
+    <div class="dialog-backdrop" data-tournament-dialog-backdrop>
       <div
         class="dialog-panel dialog-panel-wide"
         data-tournament-dialog-panel
@@ -1167,14 +1181,7 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-open-tournament-dialog]')?.addEventListener('click', () => handlers.openTournamentDialog());
   root.querySelector('[data-reset-tournament-form]')?.addEventListener('click', () => handlers.resetTournamentForm());
   root.querySelector('[data-dismiss-tournament-dialog]')?.addEventListener('click', () => handlers.closeTournamentDialog());
-  root.querySelector('[data-close-tournament-dialog]')?.addEventListener('click', () => handlers.closeTournamentDialog());
   root.querySelector('[data-tournament-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
-  root.querySelector('[data-tournament-dialog-panel]')?.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      handlers.closeTournamentDialog();
-    }
-  });
 
   root.querySelectorAll('[data-edit-tournament]').forEach((button) => {
     button.addEventListener('click', () => handlers.editTournament(button.dataset.editTournament));
@@ -1233,8 +1240,24 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-cancel-confirm-dialog]')?.addEventListener('click', () => handlers.closeConfirmationDialog());
   root.querySelector('[data-confirm-delete-player]')?.addEventListener('click', () => handlers.confirmDeletePlayer());
 
+  if (root.__tournamentDialogKeydownHandler) {
+    document.removeEventListener('keydown', root.__tournamentDialogKeydownHandler);
+    root.__tournamentDialogKeydownHandler = null;
+  }
+
   if (uiState.tournamentDialogOpen) {
-    root.querySelector('#tournament-name')?.focus();
+    root.__tournamentDialogKeydownHandler = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        handlers.closeTournamentDialog();
+      }
+    };
+    document.addEventListener('keydown', root.__tournamentDialogKeydownHandler);
+  }
+
+  if (uiState.tournamentDialogOpen && uiState.tournamentFormFocusTarget) {
+    root.querySelector(getTournamentFieldSelector(uiState.tournamentFormFocusTarget))?.focus();
+    uiState.tournamentFormFocusTarget = '';
   } else if (uiState.confirmationDialog) {
     root.querySelector('[data-cancel-confirm-dialog]')?.focus();
   }

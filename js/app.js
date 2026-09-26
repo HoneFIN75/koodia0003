@@ -30,6 +30,7 @@ let uiState = {
   tournamentFormId: null,
   tournamentFormErrors: {},
   tournamentFormDraft: null,
+  tournamentFormFocusTarget: '',
   selectedTournamentId: '',
   resultFormId: null,
   pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
@@ -196,18 +197,21 @@ const handlers = {
         );
         uiState.tournamentDialogOpen = false;
         uiState.tournamentFormId = null;
+        uiState.tournamentFormFocusTarget = '';
         persistAndRender('Turnauksen tiedot päivitettiin.');
       } else {
         const tournament = createTournament(values);
         dataState.tournaments = [...dataState.tournaments, tournament];
         uiState.tournamentDialogOpen = false;
         uiState.selectedTournamentId = tournament.id;
+        uiState.tournamentFormFocusTarget = '';
         persistAndRender('Turnaus lisätty onnistuneesti.');
       }
     } catch (error) {
       if (error instanceof TournamentValidationError) {
         uiState.tournamentFormErrors = error.fieldErrors;
         uiState.tournamentFormDraft = formDataToObject(formData);
+        uiState.tournamentFormFocusTarget = Object.keys(error.fieldErrors)[0] || 'name';
         uiState.feedback = { type: 'error', text: 'Korjaa turnauksen tiedot ja yritä uudelleen.' };
         render();
         return;
@@ -221,6 +225,7 @@ const handlers = {
     uiState.tournamentFormId = null;
     uiState.tournamentFormErrors = {};
     uiState.tournamentFormDraft = null;
+    uiState.tournamentFormFocusTarget = 'name';
     uiState.feedback = null;
     render();
   },
@@ -229,11 +234,13 @@ const handlers = {
     uiState.tournamentFormId = null;
     uiState.tournamentFormErrors = {};
     uiState.tournamentFormDraft = null;
+    uiState.tournamentFormFocusTarget = '';
     render();
   },
   resetTournamentForm() {
     uiState.tournamentFormErrors = {};
     uiState.tournamentFormDraft = null;
+    uiState.tournamentFormFocusTarget = '';
     render();
   },
   editTournament(tournamentId) {
@@ -242,6 +249,7 @@ const handlers = {
     uiState.tournamentFormId = tournamentId;
     uiState.tournamentFormErrors = {};
     uiState.tournamentFormDraft = null;
+    uiState.tournamentFormFocusTarget = 'name';
     uiState.feedback = null;
     render();
   },
@@ -263,6 +271,7 @@ const handlers = {
       uiState.tournamentFormId = null;
       uiState.tournamentFormErrors = {};
       uiState.tournamentFormDraft = null;
+      uiState.tournamentFormFocusTarget = '';
     }
     if (uiState.selectedTournamentId === tournamentId) {
       uiState.selectedTournamentId = '';
