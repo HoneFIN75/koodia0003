@@ -1610,6 +1610,10 @@ export function bindUi(root, dataState, uiState, handlers) {
         return;
       }
 
+      if (!uiState.confirmationDialog && !uiState.playerDialogOpen && !uiState.tournamentDialogOpen) {
+        return;
+      }
+
       const activeDialogPanel = uiState.confirmationDialog
         ? root.querySelector('[data-confirm-dialog-panel]')
         : uiState.playerDialogOpen
