@@ -123,9 +123,11 @@ export function loadState() {
   try {
     const currentState = currentRaw ? sanitizeState(JSON.parse(currentRaw)) : null;
     const legacyState = legacyRaw ? sanitizeState(JSON.parse(legacyRaw)) : null;
-    const sanitized = currentState && (!legacyState || hasStateData(currentState) || !hasStateData(legacyState))
-      ? currentState
-      : legacyState;
+    const sanitized = (
+      currentState && (!legacyState || hasStateData(currentState) || !hasStateData(legacyState))
+        ? currentState
+        : legacyState
+    ) || createEmptyState();
 
     storage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
     return sanitized;
