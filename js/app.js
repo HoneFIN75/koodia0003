@@ -1,5 +1,5 @@
 import { createEmptyState, loadState, saveState } from './storage.js';
-import { createPlayer, updatePlayer, findPlayer, removePlayer } from './players.js';
+import { createPlayer, updatePlayer, findPlayer, removePlayer, canRequestPlayerDeletion } from './players.js';
 import { createTournament, updateTournament, findTournament, TournamentValidationError } from './tournaments.js';
 import { SettingsValidationError, validateSettingsInput } from './pdga.js';
 import {
@@ -171,7 +171,7 @@ const handlers = {
   },
   requestDeletePlayer(playerId) {
     const player = findPlayer(dataState.players, playerId);
-    if (!player) {
+    if (!player || !canRequestPlayerDeletion(uiState.playerFormId, playerId)) {
       return;
     }
 
@@ -191,9 +191,10 @@ const handlers = {
 
     try {
       dataState.players = removePlayer(dataState.players, playerId);
-      dataState.tournamentResults = dataState.tournamentResults.filter((result) => result.playerId !== playerId);
       if (uiState.playerFormId === playerId) {
         uiState.playerFormId = null;
+        uiState.playerFormErrors = {};
+        uiState.playerFormDraft = null;
       }
       if (uiState.summaryPlayerId === playerId) {
         uiState.summaryPlayerId = '';
@@ -201,11 +202,17 @@ const handlers = {
       if (uiState.selectedPlayerId === playerId) {
         uiState.selectedPlayerId = '';
       }
+      if (uiState.resultFormId) {
+        const editingResult = dataState.tournamentResults.find((result) => result.id === uiState.resultFormId);
+        if (editingResult?.playerId === playerId) {
+          uiState.resultFormId = null;
+        }
+      }
       if (uiState.resultFormId && dataState.tournamentResults.every((result) => result.id !== uiState.resultFormId)) {
         uiState.resultFormId = null;
       }
       uiState.confirmationDialog = null;
-      persistAndRender('Pelaaja poistettiin.');
+      persistAndRender('Pelaaja poistettu onnistuneesti.');
     } catch (error) {
       uiState.confirmationDialog = null;
       setError(error);

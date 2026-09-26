@@ -123,6 +123,10 @@ export function removePlayer(players, playerId) {
   return players.filter((player) => player.id !== playerId);
 }
 
+export function canRequestPlayerDeletion(editingPlayerId, playerId) {
+  return Boolean(playerId) && editingPlayerId === playerId;
+}
+
 export function sortPlayersByName(players) {
   return [...players].sort((left, right) => left.name.localeCompare(right.name, 'fi'));
 }
