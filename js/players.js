@@ -198,10 +198,24 @@ export function sortPlayers(players, { field = 'name', direction = 'asc' } = {})
     if (field === 'pdgaNumber') {
       const leftPdga = Number(left.pdgaNumber) || 0;
       const rightPdga = Number(right.pdgaNumber) || 0;
+      if (leftPdga !== rightPdga) {
+        return leftPdga - rightPdga;
+      }
+      return String(left.id || '').localeCompare(String(right.id || ''), 'fi');
+    }
+
+    const nameCompare = String(left.name || '').localeCompare(String(right.name || ''), 'fi');
+    if (nameCompare !== 0) {
+      return nameCompare;
+    }
+
+    const leftPdga = Number(left.pdgaNumber) || 0;
+    const rightPdga = Number(right.pdgaNumber) || 0;
+    if (leftPdga !== rightPdga) {
       return leftPdga - rightPdga;
     }
 
-    return String(left.name || '').localeCompare(String(right.name || ''), 'fi');
+    return String(left.id || '').localeCompare(String(right.id || ''), 'fi');
   });
 
   if (direction === 'desc') {

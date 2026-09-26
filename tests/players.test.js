@@ -120,6 +120,60 @@ test('requires PDGA number', () => {
   );
 });
 
+test('createPlayer rejects missing required PDGA number', () => {
+  assert.throws(
+    () =>
+      createPlayer([], {
+        firstName: 'Testi',
+        lastName: 'IlmanPdga',
+        division: 'MPO',
+        pdgaNumber: '',
+      }),
+    (error) => error instanceof PlayerValidationError && error.fieldErrors.pdgaNumber === 'PDGA-numero on pakollinen.',
+  );
+});
+
+test('updatePlayer rejects missing required PDGA number', () => {
+  const existingPlayer = createPlayer([], {
+    firstName: 'Testi',
+    lastName: 'Pelaaja',
+    division: 'MPO',
+    pdgaNumber: '1234',
+  });
+
+  assert.throws(
+    () =>
+      updatePlayer([existingPlayer], existingPlayer.id, {
+        ...existingPlayer,
+        pdgaNumber: '',
+      }),
+    (error) => error instanceof PlayerValidationError && error.fieldErrors.pdgaNumber === 'PDGA-numero on pakollinen.',
+  );
+});
+
+test('updatePlayer supports legacy player that originally had no PDGA number', () => {
+  const legacyPlayer = {
+    id: 'player-legacy',
+    firstName: 'Legacy',
+    lastName: 'Pelaaja',
+    name: 'Legacy Pelaaja',
+    division: 'MPO',
+    pdgaNumber: '',
+    pdgaRating: '',
+    worldRank: '',
+    notes: '',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  };
+
+  const updated = updatePlayer([legacyPlayer], legacyPlayer.id, {
+    ...legacyPlayer,
+    pdgaNumber: '5678',
+  });
+
+  assert.equal(updated.pdgaNumber, 5678);
+});
+
 test('prevents duplicate PDGA numbers', () => {
   const existingPlayer = createPlayer([], {
     firstName: 'Ensimmäinen',
@@ -172,11 +226,15 @@ test('sorts players by selected field and direction', () => {
   const players = [
     createPlayer([], { firstName: 'B', lastName: 'Player', division: 'MPO', pdgaNumber: '20' }),
     createPlayer([], { firstName: 'A', lastName: 'Player', division: 'MPO', pdgaNumber: '10' }),
+    createPlayer([], { firstName: 'A', lastName: 'Player', division: 'MPO', pdgaNumber: '30' }),
   ];
 
   const byNameDesc = getVisiblePlayers(players, { sortField: 'name', sortDirection: 'desc' });
   const byPdgaAsc = getVisiblePlayers(players, { sortField: 'pdgaNumber', sortDirection: 'asc' });
+  const byNameAsc = getVisiblePlayers(players, { sortField: 'name', sortDirection: 'asc' });
 
   assert.equal(byNameDesc[0].name, 'B Player');
   assert.equal(byPdgaAsc[0].pdgaNumber, 10);
+  assert.equal(byNameAsc[0].pdgaNumber, 10);
+  assert.equal(byNameAsc[1].pdgaNumber, 30);
 });

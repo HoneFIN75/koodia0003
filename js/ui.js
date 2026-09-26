@@ -39,7 +39,7 @@ function formatDeploymentTimestamp(value) {
     return escapeHtml(value);
   }
 
-  return new Intl.DateTimeFormat('sv-SE', {
+  const parts = new Intl.DateTimeFormat('fi-FI', {
     timeZone: 'Europe/Helsinki',
     year: 'numeric',
     month: '2-digit',
@@ -47,7 +47,10 @@ function formatDeploymentTimestamp(value) {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
-  }).format(parsedDate);
+  }).formatToParts(parsedDate);
+
+  const valueByType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${valueByType.year}-${valueByType.month}-${valueByType.day} ${valueByType.hour}:${valueByType.minute}`;
 }
 
 function renderDeploymentInfo(deploymentInfo) {
@@ -72,6 +75,10 @@ function getMultiplierLabel(multiplier) {
 
 function renderEmptyState(message) {
   return `<div class="message warning" role="status">${escapeHtml(message)}</div>`;
+}
+
+function renderValueOrDash(value) {
+  return value === '' || value === null || value === undefined ? '—' : String(value);
 }
 
 function renderFieldError(fieldErrors, fieldName) {
@@ -588,10 +595,10 @@ function renderPlayerSection(dataState, uiState) {
                                       ? `<a href="${escapeHtml(playerPdgaUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(player.name)}</a>`
                                       : escapeHtml(player.name)
                                   }</td>
-                                  <td data-label="PDGA ID">${escapeHtml(player.pdgaNumber || '—')}</td>
+                                  <td data-label="PDGA ID">${escapeHtml(renderValueOrDash(player.pdgaNumber))}</td>
                                   <td data-label="Divisioona">${escapeHtml(player.division)}</td>
-                                  <td data-label="Rating">${escapeHtml(player.pdgaRating || '—')}</td>
-                                  <td data-label="World Ranking">${escapeHtml(player.worldRank || '—')}</td>
+                                  <td data-label="Rating">${escapeHtml(renderValueOrDash(player.pdgaRating))}</td>
+                                  <td data-label="World Ranking">${escapeHtml(renderValueOrDash(player.worldRank))}</td>
                                   <td data-label="Muokkaa"><button type="button" class="secondary-button" data-edit-player="${escapeHtml(player.id)}">Muokkaa</button></td>
                                 </tr>
                               `;
@@ -646,6 +653,7 @@ function renderPlayerDialog(dataState, uiState) {
                 id="player-pdga-number"
                 name="pdgaNumber"
                 required
+                type="number"
                 inputmode="numeric"
                 min="1"
                 step="1"
@@ -669,6 +677,7 @@ function renderPlayerDialog(dataState, uiState) {
               <input
                 id="player-pdga-rating"
                 name="pdgaRating"
+                type="number"
                 inputmode="numeric"
                 min="1"
                 step="1"
@@ -682,6 +691,7 @@ function renderPlayerDialog(dataState, uiState) {
               <input
                 id="player-world-rank"
                 name="worldRank"
+                type="number"
                 inputmode="numeric"
                 min="1"
                 step="1"

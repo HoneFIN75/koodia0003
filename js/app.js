@@ -15,7 +15,7 @@ const root = document.querySelector('#app');
 
 let dataState = createEmptyState();
 let uiState = {
-  activeView: 'players',
+  activeView: 'summary',
   navOpen: false,
   rankingFilter: 'ALL',
   summaryFilter: 'ALL',
@@ -46,6 +46,14 @@ let uiState = {
   settingsFormDraft: null,
   deploymentInfo: null,
 };
+
+function clearPlayerDialogState() {
+  uiState.playerDialogOpen = false;
+  uiState.playerDialogFocusTarget = '';
+  uiState.playerFormId = null;
+  uiState.playerFormErrors = {};
+  uiState.playerFormDraft = null;
+}
 
 function persistAndRender(successMessage = '') {
   dataState = saveState(dataState);
@@ -141,11 +149,7 @@ const handlers = {
     render();
   },
   closePlayerDialog() {
-    uiState.playerDialogOpen = false;
-    uiState.playerDialogFocusTarget = '';
-    uiState.playerFormId = null;
-    uiState.playerFormErrors = {};
-    uiState.playerFormDraft = null;
+    clearPlayerDialogState();
     render();
   },
   viewPlayer(playerId) {
@@ -170,9 +174,7 @@ const handlers = {
         uiState.summaryPlayerId = newPlayer.id;
         uiState.selectedPlayerId = newPlayer.id;
       }
-      uiState.playerDialogOpen = false;
-      uiState.playerDialogFocusTarget = '';
-      uiState.playerFormId = null;
+      clearPlayerDialogState();
       persistAndRender('Pelaajan tiedot tallennettu onnistuneesti.');
     } catch (error) {
       if (error?.fieldErrors) {
@@ -184,14 +186,6 @@ const handlers = {
       }
       setError(error);
     }
-  },
-  resetPlayerForm() {
-    uiState.playerDialogOpen = false;
-    uiState.playerDialogFocusTarget = '';
-    uiState.playerFormId = null;
-    uiState.playerFormErrors = {};
-    uiState.playerFormDraft = null;
-    render();
   },
   editPlayer(playerId) {
     uiState.activeView = 'players';
@@ -227,11 +221,7 @@ const handlers = {
     try {
       dataState.players = removePlayer(dataState.players, playerId);
       if (uiState.playerFormId === playerId) {
-        uiState.playerDialogOpen = false;
-        uiState.playerDialogFocusTarget = '';
-        uiState.playerFormId = null;
-        uiState.playerFormErrors = {};
-        uiState.playerFormDraft = null;
+        clearPlayerDialogState();
       }
       if (uiState.summaryPlayerId === playerId) {
         uiState.summaryPlayerId = '';
