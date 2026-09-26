@@ -32,7 +32,7 @@ test('createTournamentResult throws when points table entry is missing', () => {
 });
 
 test('validation throws for invalid place and multiplier', () => {
-  assert.throws(() => calculatePoints({ basePoints: 10, multiplier: 0 }), /Multiplierin pitää olla nollaa suurempi/);
+  assert.throws(() => calculatePoints({ basePoints: 10, multiplier: 0 }), /Kertoimen pitää olla nollaa suurempi/);
 
   assert.throws(
     () =>

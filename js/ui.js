@@ -69,7 +69,7 @@ function renderDeploymentInfo(deploymentInfo) {
 function getMultiplierLabel(multiplier) {
   return (
     MULTIPLIER_OPTIONS.find((option) => option.key === multiplier || option.value === Number(multiplier))?.label ||
-    `Multiplier ${multiplier}`
+    `Kerroin ${multiplier}`
   );
 }
 
@@ -411,7 +411,7 @@ function renderSummarySection(dataState, uiState) {
                       <th>Turnaus</th>
                       <th>Sijoitus</th>
                       <th>1x-pisteet</th>
-                      <th>Multiplier</th>
+                      <th>Kerroin</th>
                       <th>Kokonaispisteet</th>
                     </tr>
                   </thead>
@@ -612,9 +612,9 @@ function renderPlayerSection(dataState, uiState) {
                           <tr>
                             <th>Pelaajan nimi</th>
                             <th>PDGA ID</th>
-                            <th>Divisioona</th>
-                            <th>Rating</th>
-                            <th>World Ranking</th>
+                            <th>Sarja</th>
+                            <th>PDGA-rating</th>
+                            <th>Maailmanranking</th>
                             <th>Muokkaa</th>
                           </tr>
                         </thead>
@@ -630,9 +630,9 @@ function renderPlayerSection(dataState, uiState) {
                                       : escapeHtml(player.name)
                                   }</td>
                                   <td data-label="PDGA ID">${escapeHtml(renderValueOrDash(player.pdgaNumber))}</td>
-                                  <td data-label="Divisioona">${escapeHtml(player.division)}</td>
-                                  <td data-label="Rating">${escapeHtml(renderValueOrDash(player.pdgaRating))}</td>
-                                  <td data-label="World Ranking">${escapeHtml(renderValueOrDash(player.worldRank))}</td>
+                                  <td data-label="Sarja">${escapeHtml(player.division)}</td>
+                                  <td data-label="PDGA-rating">${escapeHtml(renderValueOrDash(player.pdgaRating))}</td>
+                                  <td data-label="Maailmanranking">${escapeHtml(renderValueOrDash(player.worldRank))}</td>
                                   <td data-label="Muokkaa"><button type="button" class="secondary-button" data-edit-player="${escapeHtml(player.id)}">Muokkaa</button></td>
                                 </tr>
                               `;
@@ -697,9 +697,9 @@ function renderPlayerDialog(dataState, uiState) {
               ${renderFieldError(uiState.playerFormErrors, 'pdgaNumber')}
             </div>
             <div class="form-field">
-              <label for="player-division">Divisioona *</label>
+              <label for="player-division">Sarja *</label>
               <select id="player-division" name="division" required ${getFieldAttributes(uiState.playerFormErrors, 'division')}>
-                <option value="">Valitse divisioona</option>
+                <option value="">Valitse sarja</option>
                 ${DIVISIONS.map(
                   (division) => `<option value="${division}" ${formPlayer?.division === division ? 'selected' : ''}>${division}</option>`,
                 ).join('')}
@@ -707,7 +707,7 @@ function renderPlayerDialog(dataState, uiState) {
               ${renderFieldError(uiState.playerFormErrors, 'division')}
             </div>
             <div class="form-field">
-              <label for="player-pdga-rating">Rating</label>
+              <label for="player-pdga-rating">PDGA-rating</label>
               <input
                 id="player-pdga-rating"
                 name="pdgaRating"
@@ -721,7 +721,7 @@ function renderPlayerDialog(dataState, uiState) {
               ${renderFieldError(uiState.playerFormErrors, 'pdgaRating')}
             </div>
             <div class="form-field">
-              <label for="player-world-rank">World Ranking</label>
+              <label for="player-world-rank">Maailmanranking</label>
               <input
                 id="player-world-rank"
                 name="worldRank"
@@ -803,9 +803,9 @@ function renderTournamentSection(dataState, uiState) {
             />
           </div>
           <div class="form-field">
-            <label for="tournament-status-filter">Status</label>
+            <label for="tournament-status-filter">Tila</label>
             <select id="tournament-status-filter" data-tournament-status-filter>
-              <option value="ALL">Kaikki statukset</option>
+              <option value="ALL">Kaikki tilat</option>
               ${availableStatuses
                 .map(
                   (status) =>
@@ -818,7 +818,7 @@ function renderTournamentSection(dataState, uiState) {
             <label for="tournament-sort-field">Lajittelu</label>
             <select id="tournament-sort-field" data-tournament-sort-field>
               <option value="name" ${uiState.tournamentSortField === 'name' ? 'selected' : ''}>Turnauksen nimi</option>
-              <option value="status" ${uiState.tournamentSortField === 'status' ? 'selected' : ''}>Status</option>
+              <option value="status" ${uiState.tournamentSortField === 'status' ? 'selected' : ''}>Tila</option>
               <option value="startDate" ${uiState.tournamentSortField === 'startDate' ? 'selected' : ''}>Alkamispäivä</option>
               <option value="endDate" ${uiState.tournamentSortField === 'endDate' ? 'selected' : ''}>Päättymispäivä</option>
               <option value="location" ${uiState.tournamentSortField === 'location' ? 'selected' : ''}>Paikkakunta</option>
@@ -841,8 +841,8 @@ function renderTournamentSection(dataState, uiState) {
                     <thead>
                       <tr>
                         <th>Turnauksen nimi</th>
-                        <th>Status</th>
-                        <th>Multiplier</th>
+                        <th>Tila</th>
+                        <th>Kerroin</th>
                         <th>PDGA Event ID</th>
                         <th>Alkamispäivä</th>
                         <th>Päättymispäivä</th>
@@ -875,8 +875,8 @@ function renderTournamentSection(dataState, uiState) {
                                   </div>
                                 </div>
                               </td>
-                              <td data-label="Status">${escapeHtml(renderValueOrDash(tournament.status))}</td>
-                              <td data-label="Multiplier">${formatNumber(tournament.multiplier)}x</td>
+                              <td data-label="Tila">${escapeHtml(renderValueOrDash(tournament.status))}</td>
+                              <td data-label="Kerroin">${formatNumber(tournament.multiplier)}x</td>
                               <td data-label="PDGA Event ID">${escapeHtml(renderValueOrDash(tournament.pdgaEventId))}</td>
                               <td data-label="Alkamispäivä">${formatDate(tournament.startDate)}</td>
                               <td data-label="Päättymispäivä">${formatDate(tournament.endDate)}</td>
@@ -921,7 +921,7 @@ function renderTournamentSection(dataState, uiState) {
             ? `
               <div class="three-column">
                 <div class="card stat-card"><span class="eyebrow">Turnaus</span><strong>${escapeHtml(selectedTournament.name)}</strong><span class="section-subtitle">${formatDate(selectedTournament.startDate)}</span></div>
-                <div class="card stat-card"><span class="eyebrow">Multiplier</span><strong>${formatNumber(selectedTournament.multiplier)}x</strong><span class="section-subtitle">${escapeHtml(getMultiplierLabel(selectedTournament.multiplierKey || selectedTournament.multiplier))}</span></div>
+                <div class="card stat-card"><span class="eyebrow">Kerroin</span><strong>${formatNumber(selectedTournament.multiplier)}x</strong><span class="section-subtitle">${escapeHtml(getMultiplierLabel(selectedTournament.multiplierKey || selectedTournament.multiplier))}</span></div>
                 <div class="card stat-card"><span class="eyebrow">Sarjarajaus</span><strong>${escapeHtml(selectedTournament.division || 'Ei rajattu')}</strong><span class="section-subtitle">Tuloksiin kelpaavat pelaajat</span></div>
               </div>
               ${selectedTournamentPdgaUrl ? `<div class="inline-actions">${renderLinkButton(selectedTournamentPdgaUrl, 'Avaa turnauksen PDGA-sivu', 'Avaa turnauksen PDGA-sivu uudessa välilehdessä')}</div>` : ''}
@@ -963,7 +963,7 @@ function renderTournamentSection(dataState, uiState) {
                                 <th>Pelaaja</th>
                                 <th>Sijoitus</th>
                                 <th>1x-pisteet</th>
-                                <th>Multiplier</th>
+                                <th>Kerroin</th>
                                 <th>Kokonaispisteet</th>
                                 <th>Toiminnot</th>
                               </tr>
@@ -1077,9 +1077,9 @@ function renderTournamentDialog(dataState, uiState) {
               ${renderFieldError(fieldErrors, 'displayOrder')}
             </div>
             <div class="form-field">
-              <label for="tournament-multiplier">Multiplier *</label>
+              <label for="tournament-multiplier">Kerroin *</label>
               <select id="tournament-multiplier" name="multiplierKey" required ${getFieldAttributes(fieldErrors, 'multiplierKey')}>
-                <option value="">Valitse multiplier</option>
+                <option value="">Valitse kerroin</option>
                 ${renderMultiplierOptions(getTournamentFormValue(formValues, editingTournament, 'multiplierKey'))}
               </select>
               ${renderFieldError(fieldErrors, 'multiplierKey')}
@@ -1138,7 +1138,7 @@ function renderTournamentDialog(dataState, uiState) {
               ${renderFieldError(fieldErrors, 'pdgaEventId')}
             </div>
             <div class="form-field">
-              <label for="tournament-status">Status</label>
+              <label for="tournament-status">Tila</label>
               <input id="tournament-status" name="status" value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'status'))}" />
             </div>
             <div class="form-field full-width">

@@ -153,22 +153,3 @@ export function saveState(state) {
   storage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
   return sanitized;
 }
-
-export function resetState() {
-  const storage = getLocalStorage();
-  const empty = createEmptyState();
-  if (storage) {
-    storage.setItem(STORAGE_KEY, JSON.stringify(empty));
-  }
-
-  return empty;
-}
-
-export function getStorageMeta() {
-  return {
-    key: STORAGE_KEY,
-    version: STORAGE_VERSION,
-    mode: 'localStorage',
-    hasDemoEmptyState: true,
-  };
-}

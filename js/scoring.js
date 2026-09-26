@@ -92,7 +92,7 @@ export function calculatePoints({ basePoints, multiplier }) {
   const safeMultiplier = Number(multiplier);
 
   if (!Number.isFinite(safeMultiplier) || safeMultiplier <= 0) {
-    throw new Error('Multiplierin pitää olla nollaa suurempi luku.');
+    throw new Error('Kertoimen pitää olla nollaa suurempi luku.');
   }
 
   return safeBasePoints * safeMultiplier;
