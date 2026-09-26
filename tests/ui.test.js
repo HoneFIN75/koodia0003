@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createEmptyState } from '../js/storage.js';
 import { renderApp } from '../js/ui.js';
-import { DEPLOYMENT_VERSION } from '../js/version.js';
 
 function createRootStub() {
   return {
@@ -40,6 +39,7 @@ function createUiState(overrides = {}) {
     feedback: null,
     settingsFormErrors: {},
     settingsFormDraft: null,
+    deploymentInfo: null,
     ...overrides,
   };
 }
@@ -115,11 +115,31 @@ test('renderApp builds PDGA links from centralized settings', () => {
   assert.match(root.innerHTML, /href="https:\/\/example\.com\/event\/98765"/);
 });
 
-test('renderApp shows deployment version below home page title', () => {
+test('renderApp hides deployment metadata when it is not available', () => {
   const root = createRootStub();
 
   renderApp(root, createEmptyState(), createUiState());
 
-  assert.match(root.innerHTML, /<h1 id="summary-title">SFL Pisteytystyökalu<\/h1>\s*<p class="section-subtitle">/);
-  assert.match(root.innerHTML, new RegExp(`Versio: ${DEPLOYMENT_VERSION.replace('.', '\\.')}`));
+  assert.match(root.innerHTML, /<h1 id="summary-title">SFL Pisteytystyökalu<\/h1>/);
+  assert.doesNotMatch(root.innerHTML, /deployment-meta/);
+});
+
+test('renderApp shows deployment metadata below home page title', () => {
+  const root = createRootStub();
+
+  renderApp(
+    root,
+    createEmptyState(),
+    createUiState({
+      deploymentInfo: {
+        version: '1.0.15',
+        deployedAt: '2026-09-26T20:14:00Z',
+        commit: '84f2c71',
+      },
+    }),
+  );
+
+  assert.match(root.innerHTML, /<h1 id="summary-title">SFL Pisteytystyökalu<\/h1>\s*<div class="deployment-meta"/);
+  assert.match(root.innerHTML, /Versio: 1\.0\.15/);
+  assert.match(root.innerHTML, /Päivitetty: .*UTC/);
 });

@@ -53,11 +53,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Generate version metadata
+        run: |
+          node --input-type=module -e "import { readFileSync, writeFileSync } from 'node:fs'; const packageJson = JSON.parse(readFileSync('package.json', 'utf8')); const payload = { version: packageJson.version, deployedAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'), commit: process.env.GITHUB_SHA.slice(0, 7) }; writeFileSync('dist/version.json', JSON.stringify(payload, null, 2) + '\n');"
+
       - name: Verify build output
         run: |
           set -Eeuo pipefail
 
           test -f dist/index.html
+          test -f dist/version.json
           test -d dist/css
           test -d dist/js
           test -d dist/assets

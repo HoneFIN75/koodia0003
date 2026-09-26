@@ -286,6 +286,14 @@ a {
   color: var(--color-text-muted);
 }
 
+.deployment-meta {
+  display: grid;
+  gap: var(--spacing-2xs);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
 .grid,
 .stats-grid,
 .two-column,
