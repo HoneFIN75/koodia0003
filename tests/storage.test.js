@@ -47,6 +47,7 @@ test('loadState drops unknown legacy fields from players and tournaments', () =>
             startDate: '2026-01-01',
             multiplierKey: 'fpt',
             multiplier: 1,
+            venue: 'Keskuspuisto',
             legacyField: 'poistuva arvo',
             [removedTournamentField]: 'Suomi',
           },
@@ -64,6 +65,8 @@ test('loadState drops unknown legacy fields from players and tournaments', () =>
     assert.ok(!Object.hasOwn(state.players[0], removedPlayerField));
     assert.ok(!Object.hasOwn(state.tournaments[0], removedTournamentField));
     assert.equal(state.players[0].notes, 'Huomio');
+    assert.equal(state.tournaments[0].venue, 'Keskuspuisto');
+    assert.equal(state.tournaments[0].displayOrder, 999);
   } finally {
     delete globalThis.window;
   }
@@ -89,6 +92,8 @@ test('saveState strips unknown legacy fields before persisting', () => {
         {
           id: 'tournament-1',
           name: 'Testiturnaus',
+          displayOrder: 4,
+          venue: 'Keskuspuisto',
           legacyField: 'poistuva arvo',
           [removedTournamentField]: 'Suomi',
         },
@@ -102,6 +107,8 @@ test('saveState strips unknown legacy fields before persisting', () => {
     assert.ok(!Object.hasOwn(state.players[0], removedTournamentField));
     assert.ok(!Object.hasOwn(state.players[0], removedPlayerField));
     assert.ok(!Object.hasOwn(state.tournaments[0], removedTournamentField));
+    assert.equal(state.tournaments[0].displayOrder, 4);
+    assert.equal(state.tournaments[0].venue, 'Keskuspuisto');
 
     const persisted = JSON.parse(localStorage.getItem('sfl-pisteytystyokalu:v1'));
     assert.ok(!Object.hasOwn(persisted.players[0], 'legacyField'));
@@ -109,6 +116,8 @@ test('saveState strips unknown legacy fields before persisting', () => {
     assert.ok(!Object.hasOwn(persisted.players[0], removedTournamentField));
     assert.ok(!Object.hasOwn(persisted.players[0], removedPlayerField));
     assert.ok(!Object.hasOwn(persisted.tournaments[0], removedTournamentField));
+    assert.equal(persisted.tournaments[0].displayOrder, 4);
+    assert.equal(persisted.tournaments[0].venue, 'Keskuspuisto');
   } finally {
     delete globalThis.window;
   }

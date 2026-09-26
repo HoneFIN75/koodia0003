@@ -9,8 +9,18 @@ export const MULTIPLIER_OPTIONS = [
   { key: 'pdga-major', label: 'PDGA Major', value: 6 },
 ];
 
+export const DEFAULT_TOURNAMENT_DISPLAY_ORDER = 999;
+
 const ALLOWED_DIVISIONS = ['', 'MPO', 'FPO'];
 const ALLOWED_MULTIPLIERS = new Map(MULTIPLIER_OPTIONS.map((option) => [option.key, option.value]));
+
+export class TournamentValidationError extends Error {
+  constructor(fieldErrors) {
+    super(Object.values(fieldErrors)[0] || 'Turnauksen tiedoissa on virheitä.');
+    this.name = 'TournamentValidationError';
+    this.fieldErrors = fieldErrors;
+  }
+}
 
 function createId(prefix = 'tournament') {
   return `${prefix}-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
@@ -20,16 +30,27 @@ function normalizeText(value) {
   return String(value ?? '').trim();
 }
 
-function normalizeOptionalUrl(value, label) {
+function addFieldError(fieldErrors, fieldName, message) {
+  if (!fieldErrors[fieldName]) {
+    fieldErrors[fieldName] = message;
+  }
+}
+
+function normalizeOptionalUrl(value, label, fieldName, fieldErrors) {
   const normalized = normalizeText(value);
   if (!normalized) {
     return '';
   }
 
   try {
-    return new URL(normalized).toString();
+    const parsed = new URL(normalized);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('invalid protocol');
+    }
+    return parsed.toString();
   } catch {
-    throw new Error(`${label} ei ole kelvollinen verkko-osoite.`);
+    addFieldError(fieldErrors, fieldName, `${label} ei ole kelvollinen verkko-osoite.`);
+    return '';
   }
 }
 
@@ -49,40 +70,80 @@ function normalizeMultiplier(multiplierKey) {
   };
 }
 
+function normalizeDisplayOrder(value, fieldErrors) {
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    addFieldError(fieldErrors, 'displayOrder', 'Järjestysnumero on pakollinen.');
+    return DEFAULT_TOURNAMENT_DISPLAY_ORDER;
+  }
+
+  if (!/^\d+$/.test(normalized)) {
+    addFieldError(fieldErrors, 'displayOrder', 'Järjestysnumeron pitää olla positiivinen kokonaisluku.');
+    return DEFAULT_TOURNAMENT_DISPLAY_ORDER;
+  }
+
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    addFieldError(fieldErrors, 'displayOrder', 'Järjestysnumeron pitää olla positiivinen kokonaisluku.');
+    return DEFAULT_TOURNAMENT_DISPLAY_ORDER;
+  }
+
+  return parsed;
+}
+
 export function validateTournamentInput(input) {
+  const fieldErrors = {};
   const name = normalizeText(input.name);
   const startDate = normalizeText(input.startDate);
   const endDate = normalizeText(input.endDate);
   const division = normalizeText(input.division).toUpperCase();
+  const displayOrder = normalizeDisplayOrder(input.displayOrder, fieldErrors);
 
   if (!name) {
-    throw new Error('Turnauksen nimi on pakollinen.');
+    addFieldError(fieldErrors, 'name', 'Turnauksen nimi on pakollinen.');
   }
 
   if (!startDate) {
-    throw new Error('Alkamispäivä on pakollinen.');
+    addFieldError(fieldErrors, 'startDate', 'Päivämäärä on pakollinen.');
   }
 
-  if (endDate && endDate < startDate) {
-    throw new Error('Päättymispäivä ei voi olla ennen alkamispäivää.');
+  if (startDate && endDate && endDate < startDate) {
+    addFieldError(fieldErrors, 'endDate', 'Päättymispäivä ei voi olla ennen alkamispäivää.');
   }
 
   if (!ALLOWED_DIVISIONS.includes(division)) {
-    throw new Error('Turnauksen sarjarajaus voi olla vain MPO, FPO tai tyhjä.');
+    addFieldError(fieldErrors, 'division', 'Turnauksen sarjarajaus voi olla vain MPO, FPO tai tyhjä.');
   }
 
-  const multiplierData = normalizeMultiplier(input.multiplierKey);
+  let multiplierData = { multiplierKey: '', multiplier: 0 };
+  try {
+    multiplierData = normalizeMultiplier(input.multiplierKey);
+  } catch (error) {
+    addFieldError(
+      fieldErrors,
+      'multiplierKey',
+      error instanceof Error ? error.message : 'Multiplier pitää valita määritetyistä vaihtoehdoista.',
+    );
+  }
+
+  const externalUrl = normalizeOptionalUrl(input.externalUrl, 'Linkki kilpailusivulle', 'externalUrl', fieldErrors);
+
+  if (Object.keys(fieldErrors).length > 0) {
+    throw new TournamentValidationError(fieldErrors);
+  }
 
   return {
     name,
     pdgaEventId: normalizeText(input.pdgaEventId),
     startDate,
     endDate,
+    displayOrder,
     location: normalizeText(input.location),
+    venue: normalizeText(input.venue),
     status: normalizeText(input.status),
     ...multiplierData,
     division,
-    externalUrl: normalizeOptionalUrl(input.externalUrl, 'Ulkoinen URL'),
+    externalUrl,
     notes: normalizeText(input.notes),
   };
 }
@@ -113,11 +174,23 @@ export function updateTournament(tournaments, tournamentId, input) {
 
 export function sortTournaments(tournaments) {
   return [...tournaments].sort((left, right) => {
-    if (left.startDate === right.startDate) {
-      return left.name.localeCompare(right.name, 'fi');
+    if (left.displayOrder !== right.displayOrder) {
+      return left.displayOrder - right.displayOrder;
     }
 
-    return right.startDate.localeCompare(left.startDate);
+    const leftDate = left.startDate || '';
+    const rightDate = right.startDate || '';
+    if (leftDate !== rightDate) {
+      return leftDate.localeCompare(rightDate);
+    }
+
+    const leftCreatedAt = left.createdAt || '';
+    const rightCreatedAt = right.createdAt || '';
+    if (leftCreatedAt && rightCreatedAt && leftCreatedAt !== rightCreatedAt) {
+      return leftCreatedAt.localeCompare(rightCreatedAt);
+    }
+
+    return String(left.id || '').localeCompare(String(right.id || ''), 'fi');
   });
 }
 
