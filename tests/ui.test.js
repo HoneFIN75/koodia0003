@@ -416,3 +416,65 @@ test('renderApp shows tournament delete confirmation copy for zero linked result
 
   assert.match(root.innerHTML, /Samalla poistetaan 0 turnaustulosta eikä toimintoa voi peruuttaa\./);
 });
+
+test('renderApp shows tournament delete confirmation copy for multiple linked results', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Testi Open',
+      pdgaEventId: '',
+      startDate: '2026-07-03',
+      endDate: '',
+      displayOrder: 1,
+      location: 'Helsinki',
+      venue: 'Rata',
+      status: 'Luonnos',
+      multiplierKey: 'fpt',
+      multiplier: 1,
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournamentResults = [
+    {
+      id: 'result-1',
+      tournamentId: 'tournament-1',
+      playerId: 'player-1',
+      place: 1,
+      basePointsSnapshot: 100,
+      multiplierSnapshot: 1,
+      calculatedPoints: 100,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+    {
+      id: 'result-2',
+      tournamentId: 'tournament-1',
+      playerId: 'player-2',
+      place: 2,
+      basePointsSnapshot: 90,
+      multiplierSnapshot: 1,
+      calculatedPoints: 90,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'tournaments',
+      tournamentDialogOpen: true,
+      tournamentFormId: 'tournament-1',
+      confirmationDialog: { type: 'delete-tournament', tournamentId: 'tournament-1' },
+    }),
+  );
+
+  assert.match(root.innerHTML, /Samalla poistetaan 2 turnaustulosta eikä toimintoa voi peruuttaa\./);
+});

@@ -754,6 +754,10 @@ function renderTournamentSection(dataState, uiState) {
     sortField: uiState.tournamentSortField,
     sortDirection: uiState.tournamentSortDirection,
   });
+  const tournamentResultCounts = dataState.tournamentResults.reduce((counts, result) => {
+    counts[result.tournamentId] = (counts[result.tournamentId] || 0) + 1;
+    return counts;
+  }, {});
   const availableStatuses = [...new Set(dataState.tournaments.map((tournament) => tournament.status).filter(Boolean))].sort((left, right) =>
     left.localeCompare(right, 'fi', { sensitivity: 'base' }),
   );
@@ -851,7 +855,7 @@ function renderTournamentSection(dataState, uiState) {
                       ${visibleTournaments
                         .map((tournament) => {
                           const pdgaEventUrl = buildPdgaEventUrl(dataState.settings, tournament);
-                          const resultCount = dataState.tournamentResults.filter((result) => result.tournamentId === tournament.id).length;
+                          const resultCount = tournamentResultCounts[tournament.id] || 0;
                           return `
                             <tr${selectedTournament?.id === tournament.id ? ' class="is-selected"' : ''}>
                               <td data-label="Turnauksen nimi">
