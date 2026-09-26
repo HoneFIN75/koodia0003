@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPlayer, updatePlayer, validatePlayerInput, removePlayer, PlayerValidationError } from '../js/players.js';
+import {
+  createPlayer,
+  updatePlayer,
+  validatePlayerInput,
+  removePlayer,
+  canRequestPlayerDeletion,
+  PlayerValidationError,
+} from '../js/players.js';
 
 test('creates an MPO player', () => {
   const player = createPlayer([], {
@@ -117,4 +124,10 @@ test('removes a player', () => {
 
   assert.equal(remainingPlayers.length, 1);
   assert.equal(remainingPlayers[0].id, secondPlayer.id);
+});
+
+test('allows delete request only for the player currently being edited', () => {
+  assert.equal(canRequestPlayerDeletion('player-1', 'player-1'), true);
+  assert.equal(canRequestPlayerDeletion('player-2', 'player-1'), false);
+  assert.equal(canRequestPlayerDeletion(null, 'player-1'), false);
 });

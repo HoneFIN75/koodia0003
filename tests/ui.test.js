@@ -143,3 +143,68 @@ test('renderApp shows deployment metadata below home page title', () => {
   assert.match(root.innerHTML, /Versio: 1\.0\.15/);
   assert.match(root.innerHTML, /Päivitetty: .*UTC/);
 });
+
+test('renderApp shows delete player action only in player edit form', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [
+    {
+      id: 'player-1',
+      name: 'Testi Pelaaja',
+      division: 'MPO',
+      pdgaNumber: 12345,
+      pdgaRating: 1000,
+      worldRank: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'players',
+      selectedPlayerId: 'player-1',
+      playerFormId: 'player-1',
+    }),
+  );
+
+  assert.match(root.innerHTML, /data-delete-player="player-1">Poista pelaaja<\/button>/);
+  assert.equal((root.innerHTML.match(/data-delete-player=/g) || []).length, 1);
+  assert.doesNotMatch(root.innerHTML, />Poista<\/button>/);
+});
+
+test('renderApp shows required player delete confirmation dialog copy', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [
+    {
+      id: 'player-1',
+      name: 'Testi Pelaaja',
+      division: 'MPO',
+      pdgaNumber: '',
+      pdgaRating: '',
+      worldRank: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'players',
+      playerFormId: 'player-1',
+      confirmationDialog: { type: 'delete-player', playerId: 'player-1' },
+    }),
+  );
+
+  assert.match(root.innerHTML, /<h2 id="confirm-dialog-title">Poista pelaaja<\/h2>/);
+  assert.match(root.innerHTML, /Haluatko varmasti poistaa pelaajan Testi Pelaaja\?<br \/>\s*Toimintoa ei voi peruuttaa\./);
+  assert.match(root.innerHTML, /data-cancel-confirm-dialog[^>]*>Peruuta<\/button>/);
+  assert.match(root.innerHTML, /data-confirm-delete-player="player-1">Poista pelaaja<\/button>/);
+});
