@@ -191,6 +191,7 @@ const handlers = {
 
     try {
       dataState.players = removePlayer(dataState.players, playerId);
+      dataState.tournamentResults = dataState.tournamentResults.filter((result) => result.playerId !== playerId);
       if (uiState.playerFormId === playerId) {
         uiState.playerFormId = null;
         uiState.playerFormErrors = {};
@@ -201,12 +202,6 @@ const handlers = {
       }
       if (uiState.selectedPlayerId === playerId) {
         uiState.selectedPlayerId = '';
-      }
-      if (uiState.resultFormId) {
-        const editingResult = dataState.tournamentResults.find((result) => result.id === uiState.resultFormId);
-        if (editingResult?.playerId === playerId) {
-          uiState.resultFormId = null;
-        }
       }
       if (uiState.resultFormId && dataState.tournamentResults.every((result) => result.id !== uiState.resultFormId)) {
         uiState.resultFormId = null;
