@@ -238,7 +238,7 @@ test('renderApp player list uses required column order and add button', () => {
   renderApp(root, dataState, createUiState({ activeView: 'players' }));
 
   assert.match(root.innerHTML, /data-open-player-dialog>Lisää pelaaja<\/button>/);
-  assert.match(root.innerHTML, /<th>Pelaajan nimi<\/th>\s*<th>PDGA ID<\/th>\s*<th>Divisioona<\/th>\s*<th>Rating<\/th>\s*<th>World Ranking<\/th>\s*<th>Muokkaa<\/th>/);
+  assert.match(root.innerHTML, /<th>Pelaajan nimi<\/th>\s*<th>PDGA ID<\/th>\s*<th>Sarja<\/th>\s*<th>PDGA-rating<\/th>\s*<th>Maailmanranking<\/th>\s*<th>Muokkaa<\/th>/);
   assert.match(root.innerHTML, /data-edit-player="player-1">Muokkaa<\/button>/);
 });
 
@@ -340,7 +340,7 @@ test('renderApp shows tournament table with required column order and PDGA name 
   assert.match(root.innerHTML, /data-open-tournament-dialog>Lisää turnaus<\/button>/);
   assert.match(
     root.innerHTML,
-    /<th>Turnauksen nimi<\/th>\s*<th>Status<\/th>\s*<th>Multiplier<\/th>\s*<th>PDGA Event ID<\/th>\s*<th>Alkamispäivä<\/th>\s*<th>Päättymispäivä<\/th>\s*<th>Paikkakunta<\/th>\s*<th>Rata<\/th>\s*<th>Muokkaa<\/th>/,
+    /<th>Turnauksen nimi<\/th>\s*<th>Tila<\/th>\s*<th>Kerroin<\/th>\s*<th>PDGA Event ID<\/th>\s*<th>Alkamispäivä<\/th>\s*<th>Päättymispäivä<\/th>\s*<th>Paikkakunta<\/th>\s*<th>Rata<\/th>\s*<th>Muokkaa<\/th>/,
   );
   assert.match(root.innerHTML, /href="https:\/\/example\.com\/event\/123456"/);
   assert.match(root.innerHTML, /target="_blank"/);

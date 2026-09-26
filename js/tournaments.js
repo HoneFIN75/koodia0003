@@ -77,11 +77,11 @@ function normalizeOptionalPositiveInteger(value, label, fieldName, fieldErrors) 
 function normalizeMultiplier(multiplierKey) {
   const normalizedKey = normalizeText(multiplierKey);
   if (!normalizedKey) {
-    throw new Error('Multiplier on pakollinen ja se pitää valita määritetyistä vaihtoehdoista.');
+    throw new Error('Kerroin on pakollinen ja se pitää valita määritetyistä vaihtoehdoista.');
   }
 
   if (!ALLOWED_MULTIPLIERS.has(normalizedKey)) {
-    throw new Error('Multiplier pitää valita määritetyistä vaihtoehdoista.');
+    throw new Error('Kerroin pitää valita määritetyistä vaihtoehdoista.');
   }
 
   return {
@@ -142,7 +142,7 @@ export function validateTournamentInput(input) {
     addFieldError(
       fieldErrors,
       'multiplierKey',
-      error instanceof Error ? error.message : 'Multiplier pitää valita määritetyistä vaihtoehdoista.',
+      error instanceof Error ? error.message : 'Kerroin pitää valita määritetyistä vaihtoehdoista.',
     );
   }
 
