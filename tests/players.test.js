@@ -6,7 +6,6 @@ import {
   validatePlayerInput,
   removePlayer,
   canRequestPlayerDeletion,
-  removePlayerResults,
   PlayerValidationError,
 } from '../js/players.js';
 
@@ -131,17 +130,4 @@ test('allows delete request only for the player currently being edited', () => {
   assert.equal(canRequestPlayerDeletion('player-1', 'player-1'), true);
   assert.equal(canRequestPlayerDeletion('player-2', 'player-1'), false);
   assert.equal(canRequestPlayerDeletion(null, 'player-1'), false);
-});
-
-test('removes tournament results for a deleted player', () => {
-  const remainingResults = removePlayerResults(
-    [
-      { id: 'result-1', playerId: 'player-1', tournamentId: 'tournament-1' },
-      { id: 'result-2', playerId: 'player-2', tournamentId: 'tournament-1' },
-      { id: 'result-3', playerId: 'player-1', tournamentId: 'tournament-2' },
-    ],
-    'player-1',
-  );
-
-  assert.deepEqual(remainingResults, [{ id: 'result-2', playerId: 'player-2', tournamentId: 'tournament-1' }]);
 });

@@ -127,10 +127,6 @@ export function canRequestPlayerDeletion(editingPlayerId, playerId) {
   return Boolean(playerId) && editingPlayerId === playerId;
 }
 
-export function removePlayerResults(tournamentResults, playerId) {
-  return tournamentResults.filter((result) => result.playerId !== playerId);
-}
-
 export function sortPlayersByName(players) {
   return [...players].sort((left, right) => left.name.localeCompare(right.name, 'fi'));
 }
