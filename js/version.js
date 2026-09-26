@@ -1,6 +1,8 @@
-function getVersionMetadataUrl(locationObject = window.location) {
-  // Relative URL keeps the request under the same static hosting base path (also when app is served from a subpath).
-  const metadataUrl = new URL('./version.json', locationObject.href);
+const metadataRequestCache = new Map();
+
+function getVersionMetadataUrl(moduleUrl = import.meta.url) {
+  // Resolve relative to this module so static hosting base paths work independently of the current page URL format.
+  const metadataUrl = new URL('../version.json', moduleUrl);
   // Query parameter avoids stale cached metadata after a new deploy.
   metadataUrl.searchParams.set('v', String(Date.now()));
   return metadataUrl;
@@ -28,19 +30,33 @@ function normalizeVersionMetadata(payload) {
 
 export async function loadDeploymentMetadata({
   fetchImpl = globalThis.fetch,
-  locationObject = globalThis.window?.location,
+  moduleUrl = import.meta.url,
 } = {}) {
-  if (typeof fetchImpl !== 'function' || !locationObject?.href) {
+  if (typeof fetchImpl !== 'function') {
     return null;
   }
 
+  const cacheKey = String(moduleUrl);
+  if (!metadataRequestCache.has(cacheKey)) {
+    const requestPromise = (async () => {
+      const response = await fetchImpl(getVersionMetadataUrl(moduleUrl), { cache: 'no-store' });
+      if (!response.ok) {
+        return null;
+      }
+
+      return normalizeVersionMetadata(await response.json());
+    })().catch(() => null);
+
+    metadataRequestCache.set(cacheKey, requestPromise);
+  }
+
   try {
-    const response = await fetchImpl(getVersionMetadataUrl(locationObject), { cache: 'no-store' });
-    if (!response.ok) {
+    const metadata = await metadataRequestCache.get(cacheKey);
+    if (!metadata) {
       return null;
     }
 
-    return normalizeVersionMetadata(await response.json());
+    return metadata;
   } catch {
     return null;
   }
