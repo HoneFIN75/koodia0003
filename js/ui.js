@@ -1,5 +1,5 @@
 import { DIVISIONS, getVisiblePlayers } from './players.js';
-import { MULTIPLIER_OPTIONS } from './tournaments.js';
+import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, MULTIPLIER_OPTIONS, sortTournaments } from './tournaments.js';
 import { listPointsTableEntries, getBasePoints } from './scoring.js';
 import { buildRanking, getTopRanking, getPlayerResults } from './ranking.js';
 
@@ -58,6 +58,33 @@ function getFieldAttributes(fieldErrors, fieldName) {
   }
 
   return `aria-invalid="true" aria-describedby="${escapeHtml(fieldName)}-error"`;
+}
+
+function getTournamentFormValue(formValues, editingTournament, fieldName, fallback = '') {
+  if (Object.hasOwn(formValues, fieldName)) {
+    return formValues[fieldName];
+  }
+
+  return editingTournament?.[fieldName] ?? fallback;
+}
+
+function getTournamentFieldSelector(fieldName) {
+  const fieldSelectors = {
+    name: '#tournament-name',
+    startDate: '#tournament-start-date',
+    endDate: '#tournament-end-date',
+    displayOrder: '#tournament-display-order',
+    location: '#tournament-location',
+    venue: '#tournament-venue',
+    multiplierKey: '#tournament-multiplier',
+    division: '#tournament-division',
+    externalUrl: '#tournament-external-url',
+    pdgaEventId: '#tournament-pdga-event-id',
+    status: '#tournament-status',
+    notes: '#tournament-notes',
+  };
+
+  return fieldSelectors[fieldName] || '#tournament-name';
 }
 
 function renderPlayerDetailCard(player) {
@@ -607,7 +634,7 @@ function renderPlayerSection(dataState, uiState) {
 }
 
 function renderTournamentSection(dataState, uiState) {
-  const editingTournament = dataState.tournaments.find((tournament) => tournament.id === uiState.tournamentFormId) || null;
+  const orderedTournaments = sortTournaments(dataState.tournaments);
   const selectedTournament = dataState.tournaments.find((tournament) => tournament.id === uiState.selectedTournamentId) || null;
   const editingResult = dataState.tournamentResults.find((result) => result.id === uiState.resultFormId) || null;
   const tournamentResults = selectedTournament
@@ -627,79 +654,57 @@ function renderTournamentSection(dataState, uiState) {
       <div class="section-heading">
         <div>
           <h2 id="tournaments-title">Turnaukset</h2>
-          <p class="section-subtitle">Multiplier määrittää, kuinka paljon 1x-pisteet kasvavat turnauksessa.</p>
+          <p class="section-subtitle">Turnaukset ovat tämän näkymän pääsisältö. Järjestys määräytyy järjestysnumeron, päivämäärän ja lopuksi luontiajan perusteella.</p>
         </div>
+        <button type="button" class="button" data-open-tournament-dialog>Lisää turnaus</button>
       </div>
-      <div class="two-column">
-        <article class="panel">
-          <h3>${editingTournament ? 'Muokkaa turnausta' : 'Lisää turnaus'}</h3>
-          <form id="tournament-form">
-            <input type="hidden" name="id" value="${escapeHtml(editingTournament?.id || '')}" />
-            <div class="form-grid">
-              <div class="form-field"><label for="tournament-name">Nimi *</label><input id="tournament-name" name="name" required value="${escapeHtml(editingTournament?.name || '')}" /></div>
-              <div class="form-field"><label for="tournament-multiplier">Multiplier *</label><select id="tournament-multiplier" name="multiplierKey" required><option value="">Valitse multiplier</option>${renderMultiplierOptions(editingTournament?.multiplierKey || '')}</select></div>
-              <div class="form-field"><label for="tournament-start-date">Alkamispäivä *</label><input id="tournament-start-date" name="startDate" type="date" required value="${escapeHtml(editingTournament?.startDate || '')}" /></div>
-              <div class="form-field"><label for="tournament-end-date">Päättymispäivä</label><input id="tournament-end-date" name="endDate" type="date" value="${escapeHtml(editingTournament?.endDate || '')}" /></div>
-              <div class="form-field"><label for="tournament-division">Sarjarajaus</label><select id="tournament-division" name="division"><option value="">Ei rajattu</option>${DIVISIONS.map((division) => `<option value="${division}" ${editingTournament?.division === division ? 'selected' : ''}>${division}</option>`).join('')}</select></div>
-              <div class="form-field"><label for="tournament-pdga-event-id">PDGA-kilpailutunnus</label><input id="tournament-pdga-event-id" name="pdgaEventId" value="${escapeHtml(editingTournament?.pdgaEventId || '')}" /></div>
-              <div class="form-field"><label for="tournament-location">Sijainti</label><input id="tournament-location" name="location" value="${escapeHtml(editingTournament?.location || '')}" /></div>
-              <div class="form-field"><label for="tournament-status">Status</label><input id="tournament-status" name="status" value="${escapeHtml(editingTournament?.status || '')}" /></div>
-              <div class="form-field"><label for="tournament-external-url">Ulkoinen URL</label><input id="tournament-external-url" name="externalUrl" type="url" value="${escapeHtml(editingTournament?.externalUrl || '')}" /></div>
-              <div class="form-field full-width"><label for="tournament-notes">Muistiinpano</label><textarea id="tournament-notes" name="notes">${escapeHtml(editingTournament?.notes || '')}</textarea></div>
+      ${
+        orderedTournaments.length
+          ? `
+            <div class="tournament-grid">
+              ${orderedTournaments
+                .map((tournament) => {
+                  const resultCount = dataState.tournamentResults.filter((result) => result.tournamentId === tournament.id).length;
+                  return `
+                    <article class="card tournament-card${selectedTournament?.id === tournament.id ? ' tournament-card-selected' : ''}">
+                      <div class="tournament-card-head">
+                        <div>
+                          <div class="eyebrow">Järjestys ${formatNumber(tournament.displayOrder || DEFAULT_TOURNAMENT_DISPLAY_ORDER)}</div>
+                          <h3>${escapeHtml(tournament.name)}</h3>
+                          <p class="section-subtitle">${formatDate(tournament.startDate)} · ${escapeHtml(tournament.division || 'MPO/FPO')}</p>
+                        </div>
+                        <span class="status-chip">${formatNumber(resultCount)} tulosta</span>
+                      </div>
+                      <div class="badge-row">
+                        <span class="badge">${formatNumber(tournament.multiplier)}x multiplier</span>
+                        <span class="badge">${escapeHtml(tournament.location || 'Paikkakunta puuttuu')}</span>
+                      </div>
+                      <dl class="tournament-meta-list">
+                        <div><dt>Kilpailupaikka</dt><dd>${escapeHtml(tournament.venue || '—')}</dd></div>
+                        <div><dt>Linkki</dt><dd>${
+                          tournament.externalUrl
+                            ? `<a href="${escapeHtml(tournament.externalUrl)}" target="_blank" rel="noopener noreferrer">Avaa kilpailusivu</a>`
+                            : '—'
+                        }</dd></div>
+                      </dl>
+                      ${
+                        tournament.notes
+                          ? `<p class="tournament-description">${escapeHtml(tournament.notes)}</p>`
+                          : '<p class="tournament-description muted">Kuvausta ei ole lisätty.</p>'
+                      }
+                      <div class="table-actions">
+                        <button type="button" class="secondary-button" data-select-tournament="${escapeHtml(tournament.id)}">Tulokset</button>
+                        <button type="button" class="secondary-button" data-edit-tournament="${escapeHtml(tournament.id)}">Muokkaa</button>
+                        <button type="button" class="danger-button" data-delete-tournament="${escapeHtml(tournament.id)}">Poista</button>
+                      </div>
+                    </article>
+                  `;
+                })
+                .join('')}
             </div>
-            <div class="form-actions">
-              <button type="submit" class="button">${editingTournament ? 'Tallenna muutokset' : 'Lisää turnaus'}</button>
-              <button type="button" class="secondary-button" data-reset-tournament-form>Tyhjennä lomake</button>
-            </div>
-          </form>
-        </article>
-        <article class="panel">
-          <h3>Turnauslista</h3>
-          ${
-            dataState.tournaments.length
-              ? `
-                <div class="table-wrap">
-                  <table class="table">
-                    <thead>
-                      <tr>
-                        <th>Nimi</th>
-                        <th>Päivä</th>
-                        <th>Multiplier</th>
-                        <th>Tulokset</th>
-                        <th>Toiminnot</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${dataState.tournaments
-                        .slice()
-                        .sort((left, right) => right.startDate.localeCompare(left.startDate))
-                        .map((tournament) => {
-                          const resultCount = dataState.tournamentResults.filter((result) => result.tournamentId === tournament.id).length;
-                          return `
-                            <tr>
-                              <td>${escapeHtml(tournament.name)}<br /><span class="muted">${escapeHtml(tournament.division || 'MPO/FPO')}</span></td>
-                              <td>${formatDate(tournament.startDate)}</td>
-                              <td>${formatNumber(tournament.multiplier)}x</td>
-                              <td>${formatNumber(resultCount)}</td>
-                              <td>
-                                <div class="table-actions">
-                                  <button type="button" class="secondary-button" data-select-tournament="${escapeHtml(tournament.id)}">Tulokset</button>
-                                  <button type="button" class="secondary-button" data-edit-tournament="${escapeHtml(tournament.id)}">Muokkaa</button>
-                                  <button type="button" class="danger-button" data-delete-tournament="${escapeHtml(tournament.id)}">Poista</button>
-                                </div>
-                              </td>
-                            </tr>
-                          `;
-                        })
-                        .join('')}
-                    </tbody>
-                  </table>
-                </div>
-              `
-              : renderEmptyState('Turnauksia ei ole vielä lisätty.')
-          }
-        </article>
-      </div>
+          `
+          : renderEmptyState('Turnauksia ei ole vielä lisätty.')
+      }
       <article class="panel">
         <div class="section-heading">
           <div>
@@ -711,7 +716,7 @@ function renderTournamentSection(dataState, uiState) {
           <label for="selected-tournament">Hallittava turnaus</label>
           <select id="selected-tournament" data-selected-tournament>
             <option value="">Valitse turnaus</option>
-            ${dataState.tournaments
+            ${orderedTournaments
               .map(
                 (tournament) =>
                   `<option value="${escapeHtml(tournament.id)}" ${tournament.id === selectedTournament?.id ? 'selected' : ''}>${escapeHtml(tournament.name)} (${formatDate(tournament.startDate)})</option>`,
@@ -806,6 +811,148 @@ function renderTournamentSection(dataState, uiState) {
         }
       </article>
     </section>
+  `;
+}
+
+function renderTournamentDialog(dataState, uiState) {
+  if (!uiState.tournamentDialogOpen) {
+    return '';
+  }
+
+  const editingTournament = dataState.tournaments.find((tournament) => tournament.id === uiState.tournamentFormId) || null;
+  const formValues = uiState.tournamentFormDraft || {};
+  const fieldErrors = uiState.tournamentFormErrors || {};
+
+  return `
+    <div class="dialog-backdrop" data-tournament-dialog-backdrop>
+      <div
+        class="dialog-panel dialog-panel-wide"
+        data-tournament-dialog-panel
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+        aria-labelledby="tournament-dialog-title"
+        aria-describedby="tournament-dialog-description"
+      >
+        <div class="section-heading">
+          <div>
+            <h2 id="tournament-dialog-title">${editingTournament ? 'Muokkaa turnausta' : 'Lisää turnaus'}</h2>
+            <p id="tournament-dialog-description" class="section-subtitle">
+              Syötä turnauksen perustiedot. Järjestys määräytyy järjestysnumeron mukaan nousevasti.
+            </p>
+          </div>
+        </div>
+        <form id="tournament-form">
+          <input type="hidden" name="id" value="${escapeHtml(editingTournament?.id || '')}" />
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="tournament-name">Turnauksen nimi *</label>
+              <input
+                id="tournament-name"
+                name="name"
+                required
+                ${getFieldAttributes(fieldErrors, 'name')}
+                value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'name'))}"
+              />
+              ${renderFieldError(fieldErrors, 'name')}
+            </div>
+            <div class="form-field">
+              <label for="tournament-start-date">Päivämäärä *</label>
+              <input
+                id="tournament-start-date"
+                name="startDate"
+                type="date"
+                required
+                ${getFieldAttributes(fieldErrors, 'startDate')}
+                value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'startDate'))}"
+              />
+              ${renderFieldError(fieldErrors, 'startDate')}
+            </div>
+            <div class="form-field">
+              <label for="tournament-display-order">Järjestysnumero *</label>
+              <input
+                id="tournament-display-order"
+                name="displayOrder"
+                type="number"
+                required
+                inputmode="numeric"
+                min="1"
+                step="1"
+                ${getFieldAttributes(fieldErrors, 'displayOrder')}
+                value="${escapeHtml(String(getTournamentFormValue(formValues, editingTournament, 'displayOrder', DEFAULT_TOURNAMENT_DISPLAY_ORDER)))}"
+              />
+              ${renderFieldError(fieldErrors, 'displayOrder')}
+            </div>
+            <div class="form-field">
+              <label for="tournament-multiplier">Multiplier *</label>
+              <select id="tournament-multiplier" name="multiplierKey" required ${getFieldAttributes(fieldErrors, 'multiplierKey')}>
+                <option value="">Valitse multiplier</option>
+                ${renderMultiplierOptions(getTournamentFormValue(formValues, editingTournament, 'multiplierKey'))}
+              </select>
+              ${renderFieldError(fieldErrors, 'multiplierKey')}
+            </div>
+            <div class="form-field">
+              <label for="tournament-location">Paikkakunta</label>
+              <input id="tournament-location" name="location" value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'location'))}" />
+            </div>
+            <div class="form-field">
+              <label for="tournament-venue">Kilpailupaikka / rata</label>
+              <input id="tournament-venue" name="venue" value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'venue'))}" />
+            </div>
+            <div class="form-field">
+              <label for="tournament-division">Sarjarajaus</label>
+              <select id="tournament-division" name="division" ${getFieldAttributes(fieldErrors, 'division')}>
+                <option value="">Ei rajattu</option>
+                ${DIVISIONS.map(
+                  (division) =>
+                    `<option value="${division}" ${getTournamentFormValue(formValues, editingTournament, 'division') === division ? 'selected' : ''}>${division}</option>`,
+                ).join('')}
+              </select>
+              ${renderFieldError(fieldErrors, 'division')}
+            </div>
+            <div class="form-field">
+              <label for="tournament-external-url">Linkki kilpailusivulle</label>
+              <input
+                id="tournament-external-url"
+                name="externalUrl"
+                type="url"
+                ${getFieldAttributes(fieldErrors, 'externalUrl')}
+                value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'externalUrl'))}"
+              />
+              ${renderFieldError(fieldErrors, 'externalUrl')}
+            </div>
+            <div class="form-field">
+              <label for="tournament-end-date">Päättymispäivä</label>
+              <input
+                id="tournament-end-date"
+                name="endDate"
+                type="date"
+                ${getFieldAttributes(fieldErrors, 'endDate')}
+                value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'endDate'))}"
+              />
+              ${renderFieldError(fieldErrors, 'endDate')}
+            </div>
+            <div class="form-field">
+              <label for="tournament-pdga-event-id">PDGA-kilpailutunnus</label>
+              <input id="tournament-pdga-event-id" name="pdgaEventId" value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'pdgaEventId'))}" />
+            </div>
+            <div class="form-field">
+              <label for="tournament-status">Status</label>
+              <input id="tournament-status" name="status" value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'status'))}" />
+            </div>
+            <div class="form-field full-width">
+              <label for="tournament-notes">Kuvaus</label>
+              <textarea id="tournament-notes" name="notes">${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'notes'))}</textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button">${editingTournament ? 'Tallenna muutokset' : 'Tallenna turnaus'}</button>
+            <button type="button" class="secondary-button" data-reset-tournament-form>Tyhjennä lomake</button>
+            <button type="button" class="ghost-button" data-dismiss-tournament-dialog>Peruuta</button>
+          </div>
+        </form>
+      </div>
+    </div>
   `;
 }
 
@@ -959,7 +1106,7 @@ export function renderApp(root, dataState, uiState) {
         </div>
       </header>
       <main id="main-content" class="main-inner" tabindex="-1">
-        ${uiState.feedback ? `<div class="message ${uiState.feedback.type}" role="status">${escapeHtml(uiState.feedback.text)}</div>` : ''}
+        ${uiState.feedback ? `<div class="message ${uiState.feedback.type}" role="status" aria-live="polite">${escapeHtml(uiState.feedback.text)}</div>` : ''}
         ${renderSummarySection(dataState, uiState)}
         ${renderRankingSection(dataState, uiState)}
         ${renderPlayerSection(dataState, uiState)}
@@ -972,6 +1119,7 @@ export function renderApp(root, dataState, uiState) {
           <div>Lopullinen brändivahvistus, logoaineisto ja mahdollinen backend-tietokanta toteutetaan myöhemmässä vaiheessa.</div>
         </div>
       </footer>
+      ${renderTournamentDialog(dataState, uiState)}
       ${renderConfirmationDialog(dataState, uiState)}
     </div>
   `;
@@ -1035,7 +1183,11 @@ export function bindUi(root, dataState, uiState, handlers) {
     handlers.submitTournament(new FormData(event.currentTarget));
   });
 
+  root.querySelector('[data-open-tournament-dialog]')?.addEventListener('click', () => handlers.openTournamentDialog());
   root.querySelector('[data-reset-tournament-form]')?.addEventListener('click', () => handlers.resetTournamentForm());
+  root.querySelector('[data-dismiss-tournament-dialog]')?.addEventListener('click', () => handlers.closeTournamentDialog());
+  root.querySelector('[data-tournament-dialog-backdrop]')?.addEventListener('click', () => handlers.closeTournamentDialog());
+  root.querySelector('[data-tournament-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
 
   root.querySelectorAll('[data-edit-tournament]').forEach((button) => {
     button.addEventListener('click', () => handlers.editTournament(button.dataset.editTournament));
@@ -1094,7 +1246,27 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-cancel-confirm-dialog]')?.addEventListener('click', () => handlers.closeConfirmationDialog());
   root.querySelector('[data-confirm-delete-player]')?.addEventListener('click', () => handlers.confirmDeletePlayer());
 
-  if (uiState.confirmationDialog) {
+  if (root.__tournamentDialogKeydownHandler) {
+    document.removeEventListener('keydown', root.__tournamentDialogKeydownHandler);
+    root.__tournamentDialogKeydownHandler = null;
+  }
+
+  if (uiState.tournamentDialogOpen) {
+    root.__tournamentDialogKeydownHandler = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        handlers.closeTournamentDialog();
+      }
+    };
+    document.addEventListener('keydown', root.__tournamentDialogKeydownHandler);
+  }
+
+  if (uiState.tournamentDialogOpen && uiState.tournamentFormFocusTarget) {
+    root.querySelector(getTournamentFieldSelector(uiState.tournamentFormFocusTarget))?.focus();
+    uiState.tournamentFormFocusTarget = '';
+  } else if (uiState.tournamentDialogOpen) {
+    root.querySelector('[data-tournament-dialog-panel]')?.focus();
+  } else if (uiState.confirmationDialog) {
     root.querySelector('[data-cancel-confirm-dialog]')?.focus();
   }
 }

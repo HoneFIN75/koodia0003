@@ -1,3 +1,5 @@
+import { DEFAULT_TOURNAMENT_DISPLAY_ORDER } from './tournaments.js';
+
 const STORAGE_KEY = 'sfl-pisteytystyokalu:v1';
 const STORAGE_VERSION = 1;
 
@@ -45,13 +47,19 @@ function sanitizePlayer(player = {}) {
 }
 
 function sanitizeTournament(tournament = {}) {
+  const parsedDisplayOrder = Number(tournament.displayOrder);
+
   return {
     id: tournament.id,
     name: tournament.name,
     pdgaEventId: tournament.pdgaEventId,
     startDate: tournament.startDate,
     endDate: tournament.endDate,
+    displayOrder: Number.isInteger(parsedDisplayOrder) && parsedDisplayOrder > 0
+      ? parsedDisplayOrder
+      : DEFAULT_TOURNAMENT_DISPLAY_ORDER,
     location: tournament.location,
+    venue: tournament.venue,
     status: tournament.status,
     multiplierKey: tournament.multiplierKey,
     multiplier: tournament.multiplier,
