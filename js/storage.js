@@ -1,7 +1,8 @@
 import { DEFAULT_TOURNAMENT_DISPLAY_ORDER } from './tournaments.js';
+import { extractPdgaIdFromValue, sanitizePdgaSettings } from './pdga.js';
 
 const STORAGE_KEY = 'sfl-pisteytystyokalu:v1';
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
 
 export function createEmptyState() {
   return {
@@ -13,6 +14,7 @@ export function createEmptyState() {
       MPO: {},
       FPO: {},
     },
+    settings: sanitizePdgaSettings(),
   };
 }
 
@@ -32,6 +34,8 @@ function sanitizePointsTable(pointsTable = {}) {
 }
 
 function sanitizePlayer(player = {}) {
+  const pdgaPlayerId = player.pdgaPlayerId || extractPdgaIdFromValue(player.pdgaProfileUrl);
+
   return {
     id: player.id,
     name: player.name,
@@ -39,7 +43,7 @@ function sanitizePlayer(player = {}) {
     pdgaNumber: player.pdgaNumber,
     pdgaRating: player.pdgaRating,
     worldRank: player.worldRank,
-    pdgaProfileUrl: player.pdgaProfileUrl,
+    pdgaPlayerId: extractPdgaIdFromValue(pdgaPlayerId),
     notes: player.notes,
     createdAt: player.createdAt,
     updatedAt: player.updatedAt,
@@ -48,11 +52,12 @@ function sanitizePlayer(player = {}) {
 
 function sanitizeTournament(tournament = {}) {
   const parsedDisplayOrder = Number(tournament.displayOrder);
+  const pdgaEventId = tournament.pdgaEventId || extractPdgaIdFromValue(tournament.externalUrl);
 
   return {
     id: tournament.id,
     name: tournament.name,
-    pdgaEventId: tournament.pdgaEventId,
+    pdgaEventId: extractPdgaIdFromValue(pdgaEventId),
     startDate: tournament.startDate,
     endDate: tournament.endDate,
     displayOrder: Number.isInteger(parsedDisplayOrder) && parsedDisplayOrder > 0
@@ -64,7 +69,6 @@ function sanitizeTournament(tournament = {}) {
     multiplierKey: tournament.multiplierKey,
     multiplier: tournament.multiplier,
     division: tournament.division,
-    externalUrl: tournament.externalUrl,
     notes: tournament.notes,
     createdAt: tournament.createdAt,
     updatedAt: tournament.updatedAt,
@@ -82,6 +86,7 @@ function sanitizeState(candidate = {}) {
       ? candidate.tournamentResults
       : empty.tournamentResults,
     pointsTable: sanitizePointsTable(candidate.pointsTable),
+    settings: sanitizePdgaSettings(candidate.settings),
   };
 }
 
@@ -100,7 +105,9 @@ export function loadState() {
 
   try {
     const parsed = JSON.parse(raw);
-    return sanitizeState(parsed);
+    const sanitized = sanitizeState(parsed);
+    storage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+    return sanitized;
   } catch {
     throw new Error('Tallennetun datan lukeminen epäonnistui. Tyhjennä selaintiedot ja lataa sivu uudelleen.');
   }

@@ -24,6 +24,17 @@ Tämä linjaus sopii nykyiseen tyhjään staattiseen projektiin ja nykyiseen jul
 - turnaustulosten lisäys, muokkaus ja poisto snapshot-pisteillä
 - ranking kaikille, MPO:lle ja FPO:lle
 - yhteenvetonäkymä tilastokorteilla, top 10 -pylväillä ja pelaajakohtaisella tulostaulukolla
+- Asetukset-näkymä PDGA-pelaaja- ja tapahtumalinkkien perus-URL-osoitteille
+
+## PDGA-asetukset ja tietomalli
+
+- Pelaajille tallennetaan `PDGA-pelaaja-ID`, ei täyttä URL-osoitetta.
+- Turnauksille tallennetaan `PDGA-tapahtuma-ID`, ei täyttä URL-osoitetta.
+- Klikattavat PDGA-linkit muodostetaan keskitetysti asetuksista:
+  - `PDGA-pelaaja-ID:n perus-URL` + `PDGA-pelaaja-ID`
+  - `PDGA-tapahtuma-ID:n perus-URL` + `PDGA-tapahtuma-ID`
+- Asetukset ovat sovelluksen yhteisiä ja tallennetaan localStorage-tilaan muun datan rinnalle.
+- Vanha data migroidaan automaattisesti latauksen yhteydessä: aiemmista täysistä PDGA-URL-osoitteista poimitaan ID-arvo uuteen malliin aina kun se on mahdollista.
 
 ## Pistelaskenta
 

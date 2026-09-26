@@ -1,3 +1,5 @@
+import { isValidPdgaId, normalizePdgaId } from './pdga.js';
+
 export const DIVISIONS = ['MPO', 'FPO'];
 
 export class PlayerValidationError extends Error {
@@ -42,24 +44,6 @@ function normalizeOptionalPositiveInteger(value, label, fieldName, fieldErrors) 
   return parsed;
 }
 
-function normalizeOptionalUrl(value, label, fieldName, fieldErrors) {
-  const normalized = normalizeText(value);
-  if (!normalized) {
-    return '';
-  }
-
-  try {
-    const parsed = new URL(normalized);
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      throw new Error('invalid protocol');
-    }
-    return parsed.toString();
-  } catch {
-    addFieldError(fieldErrors, fieldName, `${label} ei ole kelvollinen verkko-osoite.`);
-    return '';
-  }
-}
-
 export function validatePlayerInput(input, players, currentId = null) {
   const fieldErrors = {};
   const name = normalizeText(input.name);
@@ -89,7 +73,10 @@ export function validatePlayerInput(input, players, currentId = null) {
     addFieldError(fieldErrors, 'pdgaNumber', 'PDGA-numero on jo käytössä toisella pelaajalla.');
   }
 
-  const pdgaProfileUrl = normalizeOptionalUrl(input.pdgaProfileUrl, 'PDGA-profiilin URL', 'pdgaProfileUrl', fieldErrors);
+  const pdgaPlayerId = normalizePdgaId(input.pdgaPlayerId);
+  if (pdgaPlayerId && !isValidPdgaId(pdgaPlayerId)) {
+    addFieldError(fieldErrors, 'pdgaPlayerId', 'PDGA-pelaaja-ID pitää olla positiivinen kokonaisluku.');
+  }
 
   if (Object.keys(fieldErrors).length > 0) {
     throw new PlayerValidationError(fieldErrors);
@@ -101,7 +88,7 @@ export function validatePlayerInput(input, players, currentId = null) {
     pdgaNumber,
     pdgaRating,
     worldRank,
-    pdgaProfileUrl,
+    pdgaPlayerId,
     notes: normalizeText(input.notes),
   };
 }
