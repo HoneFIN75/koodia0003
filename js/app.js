@@ -37,6 +37,11 @@ let uiState = {
   tournamentFormErrors: {},
   tournamentFormDraft: null,
   tournamentFormFocusTarget: '',
+  tournamentSearch: '',
+  tournamentStatusFilter: 'ALL',
+  tournamentSortField: 'startDate',
+  tournamentSortDirection: 'asc',
+  pendingFocusSelector: '',
   selectedTournamentId: '',
   resultFormId: null,
   pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
@@ -209,6 +214,11 @@ const handlers = {
     render();
   },
   closeConfirmationDialog() {
+    if (uiState.confirmationDialog?.type === 'delete-tournament') {
+      uiState.pendingFocusSelector = uiState.tournamentFormId
+        ? `[data-delete-tournament="${uiState.tournamentFormId}"]`
+        : '[data-open-tournament-dialog]';
+    }
     uiState.confirmationDialog = null;
     render();
   },
@@ -260,6 +270,7 @@ const handlers = {
         uiState.tournamentDialogOpen = false;
         uiState.tournamentFormId = null;
         uiState.tournamentFormFocusTarget = '';
+        uiState.pendingFocusSelector = `[data-edit-tournament="${values.id}"]`;
         persistAndRender('Turnauksen tiedot päivitettiin.');
       } else {
         const tournament = createTournament(values);
@@ -267,6 +278,7 @@ const handlers = {
         uiState.tournamentDialogOpen = false;
         uiState.selectedTournamentId = tournament.id;
         uiState.tournamentFormFocusTarget = '';
+        uiState.pendingFocusSelector = `[data-edit-tournament="${tournament.id}"]`;
         persistAndRender('Turnaus lisätty onnistuneesti.');
       }
     } catch (error) {
@@ -288,15 +300,20 @@ const handlers = {
     uiState.tournamentFormErrors = {};
     uiState.tournamentFormDraft = null;
     uiState.tournamentFormFocusTarget = 'name';
+    uiState.pendingFocusSelector = '';
     uiState.feedback = null;
     render();
   },
   closeTournamentDialog() {
+    const returnFocusSelector = uiState.tournamentFormId
+      ? `[data-edit-tournament="${uiState.tournamentFormId}"]`
+      : '[data-open-tournament-dialog]';
     uiState.tournamentDialogOpen = false;
     uiState.tournamentFormId = null;
     uiState.tournamentFormErrors = {};
     uiState.tournamentFormDraft = null;
     uiState.tournamentFormFocusTarget = '';
+    uiState.pendingFocusSelector = returnFocusSelector;
     render();
   },
   resetTournamentForm() {
@@ -312,17 +329,40 @@ const handlers = {
     uiState.tournamentFormErrors = {};
     uiState.tournamentFormDraft = null;
     uiState.tournamentFormFocusTarget = 'name';
+    uiState.pendingFocusSelector = '';
     uiState.feedback = null;
     render();
   },
-  deleteTournament(tournamentId) {
+  setTournamentSearch(query) {
+    uiState.tournamentSearch = query;
+    render();
+  },
+  setTournamentStatusFilter(filter) {
+    uiState.tournamentStatusFilter = filter || 'ALL';
+    render();
+  },
+  setTournamentSortField(sortField) {
+    uiState.tournamentSortField = sortField;
+    render();
+  },
+  setTournamentSortDirection(sortDirection) {
+    uiState.tournamentSortDirection = sortDirection === 'desc' ? 'desc' : 'asc';
+    render();
+  },
+  requestDeleteTournament(tournamentId) {
     const tournament = findTournament(dataState.tournaments, tournamentId);
     if (!tournament) {
       return;
     }
 
-    const confirmed = window.confirm(`Poistetaanko turnaus ${tournament.name}? Samalla poistuvat turnauksen kaikki tulokset.`);
-    if (!confirmed) {
+    uiState.confirmationDialog = { type: 'delete-tournament', tournamentId };
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  confirmDeleteTournament() {
+    const tournamentId = uiState.confirmationDialog?.tournamentId;
+    if (!tournamentId) {
       return;
     }
 
@@ -338,6 +378,8 @@ const handlers = {
     if (uiState.selectedTournamentId === tournamentId) {
       uiState.selectedTournamentId = '';
     }
+    uiState.confirmationDialog = null;
+    uiState.pendingFocusSelector = '[data-open-tournament-dialog]';
     persistAndRender('Turnaus poistettiin.');
   },
   selectTournament(tournamentId) {

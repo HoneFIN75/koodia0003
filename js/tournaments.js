@@ -221,6 +221,67 @@ export function sortTournaments(tournaments) {
   });
 }
 
+function normalizeFilterValue(value) {
+  return String(value ?? '')
+    .trim()
+    .toLocaleLowerCase('fi-FI');
+}
+
+function compareTournamentValues(leftValue, rightValue, direction) {
+  const left = String(leftValue ?? '');
+  const right = String(rightValue ?? '');
+
+  if (!left && !right) {
+    return 0;
+  }
+
+  if (!left) {
+    return 1;
+  }
+
+  if (!right) {
+    return -1;
+  }
+
+  const comparison = left.localeCompare(right, 'fi', { numeric: true, sensitivity: 'base' });
+  return direction === 'desc' ? comparison * -1 : comparison;
+}
+
+export function filterAndSortTournaments(
+  tournaments,
+  { search = '', status = 'ALL', sortField = 'startDate', sortDirection = 'asc' } = {},
+) {
+  const baseOrder = sortTournaments(tournaments);
+  const baseOrderById = new Map(baseOrder.map((tournament, index) => [tournament.id, index]));
+  const normalizedSearch = normalizeFilterValue(search);
+  const normalizedStatus = normalizeFilterValue(status);
+  const normalizedSortField = ['name', 'status', 'startDate', 'endDate', 'location'].includes(sortField)
+    ? sortField
+    : 'startDate';
+  const normalizedSortDirection = sortDirection === 'desc' ? 'desc' : 'asc';
+
+  return baseOrder
+    .filter((tournament) => {
+      const matchesStatus =
+        normalizedStatus === 'all' || normalizeFilterValue(tournament.status) === normalizedStatus;
+      const matchesSearch =
+        !normalizedSearch ||
+        [tournament.name, tournament.status, tournament.location, tournament.venue].some((value) =>
+          normalizeFilterValue(value).includes(normalizedSearch),
+        );
+
+      return matchesStatus && matchesSearch;
+    })
+    .sort((left, right) => {
+      const comparison = compareTournamentValues(left[normalizedSortField], right[normalizedSortField], normalizedSortDirection);
+      if (comparison !== 0) {
+        return comparison;
+      }
+
+      return (baseOrderById.get(left.id) || 0) - (baseOrderById.get(right.id) || 0);
+    });
+}
+
 export function findTournament(tournaments, tournamentId) {
   return tournaments.find((tournament) => tournament.id === tournamentId) || null;
 }

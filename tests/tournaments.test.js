@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createTournament,
   DEFAULT_TOURNAMENT_DISPLAY_ORDER,
+  filterAndSortTournaments,
   sortTournaments,
   TournamentValidationError,
 } from '../js/tournaments.js';
@@ -95,4 +96,51 @@ test('sorts tournaments deterministically by display order, date, createdAt and 
   const sortedIds = sortTournaments(tournaments).map((tournament) => tournament.id);
 
   assert.deepEqual(sortedIds, ['tournament-a', 'tournament-d', 'tournament-c', 'tournament-b']);
+});
+
+test('filters tournaments by search and sorts by configured field', () => {
+  const tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Lahti Open',
+      status: 'Vahvistettu',
+      location: 'Lahti',
+      venue: 'Mukkula',
+      startDate: '2026-07-05',
+      endDate: '2026-07-06',
+      displayOrder: 3,
+      createdAt: '2026-01-01T10:00:00.000Z',
+    },
+    {
+      id: 'tournament-2',
+      name: 'Turku Masters',
+      status: 'Luonnos',
+      location: 'Turku',
+      venue: 'Aninkainen',
+      startDate: '2026-07-01',
+      endDate: '2026-07-02',
+      displayOrder: 1,
+      createdAt: '2026-01-01T09:00:00.000Z',
+    },
+    {
+      id: 'tournament-3',
+      name: 'Lahti Challenge',
+      status: 'Vahvistettu',
+      location: 'Lahti',
+      venue: 'Tali',
+      startDate: '2026-07-03',
+      endDate: '2026-07-04',
+      displayOrder: 2,
+      createdAt: '2026-01-01T08:00:00.000Z',
+    },
+  ];
+
+  const filteredIds = filterAndSortTournaments(tournaments, {
+    search: 'lahti',
+    status: 'Vahvistettu',
+    sortField: 'name',
+    sortDirection: 'asc',
+  }).map((tournament) => tournament.id);
+
+  assert.deepEqual(filteredIds, ['tournament-3', 'tournament-1']);
 });
