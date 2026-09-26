@@ -9,6 +9,7 @@ import {
   removePointsTableEntry,
 } from './scoring.js';
 import { renderApp, bindUi } from './ui.js';
+import { loadDeploymentMetadata } from './version.js';
 
 const root = document.querySelector('#app');
 
@@ -39,6 +40,7 @@ let uiState = {
   feedback: null,
   settingsFormErrors: {},
   settingsFormDraft: null,
+  deploymentInfo: null,
 };
 
 function persistAndRender(successMessage = '') {
@@ -457,3 +459,12 @@ window.addEventListener('resize', () => {
 
 render();
 initializeDataState();
+
+loadDeploymentMetadata().then((deploymentInfo) => {
+  if (!deploymentInfo) {
+    return;
+  }
+
+  uiState.deploymentInfo = deploymentInfo;
+  render();
+});
