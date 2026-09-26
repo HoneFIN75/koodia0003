@@ -2,6 +2,7 @@ import { DIVISIONS, getVisiblePlayers } from './players.js';
 import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, MULTIPLIER_OPTIONS, sortTournaments } from './tournaments.js';
 import { listPointsTableEntries, getBasePoints } from './scoring.js';
 import { buildRanking, getTopRanking, getPlayerResults } from './ranking.js';
+import { buildPdgaReferenceUrl } from './pdga.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -78,7 +79,6 @@ function getTournamentFieldSelector(fieldName) {
     venue: '#tournament-venue',
     multiplierKey: '#tournament-multiplier',
     division: '#tournament-division',
-    externalUrl: '#tournament-external-url',
     pdgaEventId: '#tournament-pdga-event-id',
     status: '#tournament-status',
     notes: '#tournament-notes',
@@ -87,10 +87,12 @@ function getTournamentFieldSelector(fieldName) {
   return fieldSelectors[fieldName] || '#tournament-name';
 }
 
-function renderPlayerDetailCard(player) {
+function renderPlayerDetailCard(player, settings) {
   if (!player) {
     return renderEmptyState('Valitse pelaaja listalta nähdäksesi tietosivun.');
   }
+
+  const pdgaProfileUrl = buildPdgaReferenceUrl(settings.pdgaPlayerBaseUrl, player.pdgaPlayerId);
 
   return `
     <div class="player-detail-layout">
@@ -98,11 +100,12 @@ function renderPlayerDetailCard(player) {
         <div><dt>Nimi</dt><dd>${escapeHtml(player.name)}</dd></div>
         <div><dt>Sarja</dt><dd>${escapeHtml(player.division)}</dd></div>
         <div><dt>PDGA-numero</dt><dd>${escapeHtml(player.pdgaNumber || '—')}</dd></div>
+        <div><dt>PDGA-pelaaja-ID</dt><dd>${escapeHtml(player.pdgaPlayerId || '—')}</dd></div>
         <div><dt>PDGA-rating</dt><dd>${escapeHtml(player.pdgaRating || '—')}</dd></div>
         <div><dt>Maailman ranking sijoitus</dt><dd>${escapeHtml(player.worldRank || '—')}</dd></div>
         <div><dt>PDGA-profiili</dt><dd>${
-          player.pdgaProfileUrl
-            ? `<a href="${escapeHtml(player.pdgaProfileUrl)}" target="_blank" rel="noopener noreferrer">Avaa profiili</a>`
+          pdgaProfileUrl
+            ? `<a href="${escapeHtml(pdgaProfileUrl)}" target="_blank" rel="noopener noreferrer">Avaa PDGA-profiili</a>`
             : '—'
         }</dd></div>
       </dl>
@@ -137,6 +140,7 @@ function renderNav(activeView) {
     { id: 'players', label: 'Pelaajat' },
     { id: 'tournaments', label: 'Turnaukset' },
     { id: 'points', label: 'Pistetaulukot' },
+    { id: 'settings', label: 'Asetukset' },
   ];
 
   return `
@@ -202,6 +206,9 @@ function renderSummarySection(dataState, uiState) {
       })
     : [];
   const selectedRankingEntry = ranking.find((player) => player.id === selectedPlayerId) || null;
+  const selectedPlayerPdgaUrl = selectedPlayer
+    ? buildPdgaReferenceUrl(dataState.settings.pdgaPlayerBaseUrl, selectedPlayer.pdgaPlayerId)
+    : '';
 
   return `
     <section class="section" id="section-summary" ${uiState.activeView === 'summary' ? '' : 'hidden'} aria-labelledby="summary-title">
@@ -307,8 +314,8 @@ function renderSummarySection(dataState, uiState) {
                   <div><dt>Turnauksia</dt><dd>${formatNumber(selectedRankingEntry?.tournamentCount || 0)}</dd></div>
                   <div><dt>Kokonaispisteet</dt><dd>${formatNumber(selectedRankingEntry?.totalPoints || 0)} p</dd></div>
                   <div><dt>PDGA-profiili</dt><dd>${
-                    selectedPlayer.pdgaProfileUrl
-                      ? `<a href="${escapeHtml(selectedPlayer.pdgaProfileUrl)}" target="_blank" rel="noopener noreferrer">Avaa profiili</a>`
+                    selectedPlayerPdgaUrl
+                      ? `<a href="${escapeHtml(selectedPlayerPdgaUrl)}" target="_blank" rel="noopener noreferrer">Avaa PDGA-profiili</a>`
                       : '—'
                   }</dd></div>
                 </dl>
@@ -477,7 +484,7 @@ function renderPlayerSection(dataState, uiState) {
                   </div>
                 </div>
               `
-              : renderPlayerDetailCard(selectedPlayer)
+              : renderPlayerDetailCard(selectedPlayer, dataState.settings)
         }
       </article>
       <div class="two-column">
@@ -535,15 +542,15 @@ function renderPlayerSection(dataState, uiState) {
                 ${renderFieldError(uiState.playerFormErrors, 'worldRank')}
               </div>
               <div class="form-field full-width">
-                <label for="player-profile-url">PDGA-profiilin URL</label>
+                <label for="player-pdga-player-id">PDGA-pelaaja-ID</label>
                 <input
-                  id="player-profile-url"
-                  name="pdgaProfileUrl"
-                  type="url"
-                  ${getFieldAttributes(uiState.playerFormErrors, 'pdgaProfileUrl')}
-                  value="${escapeHtml(formPlayer?.pdgaProfileUrl || '')}"
+                  id="player-pdga-player-id"
+                  name="pdgaPlayerId"
+                  inputmode="numeric"
+                  ${getFieldAttributes(uiState.playerFormErrors, 'pdgaPlayerId')}
+                  value="${escapeHtml(formPlayer?.pdgaPlayerId || '')}"
                 />
-                ${renderFieldError(uiState.playerFormErrors, 'pdgaProfileUrl')}
+                ${renderFieldError(uiState.playerFormErrors, 'pdgaPlayerId')}
               </div>
             </div>
             <div class="form-actions">
@@ -665,6 +672,7 @@ function renderTournamentSection(dataState, uiState) {
               ${orderedTournaments
                 .map((tournament) => {
                   const resultCount = dataState.tournamentResults.filter((result) => result.tournamentId === tournament.id).length;
+                  const pdgaEventUrl = buildPdgaReferenceUrl(dataState.settings.pdgaEventBaseUrl, tournament.pdgaEventId);
                   return `
                     <article class="card tournament-card${selectedTournament?.id === tournament.id ? ' tournament-card-selected' : ''}">
                       <div class="tournament-card-head">
@@ -681,9 +689,9 @@ function renderTournamentSection(dataState, uiState) {
                       </div>
                       <dl class="tournament-meta-list">
                         <div><dt>Kilpailupaikka</dt><dd>${escapeHtml(tournament.venue || '—')}</dd></div>
-                        <div><dt>Linkki</dt><dd>${
-                          tournament.externalUrl
-                            ? `<a href="${escapeHtml(tournament.externalUrl)}" target="_blank" rel="noopener noreferrer">Avaa kilpailusivu</a>`
+                        <div><dt>PDGA-tapahtuma</dt><dd>${
+                          pdgaEventUrl
+                            ? `<a href="${escapeHtml(pdgaEventUrl)}" target="_blank" rel="noopener noreferrer">Avaa PDGA-tapahtuma</a>`
                             : '—'
                         }</dd></div>
                       </dl>
@@ -911,17 +919,6 @@ function renderTournamentDialog(dataState, uiState) {
               ${renderFieldError(fieldErrors, 'division')}
             </div>
             <div class="form-field">
-              <label for="tournament-external-url">Linkki kilpailusivulle</label>
-              <input
-                id="tournament-external-url"
-                name="externalUrl"
-                type="url"
-                ${getFieldAttributes(fieldErrors, 'externalUrl')}
-                value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'externalUrl'))}"
-              />
-              ${renderFieldError(fieldErrors, 'externalUrl')}
-            </div>
-            <div class="form-field">
               <label for="tournament-end-date">Päättymispäivä</label>
               <input
                 id="tournament-end-date"
@@ -933,8 +930,15 @@ function renderTournamentDialog(dataState, uiState) {
               ${renderFieldError(fieldErrors, 'endDate')}
             </div>
             <div class="form-field">
-              <label for="tournament-pdga-event-id">PDGA-kilpailutunnus</label>
-              <input id="tournament-pdga-event-id" name="pdgaEventId" value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'pdgaEventId'))}" />
+              <label for="tournament-pdga-event-id">PDGA-tapahtuma-ID</label>
+              <input
+                id="tournament-pdga-event-id"
+                name="pdgaEventId"
+                inputmode="numeric"
+                ${getFieldAttributes(fieldErrors, 'pdgaEventId')}
+                value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'pdgaEventId'))}"
+              />
+              ${renderFieldError(fieldErrors, 'pdgaEventId')}
             </div>
             <div class="form-field">
               <label for="tournament-status">Status</label>
@@ -1050,6 +1054,54 @@ function renderPointsSection(dataState, uiState) {
                     `
                     : renderEmptyState(`${division}-sarjalle ei ole vielä lisätty pistetaulukon rivejä.`)
                 }
+
+                function renderSettingsSection(dataState, uiState) {
+                  const fieldErrors = uiState.settingsFormErrors || {};
+
+                  return `
+                    <section class="section" id="section-settings" ${uiState.activeView === 'settings' ? '' : 'hidden'} aria-labelledby="settings-title">
+                      <div class="section-heading">
+                        <div>
+                          <h2 id="settings-title">Asetukset</h2>
+                          <p class="section-subtitle">Määritä PDGA-linkkien perusosoitteet, joita käytetään kaikissa näkymissä.</p>
+                        </div>
+                      </div>
+                      <article class="panel">
+                        <form id="settings-form">
+                          <div class="form-grid">
+                            <div class="form-field full-width">
+                              <label for="settings-pdga-player-base-url">PDGA-pelaaja-ID:n perus-URL *</label>
+                              <input
+                                id="settings-pdga-player-base-url"
+                                name="pdgaPlayerBaseUrl"
+                                type="url"
+                                required
+                                ${getFieldAttributes(fieldErrors, 'pdgaPlayerBaseUrl')}
+                                value="${escapeHtml(dataState.settings.pdgaPlayerBaseUrl)}"
+                              />
+                              ${renderFieldError(fieldErrors, 'pdgaPlayerBaseUrl')}
+                            </div>
+                            <div class="form-field full-width">
+                              <label for="settings-pdga-event-base-url">PDGA-tapahtuma-ID:n perus-URL *</label>
+                              <input
+                                id="settings-pdga-event-base-url"
+                                name="pdgaEventBaseUrl"
+                                type="url"
+                                required
+                                ${getFieldAttributes(fieldErrors, 'pdgaEventBaseUrl')}
+                                value="${escapeHtml(dataState.settings.pdgaEventBaseUrl)}"
+                              />
+                              ${renderFieldError(fieldErrors, 'pdgaEventBaseUrl')}
+                            </div>
+                          </div>
+                          <div class="form-actions">
+                            <button type="submit" class="button">Tallenna asetukset</button>
+                          </div>
+                        </form>
+                      </article>
+                    </section>
+                  `;
+                }
               </article>
             `;
           })
@@ -1112,6 +1164,7 @@ export function renderApp(root, dataState, uiState) {
         ${renderPlayerSection(dataState, uiState)}
         ${renderTournamentSection(dataState, uiState)}
         ${renderPointsSection(dataState, uiState)}
+        ${renderSettingsSection(dataState, uiState)}
       </main>
       <footer class="site-footer">
         <div class="site-footer-inner">
@@ -1233,6 +1286,11 @@ export function bindUi(root, dataState, uiState, handlers) {
 
   root.querySelectorAll('[data-delete-point]').forEach((button) => {
     button.addEventListener('click', () => handlers.deletePoint(button.dataset.deletePoint));
+  });
+
+  root.querySelector('#settings-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handlers.submitSettings(new FormData(event.currentTarget));
   });
 
   root.querySelector('[data-close-confirm-dialog]')?.addEventListener('click', () => handlers.closeConfirmationDialog());

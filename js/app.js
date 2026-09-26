@@ -1,6 +1,7 @@
 import { createEmptyState, loadState, saveState } from './storage.js';
 import { createPlayer, updatePlayer, findPlayer, removePlayer } from './players.js';
 import { createTournament, updateTournament, findTournament, TournamentValidationError } from './tournaments.js';
+import { normalizePdgaBaseUrl } from './pdga.js';
 import {
   createTournamentResult,
   updateTournamentResult,
@@ -31,6 +32,7 @@ let uiState = {
   tournamentFormErrors: {},
   tournamentFormDraft: null,
   tournamentFormFocusTarget: '',
+  settingsFormErrors: {},
   selectedTournamentId: '',
   resultFormId: null,
   pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
@@ -377,6 +379,39 @@ const handlers = {
     } catch (error) {
       setError(error);
     }
+  },
+  submitSettings(formData) {
+    const values = formDataToObject(formData);
+    const fieldErrors = {};
+    let pdgaPlayerBaseUrl = '';
+    let pdgaEventBaseUrl = '';
+
+    try {
+      pdgaPlayerBaseUrl = normalizePdgaBaseUrl(values.pdgaPlayerBaseUrl, dataState.settings?.pdgaPlayerBaseUrl);
+    } catch {
+      fieldErrors.pdgaPlayerBaseUrl = values.pdgaPlayerBaseUrl?.trim()
+        ? 'PDGA-pelaaja-ID:n perus-URL ei ole kelvollinen verkko-osoite.'
+        : 'PDGA-pelaaja-ID:n perus-URL on pakollinen.';
+    }
+
+    try {
+      pdgaEventBaseUrl = normalizePdgaBaseUrl(values.pdgaEventBaseUrl, dataState.settings?.pdgaEventBaseUrl);
+    } catch {
+      fieldErrors.pdgaEventBaseUrl = values.pdgaEventBaseUrl?.trim()
+        ? 'PDGA-tapahtuma-ID:n perus-URL ei ole kelvollinen verkko-osoite.'
+        : 'PDGA-tapahtuma-ID:n perus-URL on pakollinen.';
+    }
+
+    if (Object.keys(fieldErrors).length > 0) {
+      uiState.settingsFormErrors = fieldErrors;
+      uiState.feedback = { type: 'error', text: 'Korjaa asetusten tiedot ja yritä uudelleen.' };
+      render();
+      return;
+    }
+
+    dataState.settings = { pdgaPlayerBaseUrl, pdgaEventBaseUrl };
+    uiState.settingsFormErrors = {};
+    persistAndRender('Asetukset tallennettiin.');
   },
   resetPointsForm() {
     uiState.pointsForm = { division: 'MPO', place: '', basePoints: '', editingKey: '' };
