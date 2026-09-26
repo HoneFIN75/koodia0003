@@ -3,6 +3,7 @@ import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, MULTIPLIER_OPTIONS, sortTournaments }
 import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS } from './pdga.js';
 import { listPointsTableEntries, getBasePoints } from './scoring.js';
 import { buildRanking, getTopRanking, getPlayerResults } from './ranking.js';
+import { DEPLOYMENT_VERSION } from './version.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -218,6 +219,7 @@ function renderSummarySection(dataState, uiState) {
         <article class="hero-card">
           <div class="eyebrow">Suomen frisbeegolfliiton työkalu</div>
           <h1 id="summary-title">SFL Pisteytystyökalu</h1>
+          <p class="section-subtitle">Versio: ${escapeHtml(DEPLOYMENT_VERSION)}</p>
           <p>
             Selainpohjainen MVP pelaajien, turnausten, pistetaulukoiden ja rankingin hallintaan. Kaikki tiedot
             tallennetaan tässä vaiheessa paikallisesti selaimen localStorageen.

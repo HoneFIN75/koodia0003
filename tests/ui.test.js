@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createEmptyState } from '../js/storage.js';
 import { renderApp } from '../js/ui.js';
+import { DEPLOYMENT_VERSION } from '../js/version.js';
 
 function createRootStub() {
   return {
@@ -112,4 +113,13 @@ test('renderApp builds PDGA links from centralized settings', () => {
 
   assert.match(root.innerHTML, /href="https:\/\/example\.com\/player\/12345"/);
   assert.match(root.innerHTML, /href="https:\/\/example\.com\/event\/98765"/);
+});
+
+test('renderApp shows deployment version below home page title', () => {
+  const root = createRootStub();
+
+  renderApp(root, createEmptyState(), createUiState());
+
+  assert.match(root.innerHTML, /<h1 id="summary-title">SFL Pisteytystyökalu<\/h1>\s*<p class="section-subtitle">/);
+  assert.match(root.innerHTML, new RegExp(`Versio: ${DEPLOYMENT_VERSION.replace('.', '\\.')}`));
 });
