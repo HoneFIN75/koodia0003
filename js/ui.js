@@ -811,6 +811,7 @@ function renderTournamentDialog(dataState, uiState) {
         data-tournament-dialog-panel
         role="dialog"
         aria-modal="true"
+        tabindex="-1"
         aria-labelledby="tournament-dialog-title"
         aria-describedby="tournament-dialog-description"
       >
@@ -853,6 +854,7 @@ function renderTournamentDialog(dataState, uiState) {
               <input
                 id="tournament-display-order"
                 name="displayOrder"
+                type="number"
                 required
                 inputmode="numeric"
                 min="1"

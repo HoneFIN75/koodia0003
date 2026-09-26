@@ -186,7 +186,13 @@ export function sortTournaments(tournaments) {
 
     const leftCreatedAt = left.createdAt || '';
     const rightCreatedAt = right.createdAt || '';
-    if (leftCreatedAt && rightCreatedAt && leftCreatedAt !== rightCreatedAt) {
+    if (leftCreatedAt !== rightCreatedAt) {
+      if (!leftCreatedAt) {
+        return 1;
+      }
+      if (!rightCreatedAt) {
+        return -1;
+      }
       return leftCreatedAt.localeCompare(rightCreatedAt);
     }
 
