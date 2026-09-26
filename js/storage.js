@@ -1,7 +1,9 @@
 import { DEFAULT_TOURNAMENT_DISPLAY_ORDER } from './tournaments.js';
+import { DEFAULT_PDGA_SETTINGS, extractPdgaEventId, extractPdgaPlayerId, sanitizePdgaSettings } from './pdga.js';
 
-const STORAGE_KEY = 'sfl-pisteytystyokalu:v1';
-const STORAGE_VERSION = 1;
+const STORAGE_KEY = 'sfl-pisteytystyokalu:v2';
+const LEGACY_STORAGE_KEYS = ['sfl-pisteytystyokalu:v1'];
+const STORAGE_VERSION = 2;
 
 export function createEmptyState() {
   return {
@@ -9,6 +11,7 @@ export function createEmptyState() {
     players: [],
     tournaments: [],
     tournamentResults: [],
+    settings: { ...DEFAULT_PDGA_SETTINGS },
     pointsTable: {
       MPO: {},
       FPO: {},
@@ -32,14 +35,15 @@ function sanitizePointsTable(pointsTable = {}) {
 }
 
 function sanitizePlayer(player = {}) {
+  const pdgaNumber = extractPdgaPlayerId(player.pdgaNumber) || extractPdgaPlayerId(player.pdgaProfileUrl);
+
   return {
     id: player.id,
     name: player.name,
     division: player.division,
-    pdgaNumber: player.pdgaNumber,
+    pdgaNumber,
     pdgaRating: player.pdgaRating,
     worldRank: player.worldRank,
-    pdgaProfileUrl: player.pdgaProfileUrl,
     notes: player.notes,
     createdAt: player.createdAt,
     updatedAt: player.updatedAt,
@@ -48,11 +52,15 @@ function sanitizePlayer(player = {}) {
 
 function sanitizeTournament(tournament = {}) {
   const parsedDisplayOrder = Number(tournament.displayOrder);
+  const pdgaEventId =
+    extractPdgaEventId(tournament.pdgaEventId) ||
+    extractPdgaEventId(tournament.pdgaEventUrl) ||
+    extractPdgaEventId(tournament.externalUrl);
 
   return {
     id: tournament.id,
     name: tournament.name,
-    pdgaEventId: tournament.pdgaEventId,
+    pdgaEventId,
     startDate: tournament.startDate,
     endDate: tournament.endDate,
     displayOrder: Number.isInteger(parsedDisplayOrder) && parsedDisplayOrder > 0
@@ -81,8 +89,21 @@ function sanitizeState(candidate = {}) {
     tournamentResults: Array.isArray(candidate.tournamentResults)
       ? candidate.tournamentResults
       : empty.tournamentResults,
+    settings: sanitizePdgaSettings(candidate.settings),
     pointsTable: sanitizePointsTable(candidate.pointsTable),
   };
+}
+
+function hasStateData(state) {
+  return (
+    state.players.length > 0 ||
+    state.tournaments.length > 0 ||
+    state.tournamentResults.length > 0 ||
+    Object.keys(state.pointsTable.MPO).length > 0 ||
+    Object.keys(state.pointsTable.FPO).length > 0 ||
+    state.settings.playerBaseUrl !== DEFAULT_PDGA_SETTINGS.playerBaseUrl ||
+    state.settings.eventBaseUrl !== DEFAULT_PDGA_SETTINGS.eventBaseUrl
+  );
 }
 
 export function loadState() {
@@ -91,16 +112,25 @@ export function loadState() {
     return createEmptyState();
   }
 
-  const raw = storage.getItem(STORAGE_KEY);
-  if (!raw) {
+  const currentRaw = storage.getItem(STORAGE_KEY);
+  const legacyRaw = LEGACY_STORAGE_KEYS.map((key) => storage.getItem(key)).find(Boolean);
+  if (!currentRaw && !legacyRaw) {
     const empty = createEmptyState();
     storage.setItem(STORAGE_KEY, JSON.stringify(empty));
     return empty;
   }
 
   try {
-    const parsed = JSON.parse(raw);
-    return sanitizeState(parsed);
+    const currentState = currentRaw ? sanitizeState(JSON.parse(currentRaw)) : null;
+    const legacyState = legacyRaw ? sanitizeState(JSON.parse(legacyRaw)) : null;
+    const sanitized = (
+      currentState && (!legacyState || hasStateData(currentState) || !hasStateData(legacyState))
+        ? currentState
+        : legacyState
+    ) || createEmptyState();
+
+    storage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+    return sanitized;
   } catch {
     throw new Error('Tallennetun datan lukeminen epäonnistui. Tyhjennä selaintiedot ja lataa sivu uudelleen.');
   }

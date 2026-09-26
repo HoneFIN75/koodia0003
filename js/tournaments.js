@@ -54,6 +54,26 @@ function normalizeOptionalUrl(value, label, fieldName, fieldErrors) {
   }
 }
 
+function normalizeOptionalPositiveInteger(value, label, fieldName, fieldErrors) {
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    return '';
+  }
+
+  if (!/^\d+$/.test(normalized)) {
+    addFieldError(fieldErrors, fieldName, `${label} pitää olla positiivinen kokonaisluku.`);
+    return '';
+  }
+
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    addFieldError(fieldErrors, fieldName, `${label} pitää olla positiivinen kokonaisluku.`);
+    return '';
+  }
+
+  return parsed;
+}
+
 function normalizeMultiplier(multiplierKey) {
   const normalizedKey = normalizeText(multiplierKey);
   if (!normalizedKey) {
@@ -127,6 +147,7 @@ export function validateTournamentInput(input) {
   }
 
   const externalUrl = normalizeOptionalUrl(input.externalUrl, 'Linkki kilpailusivulle', 'externalUrl', fieldErrors);
+  const pdgaEventId = normalizeOptionalPositiveInteger(input.pdgaEventId, 'PDGA-kilpailutunnus', 'pdgaEventId', fieldErrors);
 
   if (Object.keys(fieldErrors).length > 0) {
     throw new TournamentValidationError(fieldErrors);
@@ -134,7 +155,7 @@ export function validateTournamentInput(input) {
 
   return {
     name,
-    pdgaEventId: normalizeText(input.pdgaEventId),
+    pdgaEventId,
     startDate,
     endDate,
     displayOrder,

@@ -17,10 +17,11 @@ Sovellus on Suomen frisbeegolfliiton selainkäyttöinen MVP-työkalu MPO- ja FPO
 1. suomenkielinen responsiivinen sivupohja ja päänavigaatio
 2. pelaajien CRUD-hallinta validointeineen
 3. turnausten CRUD-hallinta validointeineen
-4. keskitetty MPO/FPO-pistetaulukon hallinta
-5. turnaustulosten lisäys, muokkaus ja poisto
-6. ranking kaikille, MPO:lle ja FPO:lle
-7. yhteenveto tilastokorteilla, top 10 -visualisoinnilla ja pelaajakohtaisella tulosnäkymällä
+4. asetussivu yhteisille PDGA-linkkiasetuksille
+5. keskitetty MPO/FPO-pistetaulukon hallinta
+6. turnaustulosten lisäys, muokkaus ja poisto
+7. ranking kaikille, MPO:lle ja FPO:lle
+8. yhteenveto tilastokorteilla, top 10 -visualisoinnilla ja pelaajakohtaisella tulosnäkymällä
 
 ## Tietomalli
 
@@ -32,7 +33,6 @@ Sovellus on Suomen frisbeegolfliiton selainkäyttöinen MVP-työkalu MPO- ja FPO
 - `pdgaNumber`
 - `pdgaRating`
 - `worldRank`
-- `pdgaProfileUrl`
 - `notes`
 - `createdAt`
 - `updatedAt`
@@ -72,6 +72,11 @@ Sovellus on Suomen frisbeegolfliiton selainkäyttöinen MVP-työkalu MPO- ja FPO
 - `createdAt`
 - `updatedAt`
 
+### Settings
+
+- `playerBaseUrl`
+- `eventBaseUrl`
+
 ## Pistelaskennan säännöt
 
 - `turnauspisteet = 1x-peruspisteet × multiplier`
@@ -85,6 +90,7 @@ Sovellus on Suomen frisbeegolfliiton selainkäyttöinen MVP-työkalu MPO- ja FPO
 
 - pelaajalla nimi ja MPO/FPO ovat pakollisia
 - PDGA-numero on yksilöllinen, jos arvo on annettu
+- PDGA-linkit muodostetaan keskitettyjen perusosoitteiden ja tunnusten perusteella
 - turnauksella nimi, alkamispäivä ja multiplier ovat pakollisia
 - multiplier on valittava ennalta määritetyistä vaihtoehdoista
 - päättymispäivä ei voi olla ennen alkamispäivää
