@@ -20,6 +20,7 @@ Tämä linjaus sopii nykyiseen tyhjään staattiseen projektiin ja nykyiseen jul
 - suomenkielinen responsiivinen käyttöliittymä ja päänavigaatio
 - pelaajien CRUD-hallinta (MPO/FPO)
 - turnausten CRUD-hallinta ennalta määritetyillä multiplier-vaihtoehdoilla
+- asetussivu yhteisille PDGA-linkkiasetuksille
 - keskitetty MPO/FPO-pistetaulukkonäkymä ja ylläpito
 - turnaustulosten lisäys, muokkaus ja poisto snapshot-pisteillä
 - ranking kaikille, MPO:lle ja FPO:lle
@@ -35,6 +36,16 @@ Tämä linjaus sopii nykyiseen tyhjään staattiseen projektiin ja nykyiseen jul
   - laskettu turnauspistemäärä
 
 Pisteet haetaan keskitetysti `js/scoring.js`-moduulista. Pistearvoja ei kovakoodata käyttöliittymäkomponentteihin.
+
+## PDGA-asetukset ja tunnukset
+
+- Asetukset-näkymässä hallitaan yhteisiä PDGA-perusosoitteita:
+  - `PDGA-pelaajaosoitteen perus-URL` (oletus `https://www.pdga.com/player/`)
+  - `PDGA-kilpailuosoitteen perus-URL` (oletus `https://www.pdga.com/tour/event/`)
+- Pelaajalle tallennetaan vain PDGA-pelaajatunnus.
+- Turnaukselle tallennetaan vain PDGA-kilpailutunnus.
+- Käyttöliittymä muodostaa PDGA-linkit automaattisesti muodossa `perusosoite + tunnus`.
+- Vanhoista täydellisistä PDGA-osoitteista poimitaan tunnus automaattisesti localStorage-migraatiossa aina kun se on mahdollista.
 
 ## localStorage-rajoitukset
 

@@ -16,6 +16,7 @@ test('creates an MPO player', () => {
   assert.equal(player.pdgaNumber, 12345);
   assert.equal(player.pdgaRating, 1012);
   assert.ok(!Object.hasOwn(player, 'legacyField'));
+  assert.ok(!Object.hasOwn(player, 'pdgaProfileUrl'));
 });
 
 test('creates an FPO player', () => {

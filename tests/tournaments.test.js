@@ -13,6 +13,7 @@ test('creates a tournament without unknown legacy fields', () => {
     multiplierKey: 'fpt',
     startDate: '2026-07-03',
     displayOrder: '7',
+    pdgaEventId: '123456',
     legacyField: 'poistuva arvo',
   });
 
@@ -20,6 +21,7 @@ test('creates a tournament without unknown legacy fields', () => {
   assert.equal(tournament.multiplierKey, 'fpt');
   assert.equal(tournament.multiplier, 1);
   assert.equal(tournament.displayOrder, 7);
+  assert.equal(tournament.pdgaEventId, 123456);
   assert.ok(!Object.hasOwn(tournament, 'legacyField'));
 });
 
@@ -35,6 +37,24 @@ test('rejects empty or invalid display order with field error', () => {
     (error) => {
       assert.ok(error instanceof TournamentValidationError);
       assert.equal(error.fieldErrors.displayOrder, 'Järjestysnumeron pitää olla positiivinen kokonaisluku.');
+      return true;
+    },
+  );
+});
+
+test('rejects invalid PDGA event id', () => {
+  assert.throws(
+    () =>
+      createTournament({
+        name: 'SFL Open',
+        multiplierKey: 'fpt',
+        startDate: '2026-07-03',
+        displayOrder: '7',
+        pdgaEventId: 'abc',
+      }),
+    (error) => {
+      assert.ok(error instanceof TournamentValidationError);
+      assert.equal(error.fieldErrors.pdgaEventId, 'PDGA-kilpailutunnus pitää olla positiivinen kokonaisluku.');
       return true;
     },
   );
