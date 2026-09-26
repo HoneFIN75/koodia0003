@@ -72,11 +72,16 @@ function getTournamentFieldSelector(fieldName) {
   const fieldSelectors = {
     name: '#tournament-name',
     startDate: '#tournament-start-date',
+    endDate: '#tournament-end-date',
     displayOrder: '#tournament-display-order',
+    location: '#tournament-location',
+    venue: '#tournament-venue',
     multiplierKey: '#tournament-multiplier',
     division: '#tournament-division',
     externalUrl: '#tournament-external-url',
-    endDate: '#tournament-end-date',
+    pdgaEventId: '#tournament-pdga-event-id',
+    status: '#tournament-status',
+    notes: '#tournament-notes',
   };
 
   return fieldSelectors[fieldName] || '#tournament-name';
@@ -1181,6 +1186,7 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-open-tournament-dialog]')?.addEventListener('click', () => handlers.openTournamentDialog());
   root.querySelector('[data-reset-tournament-form]')?.addEventListener('click', () => handlers.resetTournamentForm());
   root.querySelector('[data-dismiss-tournament-dialog]')?.addEventListener('click', () => handlers.closeTournamentDialog());
+  root.querySelector('[data-tournament-dialog-backdrop]')?.addEventListener('click', () => handlers.closeTournamentDialog());
   root.querySelector('[data-tournament-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
 
   root.querySelectorAll('[data-edit-tournament]').forEach((button) => {
@@ -1258,6 +1264,8 @@ export function bindUi(root, dataState, uiState, handlers) {
   if (uiState.tournamentDialogOpen && uiState.tournamentFormFocusTarget) {
     root.querySelector(getTournamentFieldSelector(uiState.tournamentFormFocusTarget))?.focus();
     uiState.tournamentFormFocusTarget = '';
+  } else if (uiState.tournamentDialogOpen) {
+    root.querySelector('[data-tournament-dialog-panel]')?.focus();
   } else if (uiState.confirmationDialog) {
     root.querySelector('[data-cancel-confirm-dialog]')?.focus();
   }
