@@ -368,13 +368,11 @@ const handlers = {
 
     dataState.tournaments = dataState.tournaments.filter((entry) => entry.id !== tournamentId);
     dataState.tournamentResults = dataState.tournamentResults.filter((result) => result.tournamentId !== tournamentId);
-    if (uiState.tournamentFormId === tournamentId) {
-      uiState.tournamentDialogOpen = false;
-      uiState.tournamentFormId = null;
-      uiState.tournamentFormErrors = {};
-      uiState.tournamentFormDraft = null;
-      uiState.tournamentFormFocusTarget = '';
-    }
+    uiState.tournamentDialogOpen = false;
+    uiState.tournamentFormId = null;
+    uiState.tournamentFormErrors = {};
+    uiState.tournamentFormDraft = null;
+    uiState.tournamentFormFocusTarget = '';
     if (uiState.selectedTournamentId === tournamentId) {
       uiState.selectedTournamentId = '';
     }

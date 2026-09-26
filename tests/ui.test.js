@@ -378,3 +378,41 @@ test('renderApp shows required tournament delete confirmation dialog copy', () =
   assert.match(root.innerHTML, /data-cancel-confirm-dialog[^>]*>Peruuta<\/button>/);
   assert.match(root.innerHTML, /data-confirm-delete-tournament="tournament-1">Poista turnaus<\/button>/);
 });
+
+test('renderApp shows tournament delete confirmation copy for zero linked results', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Testi Open',
+      pdgaEventId: '',
+      startDate: '2026-07-03',
+      endDate: '',
+      displayOrder: 1,
+      location: 'Helsinki',
+      venue: 'Rata',
+      status: 'Luonnos',
+      multiplierKey: 'fpt',
+      multiplier: 1,
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'tournaments',
+      tournamentDialogOpen: true,
+      tournamentFormId: 'tournament-1',
+      confirmationDialog: { type: 'delete-tournament', tournamentId: 'tournament-1' },
+    }),
+  );
+
+  assert.match(root.innerHTML, /Samalla poistetaan 0 turnaustulosta eikä toimintoa voi peruuttaa\./);
+});
