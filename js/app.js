@@ -15,7 +15,7 @@ const root = document.querySelector('#app');
 
 let dataState = createEmptyState();
 let uiState = {
-  activeView: 'summary',
+  activeView: 'players',
   navOpen: false,
   rankingFilter: 'ALL',
   summaryFilter: 'ALL',
@@ -23,6 +23,10 @@ let uiState = {
   selectedPlayerId: '',
   playerSearch: '',
   playerDivisionFilter: 'ALL',
+  playerSortField: 'name',
+  playerSortDirection: 'asc',
+  playerDialogOpen: false,
+  playerDialogFocusTarget: '',
   playerFormId: null,
   playerFormErrors: {},
   playerFormDraft: null,
@@ -118,6 +122,32 @@ const handlers = {
     uiState.playerDivisionFilter = filter;
     render();
   },
+  setPlayerSortField(sortField) {
+    uiState.playerSortField = sortField === 'pdgaNumber' ? 'pdgaNumber' : 'name';
+    render();
+  },
+  setPlayerSortDirection(sortDirection) {
+    uiState.playerSortDirection = sortDirection === 'desc' ? 'desc' : 'asc';
+    render();
+  },
+  openPlayerDialog() {
+    uiState.activeView = 'players';
+    uiState.playerDialogOpen = true;
+    uiState.playerDialogFocusTarget = 'firstName';
+    uiState.playerFormId = null;
+    uiState.playerFormErrors = {};
+    uiState.playerFormDraft = null;
+    uiState.feedback = null;
+    render();
+  },
+  closePlayerDialog() {
+    uiState.playerDialogOpen = false;
+    uiState.playerDialogFocusTarget = '';
+    uiState.playerFormId = null;
+    uiState.playerFormErrors = {};
+    uiState.playerFormDraft = null;
+    render();
+  },
   viewPlayer(playerId) {
     uiState.activeView = 'players';
     uiState.selectedPlayerId = playerId;
@@ -133,16 +163,17 @@ const handlers = {
         dataState.players = dataState.players.map((player) =>
           player.id === values.id ? updatePlayer(dataState.players, values.id, values) : player,
         );
-        uiState.playerFormId = null;
         uiState.selectedPlayerId = values.id;
-        persistAndRender('Pelaajan tiedot päivitettiin.');
       } else {
         const newPlayer = createPlayer(dataState.players, values);
         dataState.players = [...dataState.players, newPlayer];
         uiState.summaryPlayerId = newPlayer.id;
         uiState.selectedPlayerId = newPlayer.id;
-        persistAndRender('Pelaaja lisättiin.');
       }
+      uiState.playerDialogOpen = false;
+      uiState.playerDialogFocusTarget = '';
+      uiState.playerFormId = null;
+      persistAndRender('Pelaajan tiedot tallennettu onnistuneesti.');
     } catch (error) {
       if (error?.fieldErrors) {
         uiState.playerFormErrors = error.fieldErrors;
@@ -155,6 +186,8 @@ const handlers = {
     }
   },
   resetPlayerForm() {
+    uiState.playerDialogOpen = false;
+    uiState.playerDialogFocusTarget = '';
     uiState.playerFormId = null;
     uiState.playerFormErrors = {};
     uiState.playerFormDraft = null;
@@ -162,6 +195,8 @@ const handlers = {
   },
   editPlayer(playerId) {
     uiState.activeView = 'players';
+    uiState.playerDialogOpen = true;
+    uiState.playerDialogFocusTarget = 'firstName';
     uiState.playerFormId = playerId;
     uiState.selectedPlayerId = playerId;
     uiState.playerFormErrors = {};
@@ -192,6 +227,8 @@ const handlers = {
     try {
       dataState.players = removePlayer(dataState.players, playerId);
       if (uiState.playerFormId === playerId) {
+        uiState.playerDialogOpen = false;
+        uiState.playerDialogFocusTarget = '';
         uiState.playerFormId = null;
         uiState.playerFormErrors = {};
         uiState.playerFormDraft = null;

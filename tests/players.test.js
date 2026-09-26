@@ -7,17 +7,21 @@ import {
   removePlayer,
   canRequestPlayerDeletion,
   PlayerValidationError,
+  getVisiblePlayers,
 } from '../js/players.js';
 
 test('creates an MPO player', () => {
   const player = createPlayer([], {
-    name: 'Matti Meikäläinen',
+    firstName: 'Matti',
+    lastName: 'Meikäläinen',
     division: 'MPO',
     pdgaNumber: '12345',
     pdgaRating: '1012',
     legacyField: 'poistuva arvo',
   });
 
+  assert.equal(player.firstName, 'Matti');
+  assert.equal(player.lastName, 'Meikäläinen');
   assert.equal(player.name, 'Matti Meikäläinen');
   assert.equal(player.division, 'MPO');
   assert.equal(player.pdgaNumber, 12345);
@@ -28,8 +32,10 @@ test('creates an MPO player', () => {
 
 test('creates an FPO player', () => {
   const player = createPlayer([], {
-    name: 'Maija Mallikas',
+    firstName: 'Maija',
+    lastName: 'Mallikas',
     division: 'FPO',
+    pdgaNumber: '9876',
     worldRank: '12',
   });
 
@@ -40,7 +46,8 @@ test('creates an FPO player', () => {
 
 test('updates a player', () => {
   const created = createPlayer([], {
-    name: 'Alkuperäinen Pelaaja',
+    firstName: 'Alkuperäinen',
+    lastName: 'Pelaaja',
     division: 'MPO',
     pdgaNumber: '501',
   });
@@ -48,7 +55,8 @@ test('updates a player', () => {
 
   const updated = updatePlayer([existingPlayer], existingPlayer.id, {
     ...existingPlayer,
-    name: 'Päivitetty Pelaaja',
+    firstName: 'Päivitetty',
+    lastName: 'Pelaaja',
     division: 'FPO',
     pdgaNumber: '601',
   });
@@ -59,17 +67,22 @@ test('updates a player', () => {
   assert.notEqual(updated.updatedAt, existingPlayer.updatedAt);
 });
 
-test('validates required name', () => {
+test('validates required first and last names', () => {
   assert.throws(
     () =>
       validatePlayerInput(
         {
-          name: '',
+          firstName: '',
+          lastName: '',
           division: 'MPO',
+          pdgaNumber: '123',
         },
         [],
       ),
-    (error) => error instanceof PlayerValidationError && error.fieldErrors.name === 'Pelaajan nimi on pakollinen.',
+    (error) =>
+      error instanceof PlayerValidationError &&
+      error.fieldErrors.firstName === 'Etunimi on pakollinen.' &&
+      error.fieldErrors.lastName === 'Sukunimi on pakollinen.',
   );
 });
 
@@ -78,7 +91,8 @@ test('rejects invalid PDGA number', () => {
     () =>
       validatePlayerInput(
         {
-          name: 'Virheellinen Pelaaja',
+          firstName: 'Virheellinen',
+          lastName: 'Pelaaja',
           division: 'MPO',
           pdgaNumber: '0',
         },
@@ -90,9 +104,26 @@ test('rejects invalid PDGA number', () => {
   );
 });
 
+test('requires PDGA number', () => {
+  assert.throws(
+    () =>
+      validatePlayerInput(
+        {
+          firstName: 'Puuttuva',
+          lastName: 'PDGA',
+          division: 'MPO',
+          pdgaNumber: '',
+        },
+        [],
+      ),
+    (error) => error instanceof PlayerValidationError && error.fieldErrors.pdgaNumber === 'PDGA-numero on pakollinen.',
+  );
+});
+
 test('prevents duplicate PDGA numbers', () => {
   const existingPlayer = createPlayer([], {
-    name: 'Ensimmäinen Pelaaja',
+    firstName: 'Ensimmäinen',
+    lastName: 'Pelaaja',
     division: 'MPO',
     pdgaNumber: '111',
   });
@@ -100,7 +131,8 @@ test('prevents duplicate PDGA numbers', () => {
   assert.throws(
     () =>
       createPlayer([existingPlayer], {
-        name: 'Toinen Pelaaja',
+        firstName: 'Toinen',
+        lastName: 'Pelaaja',
         division: 'FPO',
         pdgaNumber: '111',
       }),
@@ -112,12 +144,16 @@ test('prevents duplicate PDGA numbers', () => {
 
 test('removes a player', () => {
   const firstPlayer = createPlayer([], {
-    name: 'Poistettava Pelaaja',
+    firstName: 'Poistettava',
+    lastName: 'Pelaaja',
     division: 'MPO',
+    pdgaNumber: '1111',
   });
   const secondPlayer = createPlayer([firstPlayer], {
-    name: 'Säilyvä Pelaaja',
+    firstName: 'Säilyvä',
+    lastName: 'Pelaaja',
     division: 'FPO',
+    pdgaNumber: '2222',
   });
 
   const remainingPlayers = removePlayer([firstPlayer, secondPlayer], firstPlayer.id);
@@ -130,4 +166,17 @@ test('allows delete request only for the player currently being edited', () => {
   assert.equal(canRequestPlayerDeletion('player-1', 'player-1'), true);
   assert.equal(canRequestPlayerDeletion('player-2', 'player-1'), false);
   assert.equal(canRequestPlayerDeletion(null, 'player-1'), false);
+});
+
+test('sorts players by selected field and direction', () => {
+  const players = [
+    createPlayer([], { firstName: 'B', lastName: 'Player', division: 'MPO', pdgaNumber: '20' }),
+    createPlayer([], { firstName: 'A', lastName: 'Player', division: 'MPO', pdgaNumber: '10' }),
+  ];
+
+  const byNameDesc = getVisiblePlayers(players, { sortField: 'name', sortDirection: 'desc' });
+  const byPdgaAsc = getVisiblePlayers(players, { sortField: 'pdgaNumber', sortDirection: 'asc' });
+
+  assert.equal(byNameDesc[0].name, 'B Player');
+  assert.equal(byPdgaAsc[0].pdgaNumber, 10);
 });
