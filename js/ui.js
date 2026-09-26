@@ -492,7 +492,6 @@ function renderPlayerSection(dataState, uiState) {
                 <div class="inline-actions">
                   ${selectedPlayerPdgaUrl ? renderLinkButton(selectedPlayerPdgaUrl, 'PDGA', 'Avaa pelaajan PDGA-profiili uudessa välilehdessä') : ''}
                   <button type="button" class="secondary-button" data-edit-player="${escapeHtml(selectedPlayer.id)}">Muokkaa</button>
-                  <button type="button" class="danger-button" data-delete-player="${escapeHtml(selectedPlayer.id)}">Poista</button>
                 </div>
               `
               : ''
@@ -573,6 +572,7 @@ function renderPlayerSection(dataState, uiState) {
             <div class="form-actions">
               <button type="submit" class="button">${editingPlayer ? 'Tallenna muutokset' : 'Lisää pelaaja'}</button>
               <button type="button" class="secondary-button" data-reset-player-form>${editingPlayer ? 'Peruuta muokkaus' : 'Tyhjennä lomake'}</button>
+              ${editingPlayer ? `<button type="button" class="danger-button" data-delete-player="${escapeHtml(editingPlayer.id)}">Poista pelaaja</button>` : ''}
             </div>
           </form>
         </article>
@@ -638,7 +638,6 @@ function renderPlayerSection(dataState, uiState) {
                                 <div class="table-actions">
                                   <button type="button" class="ghost-button" data-view-player="${escapeHtml(player.id)}">Avaa tiedot</button>
                                   <button type="button" class="secondary-button" data-edit-player="${escapeHtml(player.id)}">Muokkaa</button>
-                                  <button type="button" class="danger-button" data-delete-player="${escapeHtml(player.id)}">Poista</button>
                                 </div>
                               </td>
                             </tr>
@@ -1179,7 +1178,8 @@ function renderConfirmationDialog(dataState, uiState) {
           <div>
             <h2 id="confirm-dialog-title">Poista pelaaja</h2>
             <p id="confirm-dialog-description" class="section-subtitle">
-              Haluatko varmasti poistaa pelaajan ${escapeHtml(player.name)}? Samalla poistuvat kaikki pelaajan turnaustulokset.
+              Haluatko varmasti poistaa pelaajan ${escapeHtml(player.name)}?<br />
+              Toimintoa ei voi peruuttaa.
             </p>
           </div>
         </div>
