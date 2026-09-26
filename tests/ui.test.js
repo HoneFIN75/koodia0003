@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createEmptyState } from '../js/storage.js';
-import { renderApp } from '../js/ui.js';
+import { bindUi, renderApp } from '../js/ui.js';
 
 function createRootStub() {
   return {
@@ -10,6 +10,64 @@ function createRootStub() {
       return null;
     },
   };
+}
+
+function createFocusableElement() {
+  return {
+    listeners: {},
+    dataset: {},
+    addEventListener(eventName, handler) {
+      this.listeners[eventName] = handler;
+    },
+    focus() {
+      global.document.activeElement = this;
+    },
+    getAttribute() {
+      return null;
+    },
+    hasAttribute() {
+      return false;
+    },
+    querySelectorAll() {
+      return [];
+    },
+  };
+}
+
+function createInteractiveRoot(selectors = {}) {
+  return {
+    __dialogKeydownHandler: null,
+    querySelector(selector) {
+      return selectors[selector] || null;
+    },
+    querySelectorAll() {
+      return [];
+    },
+  };
+}
+
+function installDocumentStub() {
+  const originalDocument = global.document;
+  global.document = {
+    activeElement: null,
+    addEventListener() {},
+    removeEventListener() {},
+  };
+
+  return () => {
+    global.document = originalDocument;
+  };
+}
+
+function createNoopHandlers() {
+  return new Proxy(
+    {},
+    {
+      get() {
+        return () => {};
+      },
+    },
+  );
 }
 
 function createUiState(overrides = {}) {
@@ -36,6 +94,11 @@ function createUiState(overrides = {}) {
     tournamentFormErrors: {},
     tournamentFormDraft: null,
     tournamentFormFocusTarget: '',
+    tournamentSearch: '',
+    tournamentStatusFilter: 'ALL',
+    tournamentSortField: 'startDate',
+    tournamentSortDirection: 'asc',
+    pendingFocusSelector: '',
     selectedTournamentId: '',
     resultFormId: null,
     pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
@@ -242,4 +305,269 @@ test('renderApp shows required player delete confirmation dialog copy', () => {
   assert.match(root.innerHTML, /Haluatko varmasti poistaa pelaajan Testi Pelaaja\?<br \/>\s*Toimintoa ei voi peruuttaa\./);
   assert.match(root.innerHTML, /data-cancel-confirm-dialog[^>]*>Peruuta<\/button>/);
   assert.match(root.innerHTML, /data-confirm-delete-player="player-1">Poista pelaaja<\/button>/);
+});
+
+test('renderApp shows tournament table with required column order and PDGA name link', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.settings = {
+    playerBaseUrl: 'https://example.com/player/',
+    eventBaseUrl: 'https://example.com/event/',
+  };
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Finnish Nationals 2027',
+      pdgaEventId: 123456,
+      startDate: '2027-07-03',
+      endDate: '2027-07-06',
+      displayOrder: 1,
+      location: 'Lahti',
+      venue: 'Mukkula',
+      status: 'Vahvistettu',
+      multiplierKey: 'fpt',
+      multiplier: 1,
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(root, dataState, createUiState({ activeView: 'tournaments' }));
+
+  assert.match(root.innerHTML, /data-open-tournament-dialog>Lisää turnaus<\/button>/);
+  assert.match(
+    root.innerHTML,
+    /<th>Turnauksen nimi<\/th>\s*<th>Status<\/th>\s*<th>Multiplier<\/th>\s*<th>PDGA Event ID<\/th>\s*<th>Alkamispäivä<\/th>\s*<th>Päättymispäivä<\/th>\s*<th>Paikkakunta<\/th>\s*<th>Rata<\/th>\s*<th>Muokkaa<\/th>/,
+  );
+  assert.match(root.innerHTML, /href="https:\/\/example\.com\/event\/123456"/);
+  assert.match(root.innerHTML, /target="_blank"/);
+  assert.match(root.innerHTML, /rel="noopener noreferrer"/);
+  assert.match(root.innerHTML, /data-edit-tournament="tournament-1">Muokkaa<\/button>/);
+  assert.doesNotMatch(root.innerHTML, /data-delete-tournament="tournament-1">Poista turnaus<\/button>/);
+});
+
+test('renderApp shows shared tournament modal and delete action only in edit mode', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Testi Open',
+      pdgaEventId: 123456,
+      startDate: '2026-07-03',
+      endDate: '',
+      displayOrder: 1,
+      location: 'Helsinki',
+      venue: 'Rata',
+      status: 'Luonnos',
+      multiplierKey: 'fpt',
+      multiplier: 1,
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(root, dataState, createUiState({ activeView: 'tournaments', tournamentDialogOpen: true, tournamentFormId: 'tournament-1' }));
+
+  assert.match(root.innerHTML, /<h2 id="tournament-dialog-title">Muokkaa turnausta<\/h2>/);
+  assert.match(root.innerHTML, /data-delete-tournament="tournament-1">Poista turnaus<\/button>/);
+
+  renderApp(root, dataState, createUiState({ activeView: 'tournaments', tournamentDialogOpen: true, tournamentFormId: null }));
+  assert.match(root.innerHTML, /<h2 id="tournament-dialog-title">Lisää turnaus<\/h2>/);
+  assert.doesNotMatch(root.innerHTML, /data-delete-tournament="tournament-1">Poista turnaus<\/button>/);
+});
+
+test('renderApp shows required tournament delete confirmation dialog copy', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Testi Open',
+      pdgaEventId: 123456,
+      startDate: '2026-07-03',
+      endDate: '',
+      displayOrder: 1,
+      location: 'Helsinki',
+      venue: 'Rata',
+      status: 'Luonnos',
+      multiplierKey: 'fpt',
+      multiplier: 1,
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournamentResults = [
+    {
+      id: 'result-1',
+      tournamentId: 'tournament-1',
+      playerId: 'player-1',
+      place: 1,
+      basePointsSnapshot: 100,
+      multiplierSnapshot: 1,
+      calculatedPoints: 100,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'tournaments',
+      tournamentDialogOpen: true,
+      tournamentFormId: 'tournament-1',
+      confirmationDialog: { type: 'delete-tournament', tournamentId: 'tournament-1' },
+    }),
+  );
+
+  assert.match(root.innerHTML, /<h2 id="confirm-dialog-title">Poista turnaus<\/h2>/);
+  assert.match(root.innerHTML, /Haluatko varmasti poistaa turnauksen Testi Open\?<br \/>\s*Samalla poistetaan 1 turnaustulosta eikä toimintoa voi peruuttaa\./);
+  assert.match(root.innerHTML, /data-cancel-confirm-dialog[^>]*>Peruuta<\/button>/);
+  assert.match(root.innerHTML, /data-confirm-delete-tournament="tournament-1">Poista turnaus<\/button>/);
+});
+
+test('renderApp shows tournament delete confirmation copy for zero linked results', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Testi Open',
+      pdgaEventId: '',
+      startDate: '2026-07-03',
+      endDate: '',
+      displayOrder: 1,
+      location: 'Helsinki',
+      venue: 'Rata',
+      status: 'Luonnos',
+      multiplierKey: 'fpt',
+      multiplier: 1,
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'tournaments',
+      tournamentDialogOpen: true,
+      tournamentFormId: 'tournament-1',
+      confirmationDialog: { type: 'delete-tournament', tournamentId: 'tournament-1' },
+    }),
+  );
+
+  assert.match(root.innerHTML, /Samalla poistetaan 0 turnaustulosta eikä toimintoa voi peruuttaa\./);
+});
+
+test('renderApp shows tournament delete confirmation copy for multiple linked results', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Testi Open',
+      pdgaEventId: '',
+      startDate: '2026-07-03',
+      endDate: '',
+      displayOrder: 1,
+      location: 'Helsinki',
+      venue: 'Rata',
+      status: 'Luonnos',
+      multiplierKey: 'fpt',
+      multiplier: 1,
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournamentResults = [
+    {
+      id: 'result-1',
+      tournamentId: 'tournament-1',
+      playerId: 'player-1',
+      place: 1,
+      basePointsSnapshot: 100,
+      multiplierSnapshot: 1,
+      calculatedPoints: 100,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+    {
+      id: 'result-2',
+      tournamentId: 'tournament-1',
+      playerId: 'player-2',
+      place: 2,
+      basePointsSnapshot: 90,
+      multiplierSnapshot: 1,
+      calculatedPoints: 90,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'tournaments',
+      tournamentDialogOpen: true,
+      tournamentFormId: 'tournament-1',
+      confirmationDialog: { type: 'delete-tournament', tournamentId: 'tournament-1' },
+    }),
+  );
+
+  assert.match(root.innerHTML, /Samalla poistetaan 2 turnaustulosta eikä toimintoa voi peruuttaa\./);
+});
+
+test('bindUi moves focus into the tournament dialog field', () => {
+  const restoreDocument = installDocumentStub();
+  const tournamentNameField = createFocusableElement();
+  const root = createInteractiveRoot({
+    '#tournament-name': tournamentNameField,
+  });
+  const uiState = createUiState({
+    tournamentDialogOpen: true,
+    tournamentFormFocusTarget: 'name',
+  });
+
+  bindUi(root, createEmptyState(), uiState, createNoopHandlers());
+
+  assert.equal(global.document.activeElement, tournamentNameField);
+  assert.equal(uiState.tournamentFormFocusTarget, '');
+  restoreDocument();
+});
+
+test('bindUi restores focus to the pending control after confirmation dialog closes', () => {
+  const restoreDocument = installDocumentStub();
+  const deleteButton = createFocusableElement();
+  const root = createInteractiveRoot({
+    '[data-delete-tournament="tournament-1"]': deleteButton,
+  });
+  const uiState = createUiState({
+    pendingFocusSelector: '[data-delete-tournament="tournament-1"]',
+  });
+
+  bindUi(root, createEmptyState(), uiState, createNoopHandlers());
+
+  assert.equal(global.document.activeElement, deleteButton);
+  assert.equal(uiState.pendingFocusSelector, '');
+  restoreDocument();
 });

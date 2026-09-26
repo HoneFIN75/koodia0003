@@ -1,5 +1,5 @@
 import { DIVISIONS, getVisiblePlayers } from './players.js';
-import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, MULTIPLIER_OPTIONS, sortTournaments } from './tournaments.js';
+import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, MULTIPLIER_OPTIONS, sortTournaments, filterAndSortTournaments } from './tournaments.js';
 import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS } from './pdga.js';
 import { listPointsTableEntries, getBasePoints } from './scoring.js';
 import { buildRanking, getTopRanking, getPlayerResults } from './ranking.js';
@@ -123,6 +123,40 @@ function getTournamentFieldSelector(fieldName) {
   };
 
   return fieldSelectors[fieldName] || '#tournament-name';
+}
+
+function getFocusableElements(container) {
+  if (!container) {
+    return [];
+  }
+
+  return [...container.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter(
+    (element) => !element.hasAttribute('hidden') && element.getAttribute('aria-hidden') !== 'true',
+  );
+}
+
+function trapFocusInDialog(event, dialogPanel) {
+  if (event.key !== 'Tab') {
+    return;
+  }
+
+  const focusableElements = getFocusableElements(dialogPanel);
+  if (!focusableElements.length) {
+    event.preventDefault();
+    dialogPanel?.focus();
+    return;
+  }
+
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+
+  if (event.shiftKey && document.activeElement === firstElement) {
+    event.preventDefault();
+    lastElement.focus();
+  } else if (!event.shiftKey && document.activeElement === lastElement) {
+    event.preventDefault();
+    firstElement.focus();
+  }
 }
 
 function renderLinkButton(url, label, ariaLabel = '') {
@@ -714,6 +748,19 @@ function renderPlayerDialog(dataState, uiState) {
 
 function renderTournamentSection(dataState, uiState) {
   const orderedTournaments = sortTournaments(dataState.tournaments);
+  const visibleTournaments = filterAndSortTournaments(dataState.tournaments, {
+    search: uiState.tournamentSearch,
+    status: uiState.tournamentStatusFilter,
+    sortField: uiState.tournamentSortField,
+    sortDirection: uiState.tournamentSortDirection,
+  });
+  const tournamentResultCounts = dataState.tournamentResults.reduce((counts, result) => {
+    counts[result.tournamentId] = (counts[result.tournamentId] || 0) + 1;
+    return counts;
+  }, {});
+  const availableStatuses = [...new Set(dataState.tournaments.map((tournament) => tournament.status).filter(Boolean))].sort((left, right) =>
+    left.localeCompare(right, 'fi', { sensitivity: 'base' }),
+  );
   const selectedTournament = dataState.tournaments.find((tournament) => tournament.id === uiState.selectedTournamentId) || null;
   const editingResult = dataState.tournamentResults.find((result) => result.id === uiState.resultFormId) || null;
   const tournamentResults = selectedTournament
@@ -734,60 +781,122 @@ function renderTournamentSection(dataState, uiState) {
       <div class="section-heading">
         <div>
           <h2 id="tournaments-title">Turnaukset</h2>
-          <p class="section-subtitle">Turnaukset ovat tämän näkymän pääsisältö. Järjestys määräytyy järjestysnumeron, päivämäärän ja lopuksi luontiajan perusteella.</p>
+          <p class="section-subtitle">Hallinnoi turnauksia, avaa PDGA-linkit ja päivitä tulokset poistumatta tältä sivulta.</p>
         </div>
         <button type="button" class="button" data-open-tournament-dialog>Lisää turnaus</button>
       </div>
-      ${
-        orderedTournaments.length
-          ? `
-            <div class="tournament-grid">
-              ${orderedTournaments
-                .map((tournament) => {
-                  const resultCount = dataState.tournamentResults.filter((result) => result.tournamentId === tournament.id).length;
-                  const pdgaEventUrl = buildPdgaEventUrl(dataState.settings, tournament);
-                  return `
-                    <article class="card tournament-card${selectedTournament?.id === tournament.id ? ' tournament-card-selected' : ''}">
-                      <div class="tournament-card-head">
-                        <div>
-                          <div class="eyebrow">Järjestys ${formatNumber(tournament.displayOrder || DEFAULT_TOURNAMENT_DISPLAY_ORDER)}</div>
-                          <h3>${escapeHtml(tournament.name)}</h3>
-                          <p class="section-subtitle">${formatDate(tournament.startDate)} · ${escapeHtml(tournament.division || 'MPO/FPO')}</p>
-                        </div>
-                        <span class="status-chip">${formatNumber(resultCount)} tulosta</span>
-                      </div>
-                      <div class="badge-row">
-                        <span class="badge">${formatNumber(tournament.multiplier)}x multiplier</span>
-                        <span class="badge">${escapeHtml(tournament.location || 'Paikkakunta puuttuu')}</span>
-                      </div>
-                      <dl class="tournament-meta-list">
-                        <div><dt>Kilpailupaikka</dt><dd>${escapeHtml(tournament.venue || '—')}</dd></div>
-                        <div><dt>Linkki</dt><dd>${
-                          tournament.externalUrl
-                            ? `<a href="${escapeHtml(tournament.externalUrl)}" target="_blank" rel="noopener noreferrer">Avaa kilpailusivu</a>`
-                            : '—'
-                        }</dd></div>
-                        <div><dt>PDGA</dt><dd>${renderLinkButton(pdgaEventUrl, 'Avaa PDGA')}</dd></div>
-                      </dl>
-                      ${
-                        tournament.notes
-                          ? `<p class="tournament-description">${escapeHtml(tournament.notes)}</p>`
-                          : '<p class="tournament-description muted">Kuvausta ei ole lisätty.</p>'
-                      }
-                      <div class="table-actions">
-                        ${pdgaEventUrl ? renderLinkButton(pdgaEventUrl, 'PDGA', 'Avaa turnauksen PDGA-sivu uudessa välilehdessä') : ''}
-                        <button type="button" class="secondary-button" data-select-tournament="${escapeHtml(tournament.id)}">Tulokset</button>
-                        <button type="button" class="secondary-button" data-edit-tournament="${escapeHtml(tournament.id)}">Muokkaa</button>
-                        <button type="button" class="danger-button" data-delete-tournament="${escapeHtml(tournament.id)}">Poista</button>
-                      </div>
-                    </article>
-                  `;
-                })
+      <article class="panel">
+        <div class="section-heading">
+          <div>
+            <h3>Turnauslista</h3>
+            <p class="section-subtitle">Listaa voi suodattaa nimen, statuksen, paikkakunnan ja radan perusteella.</p>
+          </div>
+        </div>
+        <div class="form-grid compact-grid">
+          <div class="form-field full-width">
+            <label for="tournament-search">Haku</label>
+            <input
+              id="tournament-search"
+              data-tournament-search
+              value="${escapeHtml(uiState.tournamentSearch || '')}"
+              placeholder="Hae nimellä, statuksella, paikkakunnalla tai radalla"
+            />
+          </div>
+          <div class="form-field">
+            <label for="tournament-status-filter">Status</label>
+            <select id="tournament-status-filter" data-tournament-status-filter>
+              <option value="ALL">Kaikki statukset</option>
+              ${availableStatuses
+                .map(
+                  (status) =>
+                    `<option value="${escapeHtml(status)}" ${uiState.tournamentStatusFilter === status ? 'selected' : ''}>${escapeHtml(status)}</option>`,
+                )
                 .join('')}
-            </div>
-          `
-          : renderEmptyState('Turnauksia ei ole vielä lisätty.')
-      }
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="tournament-sort-field">Lajittelu</label>
+            <select id="tournament-sort-field" data-tournament-sort-field>
+              <option value="name" ${uiState.tournamentSortField === 'name' ? 'selected' : ''}>Turnauksen nimi</option>
+              <option value="status" ${uiState.tournamentSortField === 'status' ? 'selected' : ''}>Status</option>
+              <option value="startDate" ${uiState.tournamentSortField === 'startDate' ? 'selected' : ''}>Alkamispäivä</option>
+              <option value="endDate" ${uiState.tournamentSortField === 'endDate' ? 'selected' : ''}>Päättymispäivä</option>
+              <option value="location" ${uiState.tournamentSortField === 'location' ? 'selected' : ''}>Paikkakunta</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label for="tournament-sort-direction">Järjestys</label>
+            <select id="tournament-sort-direction" data-tournament-sort-direction>
+              <option value="asc" ${uiState.tournamentSortDirection === 'asc' ? 'selected' : ''}>Nouseva</option>
+              <option value="desc" ${uiState.tournamentSortDirection === 'desc' ? 'selected' : ''}>Laskeva</option>
+            </select>
+          </div>
+        </div>
+        ${
+          orderedTournaments.length
+            ? visibleTournaments.length
+              ? `
+                <div class="table-wrap">
+                  <table class="table tournaments-table">
+                    <thead>
+                      <tr>
+                        <th>Turnauksen nimi</th>
+                        <th>Status</th>
+                        <th>Multiplier</th>
+                        <th>PDGA Event ID</th>
+                        <th>Alkamispäivä</th>
+                        <th>Päättymispäivä</th>
+                        <th>Paikkakunta</th>
+                        <th>Rata</th>
+                        <th>Muokkaa</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${visibleTournaments
+                        .map((tournament) => {
+                          const pdgaEventUrl = buildPdgaEventUrl(dataState.settings, tournament);
+                          const resultCount = tournamentResultCounts[tournament.id] || 0;
+                          return `
+                            <tr${selectedTournament?.id === tournament.id ? ' class="is-selected"' : ''}>
+                              <td data-label="Turnauksen nimi">
+                                <div class="stack-sm">
+                                  ${
+                                    pdgaEventUrl
+                                      ? `<a class="tournament-name-link" href="${escapeHtml(pdgaEventUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(tournament.name)}</a>`
+                                      : `<span class="tournament-name-text">${escapeHtml(tournament.name)}</span>`
+                                  }
+                                  <div class="inline-actions">
+                                    <button type="button" class="secondary-button" data-select-tournament="${escapeHtml(tournament.id)}">Tulokset (${formatNumber(resultCount)})</button>
+                                    ${
+                                      selectedTournament?.id === tournament.id
+                                        ? '<span class="badge" aria-label="Valittu turnaus tulosten hallintaan">Valittuna tuloksiin</span>'
+                                        : ''
+                                    }
+                                  </div>
+                                </div>
+                              </td>
+                              <td data-label="Status">${escapeHtml(renderValueOrDash(tournament.status))}</td>
+                              <td data-label="Multiplier">${formatNumber(tournament.multiplier)}x</td>
+                              <td data-label="PDGA Event ID">${escapeHtml(renderValueOrDash(tournament.pdgaEventId))}</td>
+                              <td data-label="Alkamispäivä">${formatDate(tournament.startDate)}</td>
+                              <td data-label="Päättymispäivä">${formatDate(tournament.endDate)}</td>
+                              <td data-label="Paikkakunta">${escapeHtml(renderValueOrDash(tournament.location))}</td>
+                              <td data-label="Rata">${escapeHtml(renderValueOrDash(tournament.venue))}</td>
+                              <td data-label="Muokkaa">
+                                <button type="button" class="secondary-button" data-edit-tournament="${escapeHtml(tournament.id)}">Muokkaa</button>
+                              </td>
+                            </tr>
+                          `;
+                        })
+                        .join('')}
+                    </tbody>
+                  </table>
+                </div>
+              `
+              : renderEmptyState('Yhtään hakua vastaavaa turnausta ei löytynyt.')
+            : renderEmptyState('Turnauksia ei ole vielä lisätty.')
+        }
+      </article>
       <article class="panel">
         <div class="section-heading">
           <div>
@@ -1042,6 +1151,19 @@ function renderTournamentDialog(dataState, uiState) {
             <button type="button" class="secondary-button" data-reset-tournament-form>Tyhjennä lomake</button>
             <button type="button" class="ghost-button" data-dismiss-tournament-dialog>Peruuta</button>
           </div>
+          ${
+            editingTournament
+              ? `
+                <div class="danger-zone" aria-labelledby="tournament-delete-title">
+                  <div>
+                    <h3 id="tournament-delete-title">Poista turnaus</h3>
+                    <p class="section-subtitle">Poisto poistaa myös kaikki turnaukselle tallennetut tulokset. Toimintoa ei voi peruuttaa.</p>
+                  </div>
+                  <button type="button" class="danger-button" data-delete-tournament="${escapeHtml(editingTournament.id)}">Poista turnaus</button>
+                </div>
+              `
+              : ''
+          }
         </form>
       </div>
     </div>
@@ -1218,30 +1340,62 @@ function renderPointsSection(dataState, uiState) {
 }
 
 function renderConfirmationDialog(dataState, uiState) {
-  if (uiState.confirmationDialog?.type !== 'delete-player') {
+  if (!uiState.confirmationDialog) {
     return '';
   }
 
-  const player = dataState.players.find((entry) => entry.id === uiState.confirmationDialog.playerId);
-  if (!player) {
+  if (uiState.confirmationDialog.type === 'delete-player') {
+    const player = dataState.players.find((entry) => entry.id === uiState.confirmationDialog.playerId);
+    if (!player) {
+      return '';
+    }
+
+    return `
+      <div class="dialog-backdrop" data-close-confirm-dialog>
+        <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
+          <div class="section-heading">
+            <div>
+              <h2 id="confirm-dialog-title">Poista pelaaja</h2>
+              <p id="confirm-dialog-description" class="section-subtitle">
+                Haluatko varmasti poistaa pelaajan ${escapeHtml(player.name)}?<br />
+                Toimintoa ei voi peruuttaa.
+              </p>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
+            <button type="button" class="danger-button" data-confirm-delete-player="${escapeHtml(player.id)}">Poista pelaaja</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (uiState.confirmationDialog.type !== 'delete-tournament') {
     return '';
   }
 
+  const tournament = dataState.tournaments.find((entry) => entry.id === uiState.confirmationDialog.tournamentId);
+  if (!tournament) {
+    return '';
+  }
+
+  const resultCount = dataState.tournamentResults.filter((result) => result.tournamentId === tournament.id).length;
   return `
     <div class="dialog-backdrop" data-close-confirm-dialog>
-      <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel>
+      <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
         <div class="section-heading">
           <div>
-            <h2 id="confirm-dialog-title">Poista pelaaja</h2>
+            <h2 id="confirm-dialog-title">Poista turnaus</h2>
             <p id="confirm-dialog-description" class="section-subtitle">
-              Haluatko varmasti poistaa pelaajan ${escapeHtml(player.name)}?<br />
-              Toimintoa ei voi peruuttaa.
+              Haluatko varmasti poistaa turnauksen ${escapeHtml(tournament.name)}?<br />
+              Samalla poistetaan ${formatNumber(resultCount)} turnaustulosta eikä toimintoa voi peruuttaa.
             </p>
           </div>
         </div>
         <div class="form-actions">
           <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
-          <button type="button" class="danger-button" data-confirm-delete-player="${escapeHtml(player.id)}">Poista pelaaja</button>
+          <button type="button" class="danger-button" data-confirm-delete-tournament="${escapeHtml(tournament.id)}">Poista turnaus</button>
         </div>
       </div>
     </div>
@@ -1369,8 +1523,24 @@ export function bindUi(root, dataState, uiState, handlers) {
     button.addEventListener('click', () => handlers.editTournament(button.dataset.editTournament));
   });
 
+  root.querySelector('[data-tournament-search]')?.addEventListener('input', (event) => {
+    handlers.setTournamentSearch(event.target.value);
+  });
+
+  root.querySelector('[data-tournament-status-filter]')?.addEventListener('change', (event) => {
+    handlers.setTournamentStatusFilter(event.target.value);
+  });
+
+  root.querySelector('[data-tournament-sort-field]')?.addEventListener('change', (event) => {
+    handlers.setTournamentSortField(event.target.value);
+  });
+
+  root.querySelector('[data-tournament-sort-direction]')?.addEventListener('change', (event) => {
+    handlers.setTournamentSortDirection(event.target.value);
+  });
+
   root.querySelectorAll('[data-delete-tournament]').forEach((button) => {
-    button.addEventListener('click', () => handlers.deleteTournament(button.dataset.deleteTournament));
+    button.addEventListener('click', () => handlers.requestDeleteTournament(button.dataset.deleteTournament));
   });
 
   root.querySelectorAll('[data-select-tournament]').forEach((button) => {
@@ -1421,6 +1591,7 @@ export function bindUi(root, dataState, uiState, handlers) {
   });
   root.querySelector('[data-cancel-confirm-dialog]')?.addEventListener('click', () => handlers.closeConfirmationDialog());
   root.querySelector('[data-confirm-delete-player]')?.addEventListener('click', () => handlers.confirmDeletePlayer());
+  root.querySelector('[data-confirm-delete-tournament]')?.addEventListener('click', () => handlers.confirmDeleteTournament());
 
   if (root.__dialogKeydownHandler) {
     document.removeEventListener('keydown', root.__dialogKeydownHandler);
@@ -1440,7 +1611,19 @@ export function bindUi(root, dataState, uiState, handlers) {
           return;
         }
         handlers.closeTournamentDialog();
+        return;
       }
+
+      if (!uiState.confirmationDialog && !uiState.playerDialogOpen && !uiState.tournamentDialogOpen) {
+        return;
+      }
+
+      const activeDialogPanel = uiState.confirmationDialog
+        ? root.querySelector('[data-confirm-dialog-panel]')
+        : uiState.playerDialogOpen
+          ? root.querySelector('[data-player-dialog-panel]')
+          : root.querySelector('[data-tournament-dialog-panel]');
+      trapFocusInDialog(event, activeDialogPanel);
     };
     document.addEventListener('keydown', root.__dialogKeydownHandler);
   }
@@ -1457,5 +1640,8 @@ export function bindUi(root, dataState, uiState, handlers) {
     root.querySelector('[data-player-dialog-panel]')?.focus();
   } else if (uiState.confirmationDialog) {
     root.querySelector('[data-cancel-confirm-dialog]')?.focus();
+  } else if (uiState.pendingFocusSelector) {
+    root.querySelector(uiState.pendingFocusSelector)?.focus();
+    uiState.pendingFocusSelector = '';
   }
 }
