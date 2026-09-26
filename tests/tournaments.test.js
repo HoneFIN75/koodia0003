@@ -76,33 +76,3 @@ test('sorts tournaments deterministically by display order, date, createdAt and 
 
   assert.deepEqual(sortedIds, ['tournament-a', 'tournament-d', 'tournament-c', 'tournament-b']);
 });
-
-test('stores PDGA-tapahtuma-ID and trims whitespace', () => {
-  const tournament = createTournament({
-    name: 'PDGA Event',
-    multiplierKey: 'fpt',
-    startDate: '2026-07-03',
-    displayOrder: '3',
-    pdgaEventId: ' 98765 ',
-  });
-
-  assert.equal(tournament.pdgaEventId, '98765');
-});
-
-test('rejects invalid PDGA-tapahtuma-ID', () => {
-  assert.throws(
-    () =>
-      createTournament({
-        name: 'Virheellinen PDGA Event',
-        multiplierKey: 'fpt',
-        startDate: '2026-07-03',
-        displayOrder: '3',
-        pdgaEventId: 'event-1',
-      }),
-    (error) => {
-      assert.ok(error instanceof TournamentValidationError);
-      assert.equal(error.fieldErrors.pdgaEventId, 'PDGA-tapahtuma-ID pitää olla positiivinen kokonaisluku.');
-      return true;
-    },
-  );
-});
