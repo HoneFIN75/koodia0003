@@ -84,11 +84,18 @@ function sanitizeTournament(tournament = {}) {
 }
 
 function sanitizeResultCardResult(result = {}) {
+  const parsedCalculatedPoints = Number(result.calculatedPoints);
+
   return {
     playerId: result.playerId,
     division: result.division,
     placement: String(result.placement ?? '').trim().toUpperCase(),
-    calculatedPoints: typeof result.calculatedPoints === 'number' ? result.calculatedPoints : Number(result.calculatedPoints) || 0,
+    calculatedPoints:
+      result.calculatedPoints === null || result.calculatedPoints === undefined || result.calculatedPoints === ''
+        ? null
+        : Number.isFinite(parsedCalculatedPoints)
+          ? parsedCalculatedPoints
+          : null,
   };
 }
 
@@ -102,19 +109,21 @@ function sanitizeResultCard(card = {}) {
     endDate: card.endDate,
     status: card.status,
     multiplier: Number(card.multiplier) || 0,
+    multiplierId: card.multiplierId,
     createdAt: card.createdAt,
     updatedAt: card.updatedAt,
     results: Array.isArray(card.results) ? card.results.map(sanitizeResultCardResult) : [],
   };
 }
 
-function migrateTournamentResultsToCards(tournamentResults, tournaments, players) {
+function migrateTournamentResultsToCards(tournamentResults, tournaments, players, multipliers) {
   if (!Array.isArray(tournamentResults) || !tournamentResults.length) {
     return [];
   }
 
   const playerById = new Map(players.map((player) => [player.id, player]));
   const tournamentById = new Map(tournaments.map((tournament) => [tournament.id, tournament]));
+  const multiplierById = new Map(multipliers.map((multiplier) => [multiplier.id, multiplier]));
   const cardByTournament = new Map();
 
   tournamentResults.forEach((result) => {
@@ -125,6 +134,7 @@ function migrateTournamentResultsToCards(tournamentResults, tournaments, players
 
     if (!cardByTournament.has(tournamentId)) {
       const tournament = tournamentById.get(tournamentId) || {};
+      const tournamentMultiplier = multiplierById.get(tournament.multiplierId);
       cardByTournament.set(tournamentId, {
         id: `result-card-${tournamentId}`,
         tournamentId,
@@ -132,8 +142,9 @@ function migrateTournamentResultsToCards(tournamentResults, tournaments, players
         location: tournament.location || '',
         startDate: tournament.startDate || '',
         endDate: tournament.endDate || '',
-        status: '',
+        status: tournamentMultiplier?.abbreviation || '',
         multiplier: Number(result.multiplierSnapshot) || 0,
+        multiplierId: tournament.multiplierId || '',
         createdAt: result.createdAt || new Date().toISOString(),
         updatedAt: result.updatedAt || new Date().toISOString(),
         results: [],
@@ -141,11 +152,17 @@ function migrateTournamentResultsToCards(tournamentResults, tournaments, players
     }
 
     const player = playerById.get(result.playerId);
+    const parsedCalculatedPoints = Number(result.calculatedPoints);
     cardByTournament.get(tournamentId).results.push({
       playerId: result.playerId,
       division: player?.division || '',
       placement: String(result.place ?? '').trim(),
-      calculatedPoints: Number(result.calculatedPoints) || 0,
+      calculatedPoints:
+        result.calculatedPoints === null || result.calculatedPoints === undefined || result.calculatedPoints === ''
+          ? null
+          : Number.isFinite(parsedCalculatedPoints)
+            ? parsedCalculatedPoints
+            : null,
     });
   });
 
@@ -196,7 +213,7 @@ export function sanitizeState(candidate = {}) {
     tournaments: migratedTournaments,
     resultCards: Array.isArray(candidate.resultCards)
       ? candidate.resultCards.map(sanitizeResultCard)
-      : migrateTournamentResultsToCards(candidate.tournamentResults, migratedTournaments, sanitizedPlayers),
+      : migrateTournamentResultsToCards(candidate.tournamentResults, migratedTournaments, sanitizedPlayers, sanitizedMultipliers),
     settings: sanitizePdgaSettings(candidate.settings),
     pointsTable: sanitizePointsTable(candidate.pointsTable),
     multipliers: sanitizedMultipliers,

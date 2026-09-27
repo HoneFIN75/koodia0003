@@ -2327,7 +2327,11 @@ export function bindUi(root, dataState, uiState, handlers) {
     handlers.updateResultCardTournament(event.target.value);
   });
   root.querySelector('[data-dismiss-result-card-dialog]')?.addEventListener('click', () => handlers.closeResultCardDialog());
-  root.querySelector('[data-result-card-dialog-backdrop]')?.addEventListener('click', () => handlers.closeResultCardDialog());
+  root.querySelector('[data-result-card-dialog-backdrop]')?.addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) {
+      handlers.closeResultCardDialog();
+    }
+  });
   root.querySelector('[data-result-card-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
 
   root.querySelectorAll('[data-open-result-card-players-dialog]').forEach((button) => {
@@ -2338,7 +2342,11 @@ export function bindUi(root, dataState, uiState, handlers) {
     handlers.submitResultCardPlayers(new FormData(event.currentTarget));
   });
   root.querySelector('[data-dismiss-result-card-players-dialog]')?.addEventListener('click', () => handlers.closeResultCardPlayersDialog());
-  root.querySelector('[data-result-card-players-dialog-backdrop]')?.addEventListener('click', () => handlers.closeResultCardPlayersDialog());
+  root.querySelector('[data-result-card-players-dialog-backdrop]')?.addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) {
+      handlers.closeResultCardPlayersDialog();
+    }
+  });
   root.querySelector('[data-result-card-players-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
 
   root.querySelectorAll('input[data-result-placement]').forEach((input) => {

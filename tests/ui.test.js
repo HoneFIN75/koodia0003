@@ -1120,6 +1120,118 @@ test('renderApp näyttää tuloskortin taulukossa lajittelupainikkeet ja PDGA-li
   assert.match(root.innerHTML, /href="https:\/\/example\.com\/player\/12345"/);
 });
 
+test('renderApp näyttää tuloskortin luonti- ja pelaajalisäysdialogit', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [
+    {
+      id: 'player-1',
+      firstName: 'Ari',
+      lastName: 'Aalto',
+      name: 'Ari Aalto',
+      division: 'MPO',
+      pdgaNumber: 100,
+      pdgaRating: '',
+      worldRank: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+    {
+      id: 'player-2',
+      firstName: 'Bea',
+      lastName: 'Berg',
+      name: 'Bea Berg',
+      division: 'FPO',
+      pdgaNumber: 200,
+      pdgaRating: '',
+      worldRank: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Testi Open',
+      pdgaEventId: 123,
+      startDate: '2027-07-20',
+      endDate: '2027-07-23',
+      displayOrder: 1,
+      location: 'Nokia',
+      venue: '',
+      multiplierId: 'multiplier-major',
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.resultCards = [{
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    tournamentName: 'Testi Open',
+    location: 'Nokia',
+    startDate: '2027-07-20',
+    endDate: '2027-07-23',
+    status: 'MAJ',
+    multiplier: 2,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    results: [{ playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 200 }],
+  }];
+
+  renderApp(root, dataState, createUiState({
+    activeView: 'results',
+    resultCardDialogOpen: true,
+    resultCardForm: { tournamentId: 'tournament-1', playerIds: ['player-1'] },
+    resultCardPlayersDialogOpen: true,
+    resultCardPlayersDialog: { cardId: 'card-1', playerIds: ['player-2'] },
+  }));
+
+  assert.match(root.innerHTML, /<h2 id="result-card-dialog-title">Lisää tuloskortti<\/h2>/);
+  assert.match(root.innerHTML, /id="result-card-tournament" name="tournamentId"/);
+  assert.match(root.innerHTML, /name="playerIds" value="player-1" checked/);
+  assert.match(root.innerHTML, /<h2 id="result-card-players-dialog-title">Lisää pelaajia<\/h2>/);
+  assert.match(root.innerHTML, /name="playerIds" value="player-2" checked/);
+});
+
+test('renderApp näyttää tuloskortin poiston ja rivipoiston vahvistusdialogit', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [{ id: 'player-1', name: 'Ari Aalto', division: 'MPO' }];
+  dataState.resultCards = [{
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    tournamentName: 'Testi Open',
+    location: 'Nokia',
+    startDate: '2027-07-20',
+    endDate: '2027-07-23',
+    status: 'MAJ',
+    multiplier: 2,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    results: [{ playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 200 }],
+  }];
+
+  renderApp(root, dataState, createUiState({
+    activeView: 'results',
+    confirmationDialog: { type: 'remove-result-player', cardId: 'card-1', playerId: 'player-1' },
+  }));
+  assert.match(root.innerHTML, /Poista pelaaja tuloskortilta/);
+  assert.match(root.innerHTML, /data-confirm-remove-result-player>Poista<\/button>/);
+
+  renderApp(root, dataState, createUiState({
+    activeView: 'results',
+    confirmationDialog: { type: 'delete-result-card', cardId: 'card-1' },
+  }));
+  assert.match(root.innerHTML, /⚠ VAROITUS ⚠/);
+  assert.match(root.innerHTML, /Kaikki tämän kortin tulosrivit poistetaan\./);
+  assert.match(root.innerHTML, /data-confirm-delete-result-card>Poista<\/button>/);
+});
+
 test('bindUi kutsuu sarakeotsikon lajittelukäsittelijää', () => {
   const restoreDocument = installDocumentStub();
   const playerSortButton = createFocusableElement();

@@ -238,3 +238,69 @@ test('recalculateResultCard rejects overlapping placements unless same tie notat
     multipliers: [],
   }), /Sijoitukset menevät päällekkäin/);
 });
+
+test('recalculateResultCard laskee sekä normaalin sijoituksen että tasatuloksen oikein', () => {
+  const pointsTable = {
+    MPO: { 1: 100, 2: 85, 3: 75, 4: 65 },
+    FPO: {},
+  };
+  const card = {
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    multiplier: 2,
+    results: [
+      { playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: null },
+      { playerId: 'player-2', division: 'MPO', placement: '3T2', calculatedPoints: null },
+      { playerId: 'player-3', division: 'MPO', placement: '3T2', calculatedPoints: null },
+    ],
+  };
+
+  const recalculated = recalculateResultCard({
+    card,
+    players: [],
+    pointsTable,
+    multipliers: [],
+  });
+
+  assert.equal(recalculated[0].calculatedPoints, 200);
+  assert.equal(recalculated[1].calculatedPoints, 140);
+  assert.equal(recalculated[2].calculatedPoints, 140);
+});
+
+test('calculatePlacementPoints hylkää tasatuloksen jos jokin sijoituksen piste puuttuu', () => {
+  const pointsTable = {
+    MPO: { 3: 75, 4: 65, 6: 45 },
+    FPO: {},
+  };
+
+  assert.throws(() => calculatePlacementPoints({
+    placement: '3T4',
+    division: 'MPO',
+    pointsTable,
+    multiplier: 2,
+  }), /Pisteitä ei ole määritetty sarjalle MPO sijoitukselle 5/);
+});
+
+test('recalculateResultCard hylkää tasatuloksen jos rivejä on enemmän kuin tieCount', () => {
+  const pointsTable = {
+    MPO: { 3: 75, 4: 65 },
+    FPO: {},
+  };
+  const card = {
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    multiplier: 1,
+    results: [
+      { playerId: 'player-1', division: 'MPO', placement: '3T2', calculatedPoints: null },
+      { playerId: 'player-2', division: 'MPO', placement: '3T2', calculatedPoints: null },
+      { playerId: 'player-3', division: 'MPO', placement: '3T2', calculatedPoints: null },
+    ],
+  };
+
+  assert.throws(() => recalculateResultCard({
+    card,
+    players: [],
+    pointsTable,
+    multipliers: [],
+  }), /liikaa rivejä/);
+});

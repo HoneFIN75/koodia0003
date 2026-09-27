@@ -1,9 +1,12 @@
 function flattenResultCards(resultCards = []) {
   return resultCards.flatMap((card) =>
-    (card.results || []).filter((result) => result.placement).map((result) => ({
-      ...result,
-      tournamentId: card.tournamentId,
-    })),
+    (card.results || [])
+      .filter((result) => result.placement && Number.isFinite(Number(result.calculatedPoints)))
+      .map((result) => ({
+        ...result,
+        calculatedPoints: Number(result.calculatedPoints),
+        tournamentId: card.tournamentId,
+      })),
   );
 }
 

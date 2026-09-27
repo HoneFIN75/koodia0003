@@ -315,14 +315,26 @@ function rangesOverlap(left, right) {
 
 function validateResultCardPlacements(results) {
   const parsedPlacements = [];
+  const tieCounts = new Map();
+  let hasEmptyPlacements = false;
 
   results.forEach((result) => {
     const parsed = parsePlacement(result.placement);
-    if (parsed) {
-      parsedPlacements.push({
-        playerId: result.playerId,
-        parsed,
-      });
+    if (!parsed) {
+      hasEmptyPlacements = true;
+      return;
+    }
+
+    parsedPlacements.push({
+      playerId: result.playerId,
+      parsed,
+    });
+
+    if (parsed.isTie) {
+      const tieKey = `${parsed.place}T${parsed.tieCount}`;
+      const current = tieCounts.get(tieKey) || { count: 0, tieCount: parsed.tieCount };
+      current.count += 1;
+      tieCounts.set(tieKey, current);
     }
   });
 
@@ -345,6 +357,15 @@ function validateResultCardPlacements(results) {
       }
     }
   }
+
+  tieCounts.forEach(({ count, tieCount }, tieKey) => {
+    if (count > tieCount) {
+      throw new Error(`Tasatuloksessa ${tieKey} on liikaa rivejä suhteessa ilmoitettuun pelaajamäärään.`);
+    }
+    if (!hasEmptyPlacements && count < tieCount) {
+      throw new Error(`Tasatuloksessa ${tieKey} rivejä on liian vähän ilmoitettuun pelaajamäärään nähden.`);
+    }
+  });
 }
 
 export function calculatePlacementPoints({
