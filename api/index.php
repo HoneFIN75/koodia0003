@@ -85,6 +85,21 @@ function jsondb_directory_path(): string
 {
     $configuredPath = trim((string) getenv('SFL_JSONDB_PATH'));
     if ($configuredPath !== '') {
+        $documentRoot = rtrim(str_replace('\\', '/', (string) ($_SERVER['DOCUMENT_ROOT'] ?? '')), '/');
+        $normalizedConfigured = rtrim(str_replace('\\', '/', $configuredPath), '/');
+        $allowPublicPath = strtolower(trim((string) getenv('SFL_ALLOW_PUBLIC_JSONDB'))) === 'true';
+
+        if (
+            !$allowPublicPath
+            && $documentRoot !== ''
+            && (
+                $normalizedConfigured === $documentRoot
+                || str_starts_with($normalizedConfigured . '/', $documentRoot . '/')
+            )
+        ) {
+            throw new RuntimeException('UNSAFE_JSONDB_PATH');
+        }
+
         return $configuredPath;
     }
 
@@ -203,6 +218,8 @@ function ensure_jsondb_directory(): void
 
 function normalize_state_payload(array $payload): array
 {
+    $defaultState = create_default_state();
+
     if (!array_key_exists('pointsTable', $payload) && array_key_exists('scoreTables', $payload)) {
         $payload['pointsTable'] = $payload['scoreTables'];
     }
@@ -224,6 +241,16 @@ function normalize_state_payload(array $payload): array
     if (!is_array($payload['resultCards']) || !array_is_list($payload['resultCards'])) {
         throw new InvalidArgumentException('INVALID_STATE_PAYLOAD');
     }
+
+    $payload['settings'] = is_array($payload['settings'])
+        ? array_replace($defaultState['settings'], $payload['settings'])
+        : $defaultState['settings'];
+
+    $payloadPointsTable = is_array($payload['pointsTable']) ? $payload['pointsTable'] : [];
+    $payload['pointsTable'] = [
+        'MPO' => is_array($payloadPointsTable['MPO'] ?? null) ? $payloadPointsTable['MPO'] : [],
+        'FPO' => is_array($payloadPointsTable['FPO'] ?? null) ? $payloadPointsTable['FPO'] : [],
+    ];
 
     return $payload;
 }
@@ -371,5 +398,10 @@ try {
 
     send_json(400, ['message' => 'Tallennettava tila on puutteellinen. Lähetä koko sovelluksen tila yhdessä pyynnössä.']);
 } catch (Throwable $error) {
+    if ($error->getMessage() === 'UNSAFE_JSONDB_PATH') {
+        send_json(500, ['message' => 'Palvelimen tallennushakemistoa ei ole määritetty turvallisesti.']);
+        return;
+    }
+
     send_json(500, ['message' => 'Palvelimella tapahtui virhe tallennuksen aikana.']);
 }
