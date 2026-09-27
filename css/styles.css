@@ -289,9 +289,20 @@ a {
 .deployment-meta {
   display: grid;
   gap: var(--spacing-2xs);
-  margin-bottom: var(--spacing-md);
+  margin: 0;
   color: var(--color-text-muted);
   font-size: 0.875rem;
+}
+
+.deployment-meta div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2xs);
+}
+
+.deployment-meta dt,
+.deployment-meta dd {
+  margin: 0;
 }
 
 .grid,

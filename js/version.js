@@ -17,7 +17,7 @@ function normalizeVersionMetadata(payload) {
   const deployedAt = typeof payload.deployedAt === 'string' ? payload.deployedAt.trim() : '';
   const commit = typeof payload.commit === 'string' ? payload.commit.trim() : '';
 
-  if (!version || !deployedAt) {
+  if (!deployedAt || (!commit && !version)) {
     return null;
   }
 

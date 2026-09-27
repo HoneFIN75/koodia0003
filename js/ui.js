@@ -39,30 +39,27 @@ function formatDeploymentTimestamp(value) {
     return escapeHtml(value);
   }
 
-  const parts = new Intl.DateTimeFormat('fi-FI', {
-    timeZone: 'Europe/Helsinki',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(parsedDate);
-
-  const valueByType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${valueByType.year}-${valueByType.month}-${valueByType.day} ${valueByType.hour}:${valueByType.minute}`;
+  const year = parsedDate.getUTCFullYear();
+  const month = String(parsedDate.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(parsedDate.getUTCDate()).padStart(2, '0');
+  const hour = String(parsedDate.getUTCHours()).padStart(2, '0');
+  const minute = String(parsedDate.getUTCMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hour}:${minute} UTC`;
 }
 
 function renderDeploymentInfo(deploymentInfo) {
-  if (!deploymentInfo?.version || !deploymentInfo?.deployedAt) {
+  const versionIdentifier = deploymentInfo?.version || '';
+  const buildIdentifier = deploymentInfo?.commit || versionIdentifier;
+  if (!buildIdentifier || !deploymentInfo?.deployedAt) {
     return '';
   }
 
   return `
-    <div class="deployment-meta" aria-label="Julkaisun versiotiedot">
-      <span>Versio: ${escapeHtml(deploymentInfo.version)}</span>
-      <span>Päivitetty: ${formatDeploymentTimestamp(deploymentInfo.deployedAt)}</span>
-    </div>
+    <dl class="deployment-meta" aria-label="Julkaisun versiotiedot">
+      ${versionIdentifier ? `<div><dt>Versio:</dt><dd>${escapeHtml(versionIdentifier)}</dd></div>` : ''}
+      <div><dt>Koonti:</dt><dd>${escapeHtml(buildIdentifier)}</dd></div>
+      <div><dt>Päivitetty:</dt><dd>${formatDeploymentTimestamp(deploymentInfo.deployedAt)}</dd></div>
+    </dl>
   `;
 }
 
@@ -1282,6 +1279,7 @@ export function renderApp(root, dataState, uiState) {
             <div class="brand-copy">
               <span>Suomen frisbeegolfliitto</span>
               <strong>SFL Pisteytystyökalu</strong>
+              ${renderDeploymentInfo(uiState.deploymentInfo)}
             </div>
           </div>
           <button class="nav-toggle" type="button" data-toggle-nav aria-expanded="${uiState.navOpen}" aria-controls="main-nav">Valikko</button>
