@@ -729,8 +729,8 @@ test('renderApp shows score table import dialog with division radios and file in
 
   assert.match(root.innerHTML, /<h2 id="points-import-dialog-title">Tuo pistetaulukko CSV-tiedostosta<\/h2>/);
   assert.match(root.innerHTML, /name="division" value="MPO"/);
-  assert.match(root.innerHTML, /name="division" value="FPO" checked autofocus/);
-  assert.match(root.innerHTML, /id="points-import-file" name="file" type="file"/);
+  assert.match(root.innerHTML, /name="division" value="FPO" checked/);
+  assert.match(root.innerHTML, /id="points-import-file" name="file" type="file" accept="\.csv,text\/csv" required autofocus/);
   assert.match(root.innerHTML, /<button type="submit" class="button">Tuo<\/button>/);
   assert.match(root.innerHTML, /data-cancel-points-import>Peruuta<\/button>/);
 });

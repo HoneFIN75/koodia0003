@@ -1113,7 +1113,7 @@ function renderPointsImportDialog(uiState) {
                 ${DIVISIONS.map(
                   (division) => `
                     <label>
-                      <input type="radio" name="division" value="${division}" ${selectedDivision === division ? 'checked autofocus' : ''} />
+                      <input type="radio" name="division" value="${division}" ${selectedDivision === division ? 'checked' : ''} />
                       <span>${division}</span>
                     </label>
                   `,
@@ -1122,7 +1122,7 @@ function renderPointsImportDialog(uiState) {
             </fieldset>
             <div class="form-field full-width">
               <label for="points-import-file">CSV-tiedosto *</label>
-              <input id="points-import-file" name="file" type="file" accept=".csv,text/csv" required />
+              <input id="points-import-file" name="file" type="file" accept=".csv,text/csv" required autofocus />
             </div>
           </div>
           <div class="form-actions">
