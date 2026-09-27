@@ -28,8 +28,8 @@ function formatNumber(value) {
   }
 
   return new Intl.NumberFormat('fi-FI', {
-    minimumFractionDigits: parsed % 1 === 0 ? 0 : 1,
-    maximumFractionDigits: 1,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 20,
   }).format(parsed);
 }
 
@@ -980,6 +980,17 @@ function renderPointsSection(dataState, uiState) {
           <p class="section-subtitle">Pisteet tallennetaan keskitettyyn pointsTable-rakenteeseen sarjan ja sijoituksen perusteella.</p>
         </div>
       </div>
+      <article class="panel">
+        <h3>CSV-tuonnin ohje</h3>
+        <ul>
+          <li>Muoto: <code>Sijoitus;Pisteet</code></li>
+          <li>Esimerkit: <code>1;100</code>, <code>2;85</code>, <code>3;75</code>, <code>4;10,5</code></li>
+          <li>Erotin on puolipiste (;).</li>
+          <li>Otsikkorivi on sallittu.</li>
+          <li>UTF-8-koodaus on suositeltu.</li>
+          <li>Sijoitusten tulee alkaa 1:stä ja edetä peräkkäin ilman aukkoja.</li>
+        </ul>
+      </article>
       <article class="message warning">
         Pistetaulukot on alustettu tyhjiksi. Pisteitä ei oleteta eikä kovakoodata käyttöliittymään.
       </article>
@@ -1025,7 +1036,15 @@ function renderPointsSection(dataState, uiState) {
             const entries = division === 'MPO' ? mpoEntries : fpoEntries;
             return `
               <article class="panel">
-                <h3>${division}-pistetaulukko</h3>
+                <div class="section-heading">
+                  <div>
+                    <h3>${division}-pistetaulukko</h3>
+                  </div>
+                  <div class="section-actions">
+                    <button type="button" class="secondary-button" data-open-points-import="${division}">Tuo ${division} CSV</button>
+                    <button type="button" class="danger-button" data-request-delete-points="${division}">Poista ${division}-pisteet</button>
+                  </div>
+                </div>
                 ${
                   entries.length
                     ? `
@@ -1070,6 +1089,52 @@ function renderPointsSection(dataState, uiState) {
   `;
 }
 
+function renderPointsImportDialog(uiState) {
+  if (!uiState.pointsImportDialogOpen) {
+    return '';
+  }
+
+  const selectedDivision = uiState.pointsImportDivision || 'MPO';
+
+  return `
+    <div class="dialog-backdrop" data-close-points-import-dialog>
+      <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="points-import-dialog-title" aria-describedby="points-import-dialog-description" data-points-import-dialog-panel tabindex="-1">
+        <form id="points-import-form">
+          <div class="section-heading">
+            <div>
+              <h2 id="points-import-dialog-title">Tuo pistetaulukko CSV-tiedostosta</h2>
+              <p id="points-import-dialog-description" class="section-subtitle">Valitse kohdesarja ja tuotava CSV-tiedosto. Tuonti sallitaan vain tyhjään pistetaulukkoon.</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <fieldset class="form-field full-width">
+              <legend>Sarja *</legend>
+              <div class="segmented-control" role="radiogroup" aria-label="Valitse kohdesarja">
+                ${DIVISIONS.map(
+                  (division) => `
+                    <label>
+                      <input type="radio" name="division" value="${division}" ${selectedDivision === division ? 'checked' : ''} />
+                      <span>${division}</span>
+                    </label>
+                  `,
+                ).join('')}
+              </div>
+            </fieldset>
+            <div class="form-field full-width">
+              <label for="points-import-file">CSV-tiedosto *</label>
+              <input id="points-import-file" name="file" type="file" accept=".csv,text/csv" required />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="secondary-button" data-cancel-points-import autofocus>Peruuta</button>
+            <button type="submit" class="button">Tuo</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
 function renderConfirmationDialog(dataState, uiState) {
   if (!uiState.confirmationDialog) {
     return '';
@@ -1096,6 +1161,30 @@ function renderConfirmationDialog(dataState, uiState) {
           <div class="form-actions">
             <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
             <button type="button" class="danger-button" data-confirm-delete-player="${escapeHtml(player.id)}">Poista pelaaja</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (uiState.confirmationDialog.type === 'delete-points-division') {
+    const division = uiState.confirmationDialog.division;
+
+    return `
+      <div class="dialog-backdrop" data-close-confirm-dialog>
+        <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
+          <div class="section-heading">
+            <div>
+              <h2 id="confirm-dialog-title">Poista sarjan ${escapeHtml(division)} pisteet</h2>
+              <p id="confirm-dialog-description" class="section-subtitle">
+                Haluatko varmasti poistaa kaikki sarjan ${escapeHtml(division)} pistetaulukon rivit?<br />
+                Tätä toimintoa ei voi perua.
+              </p>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
+            <button type="button" class="danger-button" data-confirm-delete-points-division="${escapeHtml(division)}">Poista</button>
           </div>
         </div>
       </div>
@@ -1167,6 +1256,7 @@ export function renderApp(root, dataState, uiState) {
       </footer>
       ${renderPlayerDialog(dataState, uiState)}
       ${renderTournamentDialog(dataState, uiState)}
+      ${renderPointsImportDialog(uiState)}
       ${renderConfirmationDialog(dataState, uiState)}
     </div>
   `;
@@ -1282,12 +1372,29 @@ export function bindUi(root, dataState, uiState, handlers) {
 
   root.querySelector('[data-reset-points-form]')?.addEventListener('click', () => handlers.resetPointsForm());
 
+  root.querySelector('#points-import-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handlers.submitPointsImport(new FormData(event.currentTarget));
+  });
+
+  root.querySelectorAll('[data-open-points-import]').forEach((button) => {
+    button.addEventListener('click', () => handlers.openPointsImportDialog(button.dataset.openPointsImport));
+  });
+
+  root.querySelector('[data-cancel-points-import]')?.addEventListener('click', () => handlers.closePointsImportDialog());
+  root.querySelector('[data-close-points-import-dialog]')?.addEventListener('click', () => handlers.closePointsImportDialog());
+  root.querySelector('[data-points-import-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
+
   root.querySelectorAll('[data-edit-point]').forEach((button) => {
     button.addEventListener('click', () => handlers.editPoint(button.dataset.editPoint));
   });
 
   root.querySelectorAll('[data-delete-point]').forEach((button) => {
     button.addEventListener('click', () => handlers.deletePoint(button.dataset.deletePoint));
+  });
+
+  root.querySelectorAll('[data-request-delete-points]').forEach((button) => {
+    button.addEventListener('click', () => handlers.requestDeletePointsDivision(button.dataset.requestDeletePoints));
   });
 
   root.querySelector('[data-close-confirm-dialog]')?.addEventListener('click', () => handlers.closeConfirmationDialog());
@@ -1301,18 +1408,23 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-cancel-confirm-dialog]')?.addEventListener('click', () => handlers.closeConfirmationDialog());
   root.querySelector('[data-confirm-delete-player]')?.addEventListener('click', () => handlers.confirmDeletePlayer());
   root.querySelector('[data-confirm-delete-tournament]')?.addEventListener('click', () => handlers.confirmDeleteTournament());
+  root.querySelector('[data-confirm-delete-points-division]')?.addEventListener('click', () => handlers.confirmDeletePointsDivision());
 
   if (root.__dialogKeydownHandler) {
     document.removeEventListener('keydown', root.__dialogKeydownHandler);
     root.__dialogKeydownHandler = null;
   }
 
-  if (uiState.tournamentDialogOpen || uiState.playerDialogOpen || uiState.confirmationDialog) {
+  if (uiState.tournamentDialogOpen || uiState.playerDialogOpen || uiState.pointsImportDialogOpen || uiState.confirmationDialog) {
     root.__dialogKeydownHandler = (event) => {
       if (event.key === 'Escape') {
         event.preventDefault();
         if (uiState.confirmationDialog) {
           handlers.closeConfirmationDialog();
+          return;
+        }
+        if (uiState.pointsImportDialogOpen) {
+          handlers.closePointsImportDialog();
           return;
         }
         if (uiState.playerDialogOpen) {

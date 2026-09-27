@@ -1,4 +1,4 @@
-const DIVISIONS = ['MPO', 'FPO'];
+export const DIVISIONS = ['MPO', 'FPO'];
 
 function createId(prefix = 'result') {
   return `${prefix}-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
@@ -22,8 +22,20 @@ function normalizePositiveInteger(value, label) {
   return parsed;
 }
 
+function normalizeDecimalInput(value) {
+  return String(value ?? '')
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(',', '.');
+}
+
 function normalizeNonNegativeNumber(value, label) {
-  const parsed = Number(value);
+  const normalizedValue = normalizeDecimalInput(value);
+  if (normalizedValue === '') {
+    throw new Error(`${label} pitää olla nolla tai positiivinen luku.`);
+  }
+
+  const parsed = Number(normalizedValue);
   if (!Number.isFinite(parsed) || parsed < 0) {
     throw new Error(`${label} pitää olla nolla tai positiivinen luku.`);
   }
@@ -64,6 +76,15 @@ export function removePointsTableEntry(pointsTable, division, place) {
   };
 }
 
+export function clearPointsTableDivision(pointsTable, division) {
+  const safeDivision = normalizeDivision(division);
+
+  return {
+    ...pointsTable,
+    [safeDivision]: {},
+  };
+}
+
 export function listPointsTableEntries(pointsTable, division = null) {
   const divisions = division ? [normalizeDivision(division)] : DIVISIONS;
 
@@ -76,6 +97,87 @@ export function listPointsTableEntries(pointsTable, division = null) {
       }))
       .sort((left, right) => left.place - right.place),
   );
+}
+
+function isHeaderRow(columns) {
+  if (columns.length < 2) {
+    return false;
+  }
+
+  const [firstColumn, secondColumn] = columns.map((value) => String(value ?? '').trim().toLowerCase());
+  return (
+    ['sijoitus', 'position'].includes(firstColumn) &&
+    ['pisteet', 'points', 'peruspisteet', 'basepoints', 'base points'].includes(secondColumn)
+  );
+}
+
+export function parsePointsTableCsv(csvText) {
+  const lines = String(csvText ?? '')
+    .replace(/^\uFEFF/, '')
+    .split(/\r?\n/);
+  const entries = [];
+  const seenPlaces = new Set();
+  let skippedHeader = false;
+
+  lines.forEach((line, index) => {
+    if (!line.trim()) {
+      return;
+    }
+
+    const columns = line.split(';').map((value) => value.trim());
+    if (!skippedHeader && isHeaderRow(columns)) {
+      skippedHeader = true;
+      return;
+    }
+
+    if (columns.length !== 2) {
+      throw new Error(`CSV-rivillä ${index + 1} pitää olla muodossa Sijoitus;Pisteet.`);
+    }
+
+    const [placeValue, pointsValue] = columns;
+    if (!pointsValue) {
+      throw new Error(`CSV-riviltä ${index + 1} puuttuu pistearvo.`);
+    }
+
+    const place = normalizePositiveInteger(placeValue, 'Sijoituksen');
+    const basePoints = normalizeNonNegativeNumber(pointsValue, 'Pisteiden');
+
+    if (seenPlaces.has(place)) {
+      throw new Error(`Sijoitusnumeroiden tulee olla uniikkeja. Päällekkäinen sijoitus: ${place}`);
+    }
+
+    seenPlaces.add(place);
+    entries.push({ place, basePoints });
+  });
+
+  if (!entries.length) {
+    throw new Error('CSV-tiedostossa ei ole tuotavia pistetaulukon rivejä.');
+  }
+
+  entries.sort((left, right) => left.place - right.place);
+
+  for (let index = 0; index < entries.length; index += 1) {
+    const expectedPlace = index + 1;
+    if (entries[index].place !== expectedPlace) {
+      throw new Error(`Sijoitusnumeroiden tulee olla peräkkäisiä ilman aukkoja. Puuttuva sijoitus: ${expectedPlace}`);
+    }
+  }
+
+  return entries;
+}
+
+export function importPointsTableDivision(pointsTable, division, entries) {
+  const safeDivision = normalizeDivision(division);
+
+  return {
+    ...pointsTable,
+    [safeDivision]: Object.fromEntries(
+      entries.map((entry) => [
+        normalizePositiveInteger(entry.place, 'Sijoituksen'),
+        normalizeNonNegativeNumber(entry.basePoints, 'Pisteiden'),
+      ]),
+    ),
+  };
 }
 
 export function getBasePoints(pointsTable, division, place) {

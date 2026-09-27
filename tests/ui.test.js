@@ -102,6 +102,8 @@ function createUiState(overrides = {}) {
     selectedTournamentId: '',
     resultFormId: null,
     pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
+    pointsImportDialogOpen: false,
+    pointsImportDivision: 'MPO',
     confirmationDialog: null,
     feedback: null,
     settingsFormErrors: {},
@@ -689,6 +691,66 @@ test('renderApp shows tournament delete confirmation copy for multiple linked re
   );
 
   assert.match(root.innerHTML, /Samalla poistetaan 2 turnaustulosta eikä toimintoa voi peruuttaa\./);
+});
+
+test('renderApp shows score table import instructions, division actions and Finnish decimals', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.pointsTable = {
+    MPO: { '1': 100, '2': 10.5 },
+    FPO: { '1': 7.25 },
+  };
+
+  renderApp(root, dataState, createUiState({ activeView: 'points' }));
+
+  assert.match(root.innerHTML, /CSV-tuonnin ohje/);
+  assert.match(root.innerHTML, /Muoto: <code>Sijoitus;Pisteet<\/code>/);
+  assert.match(root.innerHTML, /Tuo MPO CSV/);
+  assert.match(root.innerHTML, /Poista MPO-pisteet/);
+  assert.match(root.innerHTML, /Tuo FPO CSV/);
+  assert.match(root.innerHTML, /Poista FPO-pisteet/);
+  assert.match(root.innerHTML, /<td>10,5<\/td>/);
+  assert.match(root.innerHTML, /<td>7,25<\/td>/);
+});
+
+test('renderApp shows score table import dialog with division radios and file input', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'points',
+      pointsImportDialogOpen: true,
+      pointsImportDivision: 'FPO',
+    }),
+  );
+
+  assert.match(root.innerHTML, /<h2 id="points-import-dialog-title">Tuo pistetaulukko CSV-tiedostosta<\/h2>/);
+  assert.match(root.innerHTML, /name="division" value="MPO"/);
+  assert.match(root.innerHTML, /name="division" value="FPO" checked/);
+  assert.match(root.innerHTML, /id="points-import-file" name="file" type="file"/);
+  assert.match(root.innerHTML, /<button type="submit" class="button">Tuo<\/button>/);
+  assert.match(root.innerHTML, /data-cancel-points-import autofocus>Peruuta<\/button>/);
+});
+
+test('renderApp shows score table delete confirmation copy', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'points',
+      confirmationDialog: { type: 'delete-points-division', division: 'MPO' },
+    }),
+  );
+
+  assert.match(root.innerHTML, /<h2 id="confirm-dialog-title">Poista sarjan MPO pisteet<\/h2>/);
+  assert.match(root.innerHTML, /Haluatko varmasti poistaa kaikki sarjan MPO pistetaulukon rivit\?<br \/>\s*Tätä toimintoa ei voi perua\./);
+  assert.match(root.innerHTML, /data-confirm-delete-points-division="MPO">Poista<\/button>/);
 });
 
 test('bindUi moves focus into the tournament dialog field', () => {
