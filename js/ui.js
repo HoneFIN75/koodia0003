@@ -39,12 +39,17 @@ function formatDeploymentTimestamp(value) {
     return escapeHtml(value);
   }
 
-  const year = parsedDate.getUTCFullYear();
-  const month = String(parsedDate.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(parsedDate.getUTCDate()).padStart(2, '0');
-  const hour = String(parsedDate.getUTCHours()).padStart(2, '0');
-  const minute = String(parsedDate.getUTCMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day} ${hour}:${minute} UTC`;
+  const parts = new Intl.DateTimeFormat('fi-FI', {
+    timeZone: 'Europe/Helsinki',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(parsedDate);
+  const partMap = Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
+  return `${partMap.day}.${partMap.month}.${partMap.year} ${partMap.hour}:${partMap.minute}`;
 }
 
 function renderDeploymentInfo(deploymentInfo) {
@@ -235,8 +240,6 @@ function renderNav(activeView) {
 }
 
 function renderStats(dataState) {
-  const pointEntries = listPointsTableEntries(dataState.pointsTable).length;
-
   return `
     <div class="stats-grid">
       <article class="card stat-card">
@@ -246,10 +249,6 @@ function renderStats(dataState) {
       <article class="card stat-card">
         <span class="eyebrow">Turnaukset</span>
         <strong>${formatNumber(dataState.tournaments.length)}</strong>
-      </article>
-      <article class="card stat-card">
-        <span class="eyebrow">Pistetaulukot</span>
-        <strong>${formatNumber(pointEntries)}</strong>
       </article>
     </div>
   `;
@@ -279,7 +278,6 @@ function renderTopTenCard(title, ranking, division) {
                       <div class="chart-bar-track">
                         <div class="chart-bar" style="width: ${width}%" aria-hidden="true"></div>
                       </div>
-                      <span class="muted">Sijoitus ${index + 1} • Sarja ${escapeHtml(division)}</span>
                     </div>
                   `;
                 })
