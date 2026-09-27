@@ -274,7 +274,7 @@ test('renderApp näyttää yhteenvetosivulla vain dashboardin avainluvut ja TOP 
   assert.match(root.innerHTML, /Maija Meikäläinen/);
   assert.match(root.innerHTML, /Pelaajat/);
   assert.match(root.innerHTML, /Turnaukset/);
-  assert.match(root.innerHTML, /Pistetaulukot/);
+  assert.doesNotMatch(root.innerHTML, /<span class="eyebrow">Pistetaulukot<\/span>/);
   assert.doesNotMatch(root.innerHTML, /Tulokset<\/span>/);
   assert.doesNotMatch(root.innerHTML, /Pelaajan perustiedot/);
   assert.doesNotMatch(root.innerHTML, /Valitun pelaajan turnaustulokset/);
@@ -283,7 +283,7 @@ test('renderApp näyttää yhteenvetosivulla vain dashboardin avainluvut ja TOP 
   assert.doesNotMatch(root.innerHTML, /Syötetyt tulokset/);
 });
 
-test('renderApp näyttää deployment-metatiedot otsikon alla commit-buildillä UTC-ajassa', () => {
+test('renderApp näyttää deployment-metatiedot otsikon alla commit-buildillä Suomen ajassa', () => {
   const root = createRootStub();
   const dataState = createEmptyState();
 
@@ -302,7 +302,7 @@ test('renderApp näyttää deployment-metatiedot otsikon alla commit-buildillä 
   assert.match(root.innerHTML, /SFL Pisteytystyökalu/);
   assert.match(root.innerHTML, /<dt>Versio:<\/dt><dd>1\.0\.15<\/dd>/);
   assert.match(root.innerHTML, /<dt>Koonti:<\/dt><dd>84f2c71<\/dd>/);
-  assert.match(root.innerHTML, /<dt>Päivitetty:<\/dt><dd>2026-09-27 11:15 UTC<\/dd>/);
+  assert.match(root.innerHTML, /<dt>Päivitetty:<\/dt><dd>27\.09\.2026 14:15<\/dd>/);
 });
 
 test('renderApp näyttää vain olemassa olevat pelaajat TOP 10 -listoilla', () => {
@@ -360,7 +360,7 @@ test('renderApp näyttää vain olemassa olevat pelaajat TOP 10 -listoilla', () 
   renderApp(root, dataState, createUiState({ activeView: 'summary' }));
 
   assert.match(root.innerHTML, /Ari Aalto/);
-  assert.match(root.innerHTML, /Sijoitus 1 • Sarja MPO/);
+  assert.doesNotMatch(root.innerHTML, /Sijoitus 1 • Sarja MPO/);
   assert.doesNotMatch(root.innerHTML, /Sijoitus 2 • Sarja MPO/);
   assert.match(root.innerHTML, /Sarjassa FPO ei ole vielä pisteellisiä pelaajia\./);
 });
