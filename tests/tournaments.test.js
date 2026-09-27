@@ -9,9 +9,9 @@ import {
 } from '../js/tournaments.js';
 
 test('creates a tournament without unknown legacy fields', () => {
-  const tournament = createTournament({
+  const tournament = createTournament([], [{ id: 'multiplier-1' }], {
     name: 'SFL Open',
-    multiplierKey: 'fpt',
+    multiplierId: 'multiplier-1',
     startDate: '2026-07-03',
     displayOrder: '7',
     pdgaEventId: '123456',
@@ -19,8 +19,7 @@ test('creates a tournament without unknown legacy fields', () => {
   });
 
   assert.equal(tournament.name, 'SFL Open');
-  assert.equal(tournament.multiplierKey, 'fpt');
-  assert.equal(tournament.multiplier, 1);
+  assert.equal(tournament.multiplierId, 'multiplier-1');
   assert.equal(tournament.displayOrder, 7);
   assert.equal(tournament.pdgaEventId, 123456);
   assert.ok(!Object.hasOwn(tournament, 'legacyField'));
@@ -29,9 +28,9 @@ test('creates a tournament without unknown legacy fields', () => {
 test('rejects empty or invalid display order with field error', () => {
   assert.throws(
     () =>
-      createTournament({
+      createTournament([], [{ id: 'multiplier-1' }], {
         name: 'SFL Open',
-        multiplierKey: 'fpt',
+        multiplierId: 'multiplier-1',
         startDate: '2026-07-03',
         displayOrder: '0',
       }),
@@ -46,9 +45,9 @@ test('rejects empty or invalid display order with field error', () => {
 test('rejects invalid PDGA event id', () => {
   assert.throws(
     () =>
-      createTournament({
+      createTournament([], [{ id: 'multiplier-1' }], {
         name: 'SFL Open',
-        multiplierKey: 'fpt',
+        multiplierId: 'multiplier-1',
         startDate: '2026-07-03',
         displayOrder: '7',
         pdgaEventId: 'abc',
@@ -56,6 +55,40 @@ test('rejects invalid PDGA event id', () => {
     (error) => {
       assert.ok(error instanceof TournamentValidationError);
       assert.equal(error.fieldErrors.pdgaEventId, 'PDGA-kilpailutunnus pitää olla positiivinen kokonaisluku.');
+      return true;
+    },
+  );
+});
+
+test('rejects missing multiplier reference', () => {
+  assert.throws(
+    () =>
+      createTournament([], [{ id: 'multiplier-1' }], {
+        name: 'SFL Open',
+        startDate: '2026-07-03',
+        displayOrder: '7',
+        multiplierId: '',
+      }),
+    (error) => {
+      assert.ok(error instanceof TournamentValidationError);
+      assert.equal(error.fieldErrors.multiplierId, 'Tila on pakollinen.');
+      return true;
+    },
+  );
+});
+
+test('rejects unknown multiplier reference', () => {
+  assert.throws(
+    () =>
+      createTournament([], [{ id: 'multiplier-1' }], {
+        name: 'SFL Open',
+        startDate: '2026-07-03',
+        displayOrder: '7',
+        multiplierId: 'unknown-id',
+      }),
+    (error) => {
+      assert.ok(error instanceof TournamentValidationError);
+      assert.equal(error.fieldErrors.multiplierId, 'Valittu tila ei ole enää käytettävissä.');
       return true;
     },
   );
@@ -103,7 +136,7 @@ test('filters tournaments by search and sorts by configured field', () => {
     {
       id: 'tournament-1',
       name: 'Lahti Open',
-      status: 'Vahvistettu',
+      multiplierId: 'major',
       location: 'Lahti',
       venue: 'Mukkula',
       startDate: '2026-07-05',
@@ -114,7 +147,7 @@ test('filters tournaments by search and sorts by configured field', () => {
     {
       id: 'tournament-2',
       name: 'Turku Masters',
-      status: 'Luonnos',
+      multiplierId: 'c-tier',
       location: 'Turku',
       venue: 'Aninkainen',
       startDate: '2026-07-01',
@@ -125,7 +158,7 @@ test('filters tournaments by search and sorts by configured field', () => {
     {
       id: 'tournament-3',
       name: 'Lahti Challenge',
-      status: 'Vahvistettu',
+      multiplierId: 'major',
       location: 'Lahti',
       venue: 'Tali',
       startDate: '2026-07-03',
@@ -137,7 +170,7 @@ test('filters tournaments by search and sorts by configured field', () => {
 
   const filteredIds = filterAndSortTournaments(tournaments, {
     search: 'lahti',
-    status: 'Vahvistettu',
+    status: 'major',
     sortField: 'name',
     sortDirection: 'asc',
   }).map((tournament) => tournament.id);

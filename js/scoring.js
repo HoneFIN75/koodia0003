@@ -1,4 +1,5 @@
 export const DIVISIONS = ['MPO', 'FPO'];
+import { findMultiplier } from './multipliers.js';
 
 function createId(prefix = 'result') {
   return `${prefix}-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
@@ -276,6 +277,29 @@ export function calculatePoints({ basePoints, multiplier }) {
   return safeBasePoints * safeMultiplier;
 }
 
+function resolveTournamentMultiplier({ multiplier, tournament = null, multipliers = [] }) {
+  const directMultiplier = Number(multiplier);
+  if (Number.isFinite(directMultiplier) && directMultiplier > 0) {
+    return directMultiplier;
+  }
+
+  if (!tournament?.multiplierId) {
+    throw new Error('Turnauksen kerrointa ei löytynyt. Valitse turnaukselle tila ennen tuloksen tallennusta.');
+  }
+
+  const referencedMultiplier = findMultiplier(multipliers, tournament.multiplierId);
+  if (!referencedMultiplier) {
+    throw new Error('Turnauksen kerroinviite ei ole enää käytettävissä. Päivitä turnauksen tila.');
+  }
+
+  const referencedValue = Number(referencedMultiplier?.multiplier);
+  if (Number.isFinite(referencedValue) && referencedValue > 0) {
+    return referencedValue;
+  }
+
+  throw new Error('Valitun tilan kerroin ei ole kelvollinen.');
+}
+
 export function createTournamentResult({
   tournamentId,
   playerId,
@@ -283,6 +307,8 @@ export function createTournamentResult({
   division,
   pointsTable,
   multiplier,
+  tournament = null,
+  multipliers = [],
   existingResults = [],
 }) {
   const safePlace = normalizePositiveInteger(place, 'Sijoituksen');
@@ -310,6 +336,7 @@ export function createTournamentResult({
   }
 
   const now = new Date().toISOString();
+  const resolvedMultiplier = resolveTournamentMultiplier({ multiplier, tournament, multipliers });
 
   return {
     id: createId(),
@@ -317,8 +344,8 @@ export function createTournamentResult({
     playerId,
     place: safePlace,
     basePointsSnapshot: basePoints,
-    multiplierSnapshot: Number(multiplier),
-    calculatedPoints: calculatePoints({ basePoints, multiplier }),
+    multiplierSnapshot: resolvedMultiplier,
+    calculatedPoints: calculatePoints({ basePoints, multiplier: resolvedMultiplier }),
     createdAt: now,
     updatedAt: now,
   };
@@ -333,6 +360,8 @@ export function updateTournamentResult({
   division,
   pointsTable,
   multiplier,
+  tournament = null,
+  multipliers = [],
 }) {
   const existingResult = results.find((result) => result.id === resultId);
   if (!existingResult) {
@@ -356,14 +385,16 @@ export function updateTournamentResult({
     throw new Error(`Pisteitä ei ole määritetty sarjalle ${safeDivision} sijoitukselle ${safePlace}.`);
   }
 
+  const resolvedMultiplier = resolveTournamentMultiplier({ multiplier, tournament, multipliers });
+
   return {
     ...existingResult,
     tournamentId,
     playerId,
     place: safePlace,
     basePointsSnapshot: basePoints,
-    multiplierSnapshot: Number(multiplier),
-    calculatedPoints: calculatePoints({ basePoints, multiplier }),
+    multiplierSnapshot: resolvedMultiplier,
+    calculatedPoints: calculatePoints({ basePoints, multiplier: resolvedMultiplier }),
     updatedAt: new Date().toISOString(),
   };
 }

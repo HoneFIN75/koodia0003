@@ -103,6 +103,11 @@ function createUiState(overrides = {}) {
     tournamentImportDialogOpen: false,
     tournamentImportFocusTarget: '',
     tournamentImportSummary: null,
+    multiplierDialogOpen: false,
+    multiplierFormId: null,
+    multiplierFormErrors: {},
+    multiplierFormDraft: null,
+    multiplierFormFocusTarget: '',
     pendingFocusSelector: '',
     selectedTournamentId: '',
     resultFormId: null,
@@ -167,8 +172,7 @@ test('renderApp builds PDGA links from centralized settings', () => {
       location: 'Helsinki',
       venue: 'Rata',
       status: '',
-      multiplierKey: 'fpt',
-      multiplier: 1,
+      multiplierId: 'multiplier-major',
       division: '',
       externalUrl: '',
       notes: '',
@@ -235,8 +239,7 @@ test('renderApp näyttää yhteenvetosivulla vain dashboardin avainluvut ja TOP 
       location: '',
       venue: '',
       status: '',
-      multiplierKey: 'fpt',
-      multiplier: 1,
+      multiplierId: 'multiplier-major',
       division: '',
       externalUrl: '',
       notes: '',
@@ -342,8 +345,7 @@ test('renderApp näyttää vain olemassa olevat pelaajat TOP 10 -listoilla', () 
       location: '',
       venue: '',
       status: '',
-      multiplierKey: 'fpt',
-      multiplier: 1,
+      multiplierId: 'multiplier-major',
       division: '',
       externalUrl: '',
       notes: '',
@@ -517,9 +519,7 @@ test('renderApp shows tournament table with required column order and PDGA name 
       displayOrder: 1,
       location: 'Lahti',
       venue: 'Mukkula',
-      status: 'Vahvistettu',
-      multiplierKey: 'fpt',
-      multiplier: 1,
+      multiplierId: 'multiplier-major',
       division: '',
       externalUrl: '',
       notes: '',
@@ -537,13 +537,13 @@ test('renderApp shows tournament table with required column order and PDGA name 
   assert.match(root.innerHTML, /data-request-delete-all-tournaments/);
   assert.match(
     root.innerHTML,
-    /<th>Turnauksen nimi<\/th>\s*<th>Tila<\/th>\s*<th>Kerroin<\/th>\s*<th>PDGA Event ID<\/th>\s*<th>Alkamispäivä<\/th>\s*<th>Päättymispäivä<\/th>\s*<th>Paikkakunta<\/th>\s*<th>Rata<\/th>\s*<th>Muokkaa<\/th>/,
+    /<th>Turnauksen nimi<\/th>\s*<th>Tila<\/th>\s*<th>PDGA Event ID<\/th>\s*<th>Alkamispäivä<\/th>\s*<th>Päättymispäivä<\/th>\s*<th>Paikkakunta<\/th>\s*<th>Rata<\/th>\s*<th>Muokkaa<\/th>/,
   );
   assert.match(root.innerHTML, /href="https:\/\/example\.com\/event\/123456"/);
   assert.match(root.innerHTML, /target="_blank"/);
   assert.match(root.innerHTML, /rel="noopener noreferrer"/);
   assert.match(root.innerHTML, /data-edit-tournament="tournament-1">Muokkaa<\/button>/);
-  assert.match(root.innerHTML, /Hae nimellä, statuksella, paikkakunnalla tai radalla/);
+  assert.match(root.innerHTML, /Hae nimellä, paikkakunnalla tai radalla/);
   assert.doesNotMatch(root.innerHTML, /Turnaustulokset/);
   assert.doesNotMatch(root.innerHTML, /Hallittava turnaus/);
   assert.doesNotMatch(root.innerHTML, /Tulokset \(\d+\)/);
@@ -639,9 +639,7 @@ test('renderApp shows shared tournament modal and delete action only in edit mod
       displayOrder: 1,
       location: 'Helsinki',
       venue: 'Rata',
-      status: 'Luonnos',
-      multiplierKey: 'fpt',
-      multiplier: 1,
+      multiplierId: 'multiplier-major',
       division: '',
       externalUrl: '',
       notes: '',
@@ -673,9 +671,7 @@ test('renderApp shows required tournament delete confirmation dialog copy', () =
       displayOrder: 1,
       location: 'Helsinki',
       venue: 'Rata',
-      status: 'Luonnos',
-      multiplierKey: 'fpt',
-      multiplier: 1,
+      multiplierId: 'multiplier-major',
       division: '',
       externalUrl: '',
       notes: '',
@@ -727,9 +723,7 @@ test('renderApp shows tournament delete confirmation copy for zero linked result
       displayOrder: 1,
       location: 'Helsinki',
       venue: 'Rata',
-      status: 'Luonnos',
-      multiplierKey: 'fpt',
-      multiplier: 1,
+      multiplierId: 'multiplier-major',
       division: '',
       externalUrl: '',
       notes: '',
@@ -765,9 +759,7 @@ test('renderApp shows tournament delete confirmation copy for multiple linked re
       displayOrder: 1,
       location: 'Helsinki',
       venue: 'Rata',
-      status: 'Luonnos',
-      multiplierKey: 'fpt',
-      multiplier: 1,
+      multiplierId: 'multiplier-major',
       division: '',
       externalUrl: '',
       notes: '',
@@ -872,6 +864,47 @@ test('renderApp shows score table delete confirmation copy', () => {
   assert.match(root.innerHTML, /<h2 id="confirm-dialog-title">Poista sarjan MPO pisteet<\/h2>/);
   assert.match(root.innerHTML, /Haluatko varmasti poistaa kaikki sarjan MPO pistetaulukon rivit\?<br \/>\s*Tätä toimintoa ei voi perua\./);
   assert.match(root.innerHTML, /data-confirm-delete-points-division="MPO">Poista<\/button>/);
+});
+
+test('renderApp näyttää Kertoimet-välilehden ja taulukon sarakkeet', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+
+  renderApp(root, dataState, createUiState({ activeView: 'multipliers' }));
+
+  assert.match(root.innerHTML, /data-view-target="multipliers"/);
+  assert.match(root.innerHTML, /<h2 id="multipliers-title">Kertoimet<\/h2>/);
+  assert.match(root.innerHTML, /data-open-multiplier-dialog>Lisää<\/button>/);
+  assert.match(
+    root.innerHTML,
+    /<th>Järjestysnumero<\/th>\s*<th>Nimi<\/th>\s*<th>Lyhenne<\/th>\s*<th>Kerroin<\/th>\s*<th>Muokkaa<\/th>/,
+  );
+});
+
+test('renderApp näyttää kertoimen dialogin ja poiston vahvistustekstit', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  const firstMultiplierId = dataState.multipliers[0].id;
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'multipliers',
+      multiplierDialogOpen: true,
+      multiplierFormId: firstMultiplierId,
+      confirmationDialog: { type: 'delete-multiplier', multiplierId: firstMultiplierId },
+    }),
+  );
+
+  assert.match(root.innerHTML, /<h2 id="multiplier-dialog-title">Muokkaa kerrointa<\/h2>/);
+  assert.match(root.innerHTML, /id="multiplier-order-number"/);
+  assert.match(root.innerHTML, /data-delete-multiplier="[^"]+">Poista<\/button>/);
+  assert.match(root.innerHTML, /Varoitus: poista kerroin/);
+  assert.match(root.innerHTML, /Olet poistamassa kertoimen\./);
+  assert.match(root.innerHTML, /Tätä toimintoa ei voi perua\./);
+  assert.match(root.innerHTML, /Haluatko varmasti jatkaa\?/);
+  assert.match(root.innerHTML, /data-confirm-delete-multiplier="[^"]+">Poista<\/button>/);
 });
 
 test('bindUi moves focus into the tournament dialog field', () => {
