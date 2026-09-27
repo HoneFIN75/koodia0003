@@ -568,7 +568,7 @@ const handlers = {
       applySort(
         'tournamentSortField',
         'tournamentSortDirection',
-        ['name', 'multiplierAbbreviation', 'pdgaEventId', 'startDate', 'endDate', 'location', 'venue'],
+        ['displayOrder', 'name', 'multiplierAbbreviation', 'pdgaEventId', 'startDate', 'endDate', 'location', 'venue'],
         'displayOrder',
       );
     } else if (table === 'ranking') {

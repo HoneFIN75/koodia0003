@@ -204,22 +204,33 @@ function renderLinkButton(url, label, ariaLabel = '') {
 }
 
 function getAriaSort(sortField, sortDirection, fieldName) {
+  return getSortState(sortField, sortDirection, fieldName).ariaSort;
+}
+
+function getSortState(sortField, sortDirection, fieldName) {
   if (sortField !== fieldName) {
-    return 'none';
+    return {
+      isActive: false,
+      ariaSort: 'none',
+      indicator: '',
+    };
   }
 
-  return sortDirection === 'desc' ? 'descending' : 'ascending';
+  return {
+    isActive: true,
+    ariaSort: sortDirection === 'desc' ? 'descending' : 'ascending',
+    indicator: sortDirection === 'desc' ? '▼' : '▲',
+  };
 }
 
 function renderSortableHeader({ table, field, label, sortField, sortDirection, className = '' }) {
-  const isActive = sortField === field;
-  const indicator = isActive ? (sortDirection === 'desc' ? '▼' : '▲') : '';
+  const sortState = getSortState(sortField, sortDirection, field);
 
   return `
-    <th${className ? ` class="${escapeHtml(className)}"` : ''} aria-sort="${getAriaSort(sortField, sortDirection, field)}">
-      <button type="button" class="table-sort-button${isActive ? ' is-active' : ''}" data-sort-table="${escapeHtml(table)}" data-sort-field="${escapeHtml(field)}">
+    <th${className ? ` class="${escapeHtml(className)}"` : ''} aria-sort="${sortState.ariaSort}">
+      <button type="button" class="table-sort-button${sortState.isActive ? ' is-active' : ''}" data-sort-table="${escapeHtml(table)}" data-sort-field="${escapeHtml(field)}">
         <span>${escapeHtml(label)}</span>
-        <span class="table-sort-indicator" aria-hidden="true">${indicator}</span>
+        <span class="table-sort-indicator" aria-hidden="true">${sortState.indicator}</span>
       </button>
     </th>
   `;
@@ -440,7 +451,7 @@ function renderRankingSection(dataState, uiState) {
                       ${renderSortableHeader({
                         table: 'ranking',
                         field: 'worldRank',
-                        label: 'World rank',
+                        label: 'Maailmanranking',
                         sortField: uiState.rankingSortField,
                         sortDirection: uiState.rankingSortDirection,
                       })}
@@ -977,6 +988,13 @@ function renderTournamentSection(dataState, uiState) {
                      <tr>
                        ${renderSortableHeader({
                          table: 'tournaments',
+                         field: 'displayOrder',
+                         label: 'Järjestysnumero',
+                         sortField: uiState.tournamentSortField,
+                         sortDirection: uiState.tournamentSortDirection,
+                       })}
+                       ${renderSortableHeader({
+                         table: 'tournaments',
                          field: 'name',
                          label: 'Turnauksen nimi',
                          sortField: uiState.tournamentSortField,
@@ -1033,6 +1051,7 @@ function renderTournamentSection(dataState, uiState) {
                           const pdgaEventUrl = buildPdgaEventUrl(dataState.settings, tournament);
                           return `
                             <tr>
+                              <td data-label="Järjestysnumero">${escapeHtml(renderValueOrDash(tournament.displayOrder))}</td>
                               <td data-label="Turnauksen nimi">
                                 ${
                                   pdgaEventUrl

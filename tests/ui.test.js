@@ -548,6 +548,7 @@ test('renderApp shows tournament table with required column order and PDGA name 
   assert.match(root.innerHTML, /Järjestysnumero;PDGA Event ID;Turnauksen nimi/);
   assert.match(root.innerHTML, /data-request-delete-all-tournaments/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="name"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="displayOrder"/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="multiplierAbbreviation"/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="pdgaEventId"/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="startDate"/);
@@ -922,6 +923,48 @@ test('renderApp näyttää kertoimen dialogin ja poiston vahvistustekstit', () =
   assert.match(root.innerHTML, /Tätä toimintoa ei voi perua\./);
   assert.match(root.innerHTML, /Haluatko varmasti jatkaa\?/);
   assert.match(root.innerHTML, /data-confirm-delete-multiplier="[^"]+">Poista<\/button>/);
+});
+
+test('bindUi kutsuu sarakeotsikon lajittelukäsittelijää', () => {
+  const restoreDocument = installDocumentStub();
+  const sortButton = createFocusableElement();
+  sortButton.dataset = { sortTable: 'players', sortField: 'name' };
+  const root = {
+    __dialogKeydownHandler: null,
+    querySelector() {
+      return null;
+    },
+    querySelectorAll(selector) {
+      if (selector === '[data-sort-table][data-sort-field]') {
+        return [sortButton];
+      }
+      return [];
+    },
+  };
+  let call = null;
+  const handlers = new Proxy(
+    {
+      toggleColumnSort(table, field) {
+        call = { table, field };
+      },
+    },
+    {
+      get(target, property) {
+        if (property in target) {
+          return target[property];
+        }
+        return () => {};
+      },
+    },
+  );
+
+  try {
+    bindUi(root, createEmptyState(), createUiState(), handlers);
+    sortButton.listeners.click();
+    assert.deepEqual(call, { table: 'players', field: 'name' });
+  } finally {
+    restoreDocument();
+  }
 });
 
 test('bindUi moves focus into the tournament dialog field', () => {
