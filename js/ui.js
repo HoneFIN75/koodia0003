@@ -203,6 +203,16 @@ function renderLinkButton(url, label, ariaLabel = '') {
   return `<a class="secondary-link-button" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer"${ariaLabel ? ` aria-label="${escapeHtml(ariaLabel)}"` : ''}>${escapeHtml(label)}</a>`;
 }
 
+function renderPlayerName(player, settings) {
+  const playerName = escapeHtml(player?.name || '—');
+  const playerPdgaUrl = buildPdgaPlayerUrl(settings, player);
+  if (!playerPdgaUrl) {
+    return `<span class="player-name-text">${playerName}</span>`;
+  }
+
+  return `<a class="player-name-link" href="${escapeHtml(playerPdgaUrl)}" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili">${playerName}</a>`;
+}
+
 function getSortState(sortField, sortDirection, fieldName) {
   if (sortField !== fieldName) {
     return {
@@ -242,7 +252,7 @@ function renderPlayerDetailCard(player, settings) {
   return `
     <div class="player-detail-layout">
       <dl class="definition-list">
-        <div><dt>Nimi</dt><dd>${escapeHtml(player.name)}</dd></div>
+        <div><dt>Nimi</dt><dd>${renderPlayerName(player, settings)}</dd></div>
         <div><dt>Sarja</dt><dd>${escapeHtml(player.division)}</dd></div>
         <div><dt>PDGA-tunnus</dt><dd>${escapeHtml(player.pdgaNumber || '—')}</dd></div>
         <div><dt>PDGA-rating</dt><dd>${escapeHtml(player.pdgaRating || '—')}</dd></div>
@@ -317,7 +327,7 @@ function renderStats(dataState) {
   `;
 }
 
-function renderTopTenCard(title, ranking, division) {
+function renderTopTenCard(title, ranking, division, dataState) {
   const topTen = getTopRanking(ranking, 10);
   const maxPoints = topTen[0]?.totalPoints || 0;
 
@@ -335,7 +345,7 @@ function renderTopTenCard(title, ranking, division) {
                   return `
                     <div class="chart-row">
                       <div class="chart-meta chart-meta-dashboard">
-                        <span><strong>${index + 1}.</strong> ${escapeHtml(entry.name)}</span>
+                        <span><strong>${index + 1}.</strong> ${renderPlayerName(entry, dataState.settings)}</span>
                         <span>${formatNumber(entry.totalPoints)} p</span>
                       </div>
                       <div class="chart-bar-track">
@@ -361,8 +371,8 @@ function renderSummarySection(dataState, uiState) {
       <h1 id="summary-title">Yhteenveto</h1>
       ${renderStats(dataState)}
       <div class="two-column">
-        ${renderTopTenCard('TOP 10 MPO', mpoRanking, 'MPO')}
-        ${renderTopTenCard('TOP 10 FPO', fpoRanking, 'FPO')}
+        ${renderTopTenCard('TOP 10 MPO', mpoRanking, 'MPO', dataState)}
+        ${renderTopTenCard('TOP 10 FPO', fpoRanking, 'FPO', dataState)}
       </div>
     </section>
   `;
@@ -475,7 +485,7 @@ function renderRankingSection(dataState, uiState) {
                         (entry, index) => `
                           <tr>
                             <td>${index + 1}</td>
-                            <td>${escapeHtml(entry.name)}</td>
+                            <td>${renderPlayerName(entry, dataState.settings)}</td>
                             <td>${escapeHtml(entry.division)}</td>
                             <td>${escapeHtml(entry.pdgaRating || '—')}</td>
                             <td>${escapeHtml(entry.worldRank || '—')}</td>
@@ -736,14 +746,9 @@ Maija;Mallikas;54321;890;2450</pre>
                         <tbody>
                           ${visiblePlayers
                             .map((player) => {
-                              const playerPdgaUrl = buildPdgaPlayerUrl(dataState.settings, player);
                               return `
                                 <tr>
-                                  <td data-label="Pelaajan nimi">${
-                                    playerPdgaUrl
-                                      ? `<a href="${escapeHtml(playerPdgaUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(player.name)}</a>`
-                                      : escapeHtml(player.name)
-                                  }</td>
+                                  <td data-label="Pelaajan nimi">${renderPlayerName(player, dataState.settings)}</td>
                                   <td data-label="PDGA ID">${escapeHtml(renderValueOrDash(player.pdgaNumber))}</td>
                                   <td data-label="Sarja">${escapeHtml(player.division)}</td>
                                   <td data-label="PDGA-rating">${escapeHtml(renderValueOrDash(player.pdgaRating))}</td>

@@ -203,6 +203,94 @@ test('renderApp builds PDGA links from centralized settings', () => {
   assert.match(root.innerHTML, /rel="noopener noreferrer"/);
 });
 
+test('renderApp renders player names as PDGA links across views and falls back to text without PDGA ID', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.settings = {
+    playerBaseUrl: 'https://example.com/player/',
+    eventBaseUrl: 'https://example.com/event/',
+  };
+  dataState.players = [
+    {
+      id: 'player-1',
+      firstName: 'Linkki',
+      lastName: 'Pelaaja',
+      name: 'Linkki Pelaaja',
+      division: 'MPO',
+      pdgaNumber: 12345,
+      pdgaRating: 1000,
+      worldRank: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+    {
+      id: 'player-2',
+      firstName: 'Teksti',
+      lastName: 'Pelaaja',
+      name: 'Teksti Pelaaja',
+      division: 'FPO',
+      pdgaNumber: '',
+      pdgaRating: 950,
+      worldRank: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Testi Open',
+      pdgaEventId: '',
+      startDate: '2026-07-03',
+      endDate: '',
+      displayOrder: 1,
+      location: '',
+      venue: '',
+      status: '',
+      multiplierId: 'multiplier-major',
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournamentResults = [
+    {
+      id: 'result-1',
+      tournamentId: 'tournament-1',
+      playerId: 'player-1',
+      place: 1,
+      basePointsSnapshot: 100,
+      multiplierSnapshot: 1,
+      calculatedPoints: 100,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+    {
+      id: 'result-2',
+      tournamentId: 'tournament-1',
+      playerId: 'player-2',
+      place: 1,
+      basePointsSnapshot: 90,
+      multiplierSnapshot: 1,
+      calculatedPoints: 90,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(root, dataState, createUiState({ activeView: 'summary' }));
+
+  const linkedNameMatches = [...root.innerHTML.matchAll(/class="player-name-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili">Linkki Pelaaja<\/a>/g)];
+  const textNameMatches = [...root.innerHTML.matchAll(/<span class="player-name-text">Teksti Pelaaja<\/span>/g)];
+  assert.equal(linkedNameMatches.length, 3);
+  assert.equal(textNameMatches.length, 3);
+  assert.doesNotMatch(root.innerHTML, /href="https:\/\/example\.com\/player\/[^"]*">Teksti Pelaaja<\/a>/);
+});
+
 test('renderApp näyttää yhteenvetosivulla vain dashboardin avainluvut ja TOP 10 -listat', () => {
   const root = createRootStub();
   const dataState = createEmptyState();

@@ -26,6 +26,11 @@ test('builds PDGA links from centralized settings and ids', () => {
   );
 });
 
+test('does not build player link without a PDGA id', () => {
+  assert.equal(buildPdgaPlayerUrl(DEFAULT_PDGA_SETTINGS, { pdgaNumber: '' }), '');
+  assert.equal(buildPdgaPlayerUrl(DEFAULT_PDGA_SETTINGS, {}), '');
+});
+
 test('normalizes PDGA settings with trailing slashes', () => {
   const settings = validateSettingsInput({
     playerBaseUrl: 'https://example.com/player',

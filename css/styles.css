@@ -642,9 +642,22 @@ textarea {
   gap: var(--spacing-xs);
 }
 
+.player-name-link,
+.player-name-text,
 .tournament-name-link,
 .tournament-name-text {
   font-weight: 700;
+}
+
+.player-name-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.player-name-link:hover {
+  color: inherit;
+  text-decoration-thickness: 0.15em;
 }
 
 .danger-zone {
