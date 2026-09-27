@@ -11,7 +11,7 @@ async function main() {
   await rm(distDir, { recursive: true, force: true });
   await mkdir(distDir, { recursive: true });
 
-  const itemsToCopy = ['index.html', 'css', 'js', 'assets'];
+  const itemsToCopy = ['index.html', 'css', 'js', 'assets', 'server'];
 
   for (const item of itemsToCopy) {
     const sourcePath = path.join(rootDir, item);

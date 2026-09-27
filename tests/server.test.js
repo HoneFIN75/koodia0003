@@ -1,0 +1,90 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import os from 'node:os';
+import path from 'node:path';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { createJsonFileStorage } from '../server/json-file-storage.mjs';
+import { createServer } from '../server/app.mjs';
+
+async function createTempDir() {
+  return mkdtemp(path.join(os.tmpdir(), 'sfl-jsondb-'));
+}
+
+test('json storage creates expected files automatically', async () => {
+  const directoryPath = await createTempDir();
+  const storage = createJsonFileStorage({ directoryPath });
+
+  try {
+    const state = await storage.loadState();
+
+    assert.deepEqual(state.players, []);
+    assert.deepEqual(state.tournaments, []);
+    assert.deepEqual(state.tournamentResults, []);
+
+    const fileNames = [
+      'players.json',
+      'tournaments.json',
+      'tournamentResults.json',
+      'scoreTables.json',
+      'multipliers.json',
+      'settings.json',
+    ];
+
+    for (const fileName of fileNames) {
+      const filePath = path.join(directoryPath, fileName);
+      const contents = JSON.parse(await readFile(filePath, 'utf8'));
+      assert.ok(contents !== undefined, `${fileName} should exist`);
+    }
+  } finally {
+    await rm(directoryPath, { recursive: true, force: true });
+  }
+});
+
+test('API loads and saves shared state through JSON storage', async () => {
+  const publicDir = await createTempDir();
+  const jsondbDir = await createTempDir();
+  const storage = createJsonFileStorage({ directoryPath: jsondbDir });
+  const server = createServer({ publicDir, storage });
+
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+
+    const initialResponse = await fetch(`${baseUrl}/api/state`);
+    assert.equal(initialResponse.status, 200);
+    const initialState = await initialResponse.json();
+    assert.deepEqual(initialState.players, []);
+
+    const saveResponse = await fetch(`${baseUrl}/api/state`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        players: [
+          {
+            id: 'player-1',
+            name: 'Testi Pelaaja',
+            firstName: 'Testi',
+            lastName: 'Pelaaja',
+            division: 'MPO',
+            pdgaProfileUrl: 'https://www.pdga.com/player/12345',
+          },
+        ],
+      }),
+    });
+    assert.equal(saveResponse.status, 200);
+    const savedState = await saveResponse.json();
+    assert.equal(savedState.players[0].pdgaNumber, 12345);
+
+    const reloadedResponse = await fetch(`${baseUrl}/api/state`);
+    const reloadedState = await reloadedResponse.json();
+    assert.equal(reloadedState.players[0].pdgaNumber, 12345);
+    assert.deepEqual(reloadedState.pointsTable, { MPO: {}, FPO: {} });
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    await rm(publicDir, { recursive: true, force: true });
+    await rm(jsondbDir, { recursive: true, force: true });
+  }
+});

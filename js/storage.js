@@ -2,9 +2,14 @@ import { DEFAULT_TOURNAMENT_DISPLAY_ORDER } from './tournaments.js';
 import { DEFAULT_PDGA_SETTINGS, extractPdgaEventId, extractPdgaPlayerId, sanitizePdgaSettings } from './pdga.js';
 import { createDefaultMultipliers, ensureLegacyMultiplier, sanitizeMultipliers } from './multipliers.js';
 
-const STORAGE_KEY = 'sfl-pisteytystyokalu:v3';
-const LEGACY_STORAGE_KEYS = ['sfl-pisteytystyokalu:v2', 'sfl-pisteytystyokalu:v1'];
-const STORAGE_VERSION = 3;
+export const STORAGE_VERSION = 3;
+
+function createDefaultPointsTable() {
+  return {
+    MPO: {},
+    FPO: {},
+  };
+}
 
 export function createEmptyState() {
   return {
@@ -13,20 +18,9 @@ export function createEmptyState() {
     tournaments: [],
     tournamentResults: [],
     settings: { ...DEFAULT_PDGA_SETTINGS },
-    pointsTable: {
-      MPO: {},
-      FPO: {},
-    },
+    pointsTable: createDefaultPointsTable(),
     multipliers: createDefaultMultipliers(),
   };
-}
-
-function getLocalStorage() {
-  if (typeof window === 'undefined' || !window.localStorage) {
-    return null;
-  }
-
-  return window.localStorage;
 }
 
 function sanitizePointsTable(pointsTable = {}) {
@@ -89,7 +83,7 @@ function sanitizeTournament(tournament = {}) {
   };
 }
 
-function sanitizeState(candidate = {}) {
+export function sanitizeState(candidate = {}) {
   const empty = createEmptyState();
   const sanitizedTournaments = Array.isArray(candidate.tournaments)
     ? candidate.tournaments.map(sanitizeTournament)
@@ -139,58 +133,88 @@ function sanitizeState(candidate = {}) {
   };
 }
 
-function hasStateData(state) {
-  const defaultState = createEmptyState();
-
-  return (
-    state.players.length > 0 ||
-    state.tournaments.length > 0 ||
-    state.tournamentResults.length > 0 ||
-    Object.keys(state.pointsTable.MPO).length > 0 ||
-    Object.keys(state.pointsTable.FPO).length > 0 ||
-    state.settings.playerBaseUrl !== DEFAULT_PDGA_SETTINGS.playerBaseUrl ||
-    state.settings.eventBaseUrl !== DEFAULT_PDGA_SETTINGS.eventBaseUrl ||
-    JSON.stringify(state.multipliers) !== JSON.stringify(defaultState.multipliers)
-  );
+function getStateApiUrl(moduleUrl = import.meta.url) {
+  return new URL('../api/state', moduleUrl);
 }
 
-export function loadState() {
-  const storage = getLocalStorage();
-  if (!storage) {
-    return createEmptyState();
+async function readErrorMessage(response, fallbackMessage) {
+  try {
+    const payload = await response.json();
+    if (payload && typeof payload.message === 'string' && payload.message.trim()) {
+      return payload.message.trim();
+    }
+  } catch {
+    // Fall back to generic message below.
   }
 
-  const currentRaw = storage.getItem(STORAGE_KEY);
-  const legacyRaw = LEGACY_STORAGE_KEYS.map((key) => storage.getItem(key)).find(Boolean);
-  if (!currentRaw && !legacyRaw) {
-    const empty = createEmptyState();
-    storage.setItem(STORAGE_KEY, JSON.stringify(empty));
-    return empty;
+  return fallbackMessage;
+}
+
+export async function loadState({
+  fetchImpl = globalThis.fetch,
+  moduleUrl = import.meta.url,
+} = {}) {
+  if (typeof fetchImpl !== 'function') {
+    throw new Error('Tietojen lataaminen epäonnistui. Käynnistä sovellus palvelimen kautta ja yritä uudelleen.');
+  }
+
+  let response;
+  try {
+    response = await fetchImpl(getStateApiUrl(moduleUrl), {
+      headers: {
+        Accept: 'application/json',
+      },
+      cache: 'no-store',
+    });
+  } catch {
+    throw new Error('Tietojen lataaminen epäonnistui palvelimelta. Yritä uudelleen hetken kuluttua.');
+  }
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Tietojen lataaminen epäonnistui palvelimelta.'));
   }
 
   try {
-    const currentState = currentRaw ? sanitizeState(JSON.parse(currentRaw)) : null;
-    const legacyState = legacyRaw ? sanitizeState(JSON.parse(legacyRaw)) : null;
-    const sanitized = (
-      currentState && (!legacyState || hasStateData(currentState) || !hasStateData(legacyState))
-        ? currentState
-        : legacyState
-    ) || createEmptyState();
-
-    storage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
-    return sanitized;
+    return sanitizeState(await response.json());
   } catch {
-    throw new Error('Tallennetun datan lukeminen epäonnistui. Tyhjennä selaintiedot ja lataa sivu uudelleen.');
+    throw new Error('Palvelimen vastausta ei voitu lukea.');
   }
 }
 
-export function saveState(state) {
-  const storage = getLocalStorage();
+export async function saveState(
+  state,
+  {
+    fetchImpl = globalThis.fetch,
+    moduleUrl = import.meta.url,
+  } = {},
+) {
   const sanitized = sanitizeState(state);
-  if (!storage) {
-    return sanitized;
+
+  if (typeof fetchImpl !== 'function') {
+    throw new Error('Tallentaminen epäonnistui. Käynnistä sovellus palvelimen kautta ja yritä uudelleen.');
   }
 
-  storage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
-  return sanitized;
+  let response;
+  try {
+    response = await fetchImpl(getStateApiUrl(moduleUrl), {
+      method: 'PUT',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(sanitized),
+    });
+  } catch {
+    throw new Error('Tallentaminen epäonnistui palvelimelle. Yritä uudelleen hetken kuluttua.');
+  }
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Tallentaminen epäonnistui palvelimelle.'));
+  }
+
+  try {
+    return sanitizeState(await response.json());
+  } catch {
+    throw new Error('Palvelimen vastausta ei voitu lukea.');
+  }
 }

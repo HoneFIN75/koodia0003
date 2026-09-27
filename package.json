@@ -5,6 +5,7 @@
   "description": "Suomen frisbeegolfliiton selainpohjainen MVP kilpailupisteiden hallintaan.",
   "type": "module",
   "scripts": {
+    "start": "node server/index.mjs",
     "test": "node --test",
     "build": "node scripts/build.mjs"
   }

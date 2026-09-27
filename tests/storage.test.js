@@ -2,32 +2,27 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadState, saveState } from '../js/storage.js';
 
-function createStorageStub() {
-  const values = new Map();
+const removedTournamentField = ['cou', 'ntry'].join('');
+const removedPlayerField = ['birth', 'Year'].join('');
 
+function createJsonResponse(payload, ok = true, status = 200) {
   return {
-    getItem(key) {
-      return values.has(key) ? values.get(key) : null;
-    },
-    setItem(key, value) {
-      values.set(key, value);
-    },
-    clear() {
-      values.clear();
+    ok,
+    status,
+    async json() {
+      return payload;
     },
   };
 }
 
-const removedTournamentField = ['cou', 'ntry'].join('');
-const removedPlayerField = ['birth', 'Year'].join('');
+test('loadState sanitizes API payload and strips unknown legacy fields', async () => {
+  const state = await loadState({
+    moduleUrl: 'https://example.com/js/storage.js',
+    fetchImpl: async (url, options) => {
+      assert.equal(url.href, 'https://example.com/api/state');
+      assert.equal(options.cache, 'no-store');
 
-test('loadState drops unknown legacy fields from players and tournaments', () => {
-  const localStorage = createStorageStub();
-  globalThis.window = { localStorage };
-  try {
-    localStorage.setItem(
-      'sfl-pisteytystyokalu:v1',
-      JSON.stringify({
+      return createJsonResponse({
         version: 1,
         players: [
           {
@@ -56,38 +51,34 @@ test('loadState drops unknown legacy fields from players and tournaments', () =>
         ],
         tournamentResults: [],
         pointsTable: { MPO: {}, FPO: {} },
-      }),
-    );
+      });
+    },
+  });
 
-    const state = loadState();
-
-    assert.ok(!Object.hasOwn(state.players[0], 'legacyField'));
-    assert.ok(!Object.hasOwn(state.tournaments[0], 'legacyField'));
-    assert.ok(!Object.hasOwn(state.players[0], removedTournamentField));
-    assert.ok(!Object.hasOwn(state.players[0], removedPlayerField));
-    assert.ok(!Object.hasOwn(state.tournaments[0], removedTournamentField));
-    assert.ok(!Object.hasOwn(state.players[0], 'pdgaProfileUrl'));
-    assert.equal(state.players[0].notes, 'Huomio');
-    assert.equal(state.players[0].pdgaNumber, 45678);
-    assert.equal(state.tournaments[0].pdgaEventId, 98765);
-    assert.equal(state.tournaments[0].venue, 'Keskuspuisto');
-    assert.equal(state.tournaments[0].displayOrder, 999);
-    assert.ok(state.tournaments[0].multiplierId);
-    assert.ok(state.multipliers.length > 0);
-    assert.deepEqual(state.settings, {
-      playerBaseUrl: 'https://www.pdga.com/player/',
-      eventBaseUrl: 'https://www.pdga.com/tour/event/',
-    });
-  } finally {
-    delete globalThis.window;
-  }
+  assert.ok(!Object.hasOwn(state.players[0], 'legacyField'));
+  assert.ok(!Object.hasOwn(state.tournaments[0], 'legacyField'));
+  assert.ok(!Object.hasOwn(state.players[0], removedTournamentField));
+  assert.ok(!Object.hasOwn(state.players[0], removedPlayerField));
+  assert.ok(!Object.hasOwn(state.tournaments[0], removedTournamentField));
+  assert.ok(!Object.hasOwn(state.players[0], 'pdgaProfileUrl'));
+  assert.equal(state.players[0].notes, 'Huomio');
+  assert.equal(state.players[0].pdgaNumber, 45678);
+  assert.equal(state.tournaments[0].pdgaEventId, 98765);
+  assert.equal(state.tournaments[0].venue, 'Keskuspuisto');
+  assert.equal(state.tournaments[0].displayOrder, 999);
+  assert.ok(state.tournaments[0].multiplierId);
+  assert.ok(state.multipliers.length > 0);
+  assert.deepEqual(state.settings, {
+    playerBaseUrl: 'https://www.pdga.com/player/',
+    eventBaseUrl: 'https://www.pdga.com/tour/event/',
+  });
 });
 
-test('saveState strips unknown legacy fields before persisting', () => {
-  const localStorage = createStorageStub();
-  globalThis.window = { localStorage };
-  try {
-    const state = saveState({
+test('saveState sanitizes payload before sending it to API', async () => {
+  let request;
+
+  const state = await saveState(
+    {
       version: 1,
       players: [
         {
@@ -117,87 +108,47 @@ test('saveState strips unknown legacy fields before persisting', () => {
         eventBaseUrl: 'https://www.pdga.com/tour/event',
       },
       pointsTable: { MPO: {}, FPO: {} },
-    });
+    },
+    {
+      moduleUrl: 'https://example.com/js/storage.js',
+      fetchImpl: async (url, options) => {
+        request = { url: url.href, options };
+        return createJsonResponse(JSON.parse(options.body));
+      },
+    },
+  );
 
-    assert.ok(!Object.hasOwn(state.players[0], 'legacyField'));
-    assert.ok(!Object.hasOwn(state.tournaments[0], 'legacyField'));
-    assert.ok(!Object.hasOwn(state.players[0], removedTournamentField));
-    assert.ok(!Object.hasOwn(state.players[0], removedPlayerField));
-    assert.ok(!Object.hasOwn(state.tournaments[0], removedTournamentField));
-    assert.ok(!Object.hasOwn(state.players[0], 'pdgaProfileUrl'));
-    assert.equal(state.players[0].pdgaNumber, 76543);
-    assert.equal(state.tournaments[0].pdgaEventId, 321);
-    assert.equal(state.tournaments[0].displayOrder, 4);
-    assert.equal(state.tournaments[0].venue, 'Keskuspuisto');
-    assert.equal(state.tournaments[0].multiplierId, '');
-    assert.deepEqual(state.settings, {
-      playerBaseUrl: 'https://www.pdga.com/player/',
-      eventBaseUrl: 'https://www.pdga.com/tour/event/',
-    });
+  assert.equal(request.url, 'https://example.com/api/state');
+  assert.equal(request.options.method, 'PUT');
+  assert.equal(request.options.headers['Content-Type'], 'application/json');
 
-    const persisted = JSON.parse(localStorage.getItem('sfl-pisteytystyokalu:v3'));
-    assert.ok(!Object.hasOwn(persisted.players[0], 'legacyField'));
-    assert.ok(!Object.hasOwn(persisted.tournaments[0], 'legacyField'));
-    assert.ok(!Object.hasOwn(persisted.players[0], removedTournamentField));
-    assert.ok(!Object.hasOwn(persisted.players[0], removedPlayerField));
-    assert.ok(!Object.hasOwn(persisted.tournaments[0], removedTournamentField));
-    assert.ok(!Object.hasOwn(persisted.players[0], 'pdgaProfileUrl'));
-    assert.equal(persisted.players[0].pdgaNumber, 76543);
-    assert.equal(persisted.tournaments[0].pdgaEventId, 321);
-    assert.equal(persisted.tournaments[0].displayOrder, 4);
-    assert.equal(persisted.tournaments[0].venue, 'Keskuspuisto');
-    assert.equal(persisted.tournaments[0].multiplierId, '');
-    assert.deepEqual(persisted.settings, {
-      playerBaseUrl: 'https://www.pdga.com/player/',
-      eventBaseUrl: 'https://www.pdga.com/tour/event/',
-    });
-  } finally {
-    delete globalThis.window;
-  }
+  const sentState = JSON.parse(request.options.body);
+  assert.ok(!Object.hasOwn(sentState.players[0], 'legacyField'));
+  assert.ok(!Object.hasOwn(sentState.tournaments[0], 'legacyField'));
+  assert.ok(!Object.hasOwn(sentState.players[0], removedTournamentField));
+  assert.ok(!Object.hasOwn(sentState.players[0], removedPlayerField));
+  assert.ok(!Object.hasOwn(sentState.tournaments[0], removedTournamentField));
+  assert.ok(!Object.hasOwn(sentState.players[0], 'pdgaProfileUrl'));
+  assert.equal(sentState.players[0].pdgaNumber, 76543);
+  assert.equal(sentState.tournaments[0].pdgaEventId, 321);
+  assert.equal(sentState.tournaments[0].displayOrder, 4);
+  assert.equal(sentState.tournaments[0].venue, 'Keskuspuisto');
+  assert.equal(sentState.tournaments[0].multiplierId, '');
+  assert.deepEqual(sentState.settings, {
+    playerBaseUrl: 'https://www.pdga.com/player/',
+    eventBaseUrl: 'https://www.pdga.com/tour/event/',
+  });
+  assert.equal(state.players[0].pdgaNumber, 76543);
+  assert.equal(state.tournaments[0].pdgaEventId, 321);
+  assert.equal(state.tournaments[0].multiplierId, '');
+  assert.deepEqual(state.settings, sentState.settings);
 });
 
-test('loadState prefers legacy data over empty v2 state during migration', () => {
-  const localStorage = createStorageStub();
-  globalThis.window = { localStorage };
-  try {
-    localStorage.setItem(
-      'sfl-pisteytystyokalu:v1',
-      JSON.stringify({
-        version: 1,
-        players: [
-          {
-            id: 'player-1',
-            name: 'Migrated Player',
-            division: 'MPO',
-            pdgaProfileUrl: 'https://www.pdga.com/player/11223',
-          },
-        ],
-        tournaments: [],
-        tournamentResults: [],
-        pointsTable: { MPO: {}, FPO: {} },
-      }),
-    );
-    localStorage.setItem(
-      'sfl-pisteytystyokalu:v3',
-      JSON.stringify({
-        version: 3,
-        players: [],
-        tournaments: [],
-        tournamentResults: [],
-        settings: {
-          playerBaseUrl: 'https://www.pdga.com/player/',
-          eventBaseUrl: 'https://www.pdga.com/tour/event/',
-        },
-        pointsTable: { MPO: {}, FPO: {} },
-        multipliers: [],
-      }),
-    );
-
-    const state = loadState();
-
-    assert.equal(state.players.length, 1);
-    assert.equal(state.players[0].pdgaNumber, 11223);
-  } finally {
-    delete globalThis.window;
-  }
+test('loadState surfaces API validation message in Finnish', async () => {
+  await assert.rejects(
+    loadState({
+      fetchImpl: async () => createJsonResponse({ message: 'Tietojen haku epäonnistui.' }, false, 500),
+    }),
+    /Tietojen haku epäonnistui\./,
+  );
 });
