@@ -303,7 +303,7 @@ a {
 }
 
 .stats-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .two-column {
@@ -614,6 +614,10 @@ textarea {
   justify-content: space-between;
   gap: var(--spacing-md);
   font-size: 0.9375rem;
+}
+
+.chart-meta-dashboard {
+  align-items: baseline;
 }
 
 .chart-bar-track {

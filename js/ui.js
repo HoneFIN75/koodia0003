@@ -2,7 +2,7 @@ import { DIVISIONS, getVisiblePlayers } from './players.js';
 import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, MULTIPLIER_OPTIONS, sortTournaments, filterAndSortTournaments } from './tournaments.js';
 import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS } from './pdga.js';
 import { listPointsTableEntries, getBasePoints } from './scoring.js';
-import { buildRanking, getTopRanking, getPlayerResults } from './ranking.js';
+import { buildRanking, getTopRanking } from './ranking.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -239,203 +239,73 @@ function renderNav(activeView) {
 
 function renderStats(dataState) {
   const pointEntries = listPointsTableEntries(dataState.pointsTable).length;
-  const scoredResults = dataState.tournamentResults.length;
 
   return `
     <div class="stats-grid">
       <article class="card stat-card">
         <span class="eyebrow">Pelaajat</span>
         <strong>${formatNumber(dataState.players.length)}</strong>
-        <span class="section-subtitle">Tallennetut MPO- ja FPO-pelaajat</span>
       </article>
       <article class="card stat-card">
         <span class="eyebrow">Turnaukset</span>
         <strong>${formatNumber(dataState.tournaments.length)}</strong>
-        <span class="section-subtitle">Hallinnoidut kilpailut ja multiplierit</span>
-      </article>
-      <article class="card stat-card">
-        <span class="eyebrow">Tulokset</span>
-        <strong>${formatNumber(scoredResults)}</strong>
-        <span class="section-subtitle">Tallennetut sijoitukset snapshot-pisteillä</span>
       </article>
       <article class="card stat-card">
         <span class="eyebrow">Pistetaulukot</span>
         <strong>${formatNumber(pointEntries)}</strong>
-        <span class="section-subtitle">MPO- ja FPO-sijoitukset, joille on syötetty pisteet</span>
       </article>
     </div>
   `;
 }
 
-function renderSummarySection(dataState, uiState) {
-  const ranking = buildRanking(dataState.players, dataState.tournamentResults, uiState.summaryFilter);
+function renderTopTenCard(title, ranking, division) {
   const topTen = getTopRanking(ranking, 10);
   const maxPoints = topTen[0]?.totalPoints || 0;
-  const selectedPlayerId = uiState.summaryPlayerId || ranking[0]?.id || dataState.players[0]?.id || '';
-  const selectedPlayer = dataState.players.find((player) => player.id === selectedPlayerId) || null;
-  const playerPdgaUrl = selectedPlayer ? buildPdgaPlayerUrl(dataState.settings, selectedPlayer) : '';
-  const selectedPlayerResults = selectedPlayer
-    ? getPlayerResults({
-        playerId: selectedPlayer.id,
-        tournamentResults: dataState.tournamentResults,
-        tournaments: dataState.tournaments,
-      })
-    : [];
-  const selectedRankingEntry = ranking.find((player) => player.id === selectedPlayerId) || null;
+
+  return `
+    <article class="card">
+      <div class="section-heading">
+        <h3>${escapeHtml(title)}</h3>
+      </div>
+      ${
+        topTen.length
+          ? `<div class="chart" role="img" aria-label="${escapeHtml(title)} kokonaispisteiden perusteella">
+              ${topTen
+                .map((entry, index) => {
+                  const width = maxPoints > 0 ? (entry.totalPoints / maxPoints) * 100 : 0;
+                  return `
+                    <div class="chart-row">
+                      <div class="chart-meta chart-meta-dashboard">
+                        <span><strong>${index + 1}.</strong> ${escapeHtml(entry.name)}</span>
+                        <span>${formatNumber(entry.totalPoints)} p</span>
+                      </div>
+                      <div class="chart-bar-track">
+                        <div class="chart-bar" style="width: ${width}%" aria-hidden="true"></div>
+                      </div>
+                      <span class="muted">Sijoitus ${index + 1} • Sarja ${escapeHtml(division)}</span>
+                    </div>
+                  `;
+                })
+                .join('')}
+            </div>`
+          : renderEmptyState(`Sarjassa ${division} ei ole vielä pisteellisiä pelaajia.`)
+      }
+    </article>
+  `;
+}
+
+function renderSummarySection(dataState, uiState) {
+  const mpoRanking = buildRanking(dataState.players, dataState.tournamentResults, 'MPO');
+  const fpoRanking = buildRanking(dataState.players, dataState.tournamentResults, 'FPO');
 
   return `
     <section class="section" id="section-summary" ${uiState.activeView === 'summary' ? '' : 'hidden'} aria-labelledby="summary-title">
-      <div class="hero">
-        <article class="hero-card">
-          <div class="eyebrow">Suomen frisbeegolfliiton työkalu</div>
-          <h1 id="summary-title">SFL Pisteytystyökalu</h1>
-          ${renderDeploymentInfo(uiState.deploymentInfo)}
-          <p>
-            Selainpohjainen MVP pelaajien, turnausten, pistetaulukoiden ja rankingin hallintaan. Kaikki tiedot
-            tallennetaan tässä vaiheessa paikallisesti selaimen localStorageen.
-          </p>
-          <div class="badge-row">
-            <span class="badge">Käyttöliittymä suomeksi</span>
-            <span class="badge">Ei ulkoisia palveluita</span>
-            <span class="badge">Valmius myöhempään API-vaiheeseen</span>
-          </div>
-        </article>
-        <aside class="hero-side card" aria-label="Brändihuomiot">
-          <div class="brand-copy">
-            <span>Logo-paikkavaraus</span>
-            <strong>Suomen frisbeegolfliitto</strong>
-          </div>
-          <p class="section-subtitle">
-            Tämä MVP käyttää tekstimuotoista tunnistetta. Lopullinen SVG- tai PNG-logo sekä viralliset väriarvot tulee
-            varmistaa erikseen.
-          </p>
-          <div class="hero-note">Automaattinen julkaisu on sallittu vain main-haaran pushista.</div>
-        </aside>
-      </div>
+      <h1 id="summary-title">Yhteenveto</h1>
       ${renderStats(dataState)}
       <div class="two-column">
-        <article class="card">
-          <div class="section-heading">
-            <div>
-              <h3>Top 10 -pistevisualisointi</h3>
-              <p class="section-subtitle">Päivittyy sarjasuodatuksen mukaan ilman ulkoisia kirjastoja.</p>
-            </div>
-            <div class="filter-row" role="group" aria-label="Yhteenvedon sarjasuodatus">
-              ${['ALL', ...DIVISIONS]
-                .map(
-                  (filter) => `
-                    <button
-                      type="button"
-                      class="secondary-button"
-                      data-summary-filter="${filter}"
-                      aria-pressed="${uiState.summaryFilter === filter}"
-                    >
-                      ${filter === 'ALL' ? 'Kaikki' : filter}
-                    </button>
-                  `,
-                )
-                .join('')}
-            </div>
-          </div>
-          ${
-            topTen.length
-              ? `<div class="chart" role="img" aria-label="Top 10 pelaajat kokonaispisteiden perusteella">
-                  ${topTen
-                    .map((entry) => {
-                      const width = maxPoints > 0 ? (entry.totalPoints / maxPoints) * 100 : 0;
-                      return `
-                        <div class="chart-row">
-                          <div class="chart-meta">
-                            <strong>${escapeHtml(entry.name)}</strong>
-                            <span>${formatNumber(entry.totalPoints)} p</span>
-                          </div>
-                          <div class="chart-bar-track"><div class="chart-bar" style="width: ${width}%"></div></div>
-                        </div>
-                      `;
-                    })
-                    .join('')}
-                </div>`
-              : renderEmptyState('Top 10 -näkymä täyttyy, kun pelaajille lisätään pisteellisiä turnaustuloksia.')
-          }
-        </article>
-        <article class="card">
-          <div class="section-heading">
-            <div>
-              <h3>Pelaajan perustiedot</h3>
-              <p class="section-subtitle">Valitse pelaaja nähdäksesi kortin ja turnaustulokset.</p>
-            </div>
-          </div>
-          <div class="form-field">
-            <label for="summary-player-select">Valittu pelaaja</label>
-            <select id="summary-player-select" data-summary-player>
-              <option value="">Valitse pelaaja</option>
-              ${dataState.players
-                .map(
-                  (player) =>
-                    `<option value="${escapeHtml(player.id)}" ${player.id === selectedPlayerId ? 'selected' : ''}>${escapeHtml(player.name)} (${player.division})</option>`,
-                )
-                .join('')}
-            </select>
-          </div>
-          ${
-            selectedPlayer
-              ? `
-                <dl class="definition-list">
-                  <div><dt>Nimi</dt><dd>${escapeHtml(selectedPlayer.name)}</dd></div>
-                  <div><dt>Sarja</dt><dd>${escapeHtml(selectedPlayer.division)}</dd></div>
-                  <div><dt>PDGA-rating</dt><dd>${escapeHtml(selectedPlayer.pdgaRating || '—')}</dd></div>
-                  <div><dt>Maailman ranking sijoitus</dt><dd>${escapeHtml(selectedPlayer.worldRank || '—')}</dd></div>
-                  <div><dt>Turnauksia</dt><dd>${formatNumber(selectedRankingEntry?.tournamentCount || 0)}</dd></div>
-                  <div><dt>Kokonaispisteet</dt><dd>${formatNumber(selectedRankingEntry?.totalPoints || 0)} p</dd></div>
-                  <div><dt>PDGA-profiili</dt><dd>${renderLinkButton(playerPdgaUrl, 'Avaa PDGA')}</dd></div>
-                </dl>
-              `
-              : renderEmptyState('Lisää ensin pelaajia, jotta perustietokortti voidaan näyttää.')
-          }
-        </article>
+        ${renderTopTenCard('TOP 10 MPO', mpoRanking, 'MPO')}
+        ${renderTopTenCard('TOP 10 FPO', fpoRanking, 'FPO')}
       </div>
-      <article class="card">
-        <div class="section-heading">
-          <div>
-            <h3>Valitun pelaajan turnaustulokset</h3>
-            <p class="section-subtitle">Snapshot-pisteet säilyvät, vaikka pistetaulukkoa muokattaisiin myöhemmin.</p>
-          </div>
-        </div>
-        ${
-          selectedPlayerResults.length
-            ? `
-              <div class="table-wrap">
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>Turnaus</th>
-                      <th>Sijoitus</th>
-                      <th>1x-pisteet</th>
-                      <th>Kerroin</th>
-                      <th>Kokonaispisteet</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${selectedPlayerResults
-                      .map(
-                        (result) => `
-                          <tr>
-                            <td>${escapeHtml(result.tournament?.name || 'Poistettu turnaus')}<br /><span class="muted">${formatDate(result.tournament?.startDate)}</span></td>
-                            <td>${formatNumber(result.place)}</td>
-                            <td>${formatNumber(result.basePointsSnapshot)}</td>
-                            <td>${formatNumber(result.multiplierSnapshot)}x</td>
-                            <td>${formatNumber(result.calculatedPoints)} p</td>
-                          </tr>
-                        `,
-                      )
-                      .join('')}
-                  </tbody>
-                </table>
-              </div>
-            `
-            : renderEmptyState('Valitulle pelaajalle ei ole vielä tallennettu turnaustuloksia.')
-        }
-      </article>
     </section>
   `;
 }
