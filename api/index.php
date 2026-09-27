@@ -83,6 +83,11 @@ function create_default_state(): array
 
 function jsondb_directory_path(): string
 {
+    $configuredPath = trim((string) getenv('SFL_JSONDB_PATH'));
+    if ($configuredPath !== '') {
+        return $configuredPath;
+    }
+
     return dirname(__DIR__) . DIRECTORY_SEPARATOR . 'jsondb';
 }
 
