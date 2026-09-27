@@ -1960,8 +1960,8 @@ export function renderApp(root, dataState, uiState) {
       </main>
       <footer class="site-footer">
         <div class="site-footer-inner">
-          <div>SFL Pisteytystyökalu on MVP-versio. Tiedot tallennetaan selaimen localStorageen eikä niitä synkronoida käyttäjien välillä.</div>
-          <div>Lopullinen brändivahvistus, logoaineisto ja mahdollinen backend-tietokanta toteutetaan myöhemmässä vaiheessa.</div>
+          <div>SFL Pisteytystyökalu on MVP-versio. Tiedot tallennetaan palvelimen JSON-tiedostoihin ja ovat yhteisiä kaikille käyttäjille.</div>
+          <div>Lopullinen brändivahvistus, logoaineisto ja mahdollinen tietokantapohjainen tallennus toteutetaan myöhemmässä vaiheessa.</div>
         </div>
       </footer>
       ${renderPlayerDialog(dataState, uiState)}

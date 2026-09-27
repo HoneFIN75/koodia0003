@@ -7,8 +7,9 @@ Sovellus on Suomen frisbeegolfliiton selainkäyttöinen MVP-työkalu MPO- ja FPO
 ## Tekninen malli
 
 - staattinen HTML/CSS/JavaScript-sovellus
-- ei frameworkia, ei CDN-riippuvuuksia, ei backendia MVP-vaiheessa
-- localStorage versionoidulla avaimella
+- ei frameworkia eikä CDN-riippuvuuksia
+- minimaalinen Node.js-palvelin ja REST API
+- palvelimen `jsondb/`-hakemistoon tallennettavat JSON-tiedostot
 - build luo `dist`-hakemiston tuotantojulkaisua varten
 - modulaarinen rakenne: käyttöliittymä, tallennus, pelaajat, turnaukset, ranking ja pisteiden laskenta omissa moduuleissaan
 

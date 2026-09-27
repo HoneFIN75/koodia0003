@@ -9,11 +9,12 @@ Ratkaisu on tarkoituksella kevyt ja jatkokehitettävä:
 - semanttinen HTML5-sivupohja
 - erillinen CSS-tiedosto design tokeneilla
 - modulaarinen vanilla JavaScript
-- selaimen `localStorage` versionoidulla avaimella
+- minimaalinen Node.js-palvelin ja REST API
+- palvelimen `jsondb/`-hakemistoon tallennettavat JSON-tiedostot
 - Node.js-pohjainen testaus (`node --test`)
-- yksinkertainen build-skripti staattisen `dist`-hakemiston luontiin
+- yksinkertainen build-skripti julkaistavan `dist`-hakemiston luontiin
 
-Tämä linjaus sopii nykyiseen tyhjään staattiseen projektiin ja nykyiseen julkaisutapaan. Moduulit on erotettu niin, että localStorage voidaan myöhemmin korvata API- ja tietokantaratkaisulla ilman käyttöliittymän täydellistä uudelleenkirjoitusta.
+Ratkaisu säilyy kevyenä, mutta data kulkee nyt selaimesta REST API:n kautta palvelimen JSON-tiedostoihin. Tallennus on erotettu omaksi kerroksekseen, jotta JSON-tallennus voidaan myöhemmin korvata tietokantaratkaisulla ilman käyttöliittymän täydellistä uudelleenkirjoitusta.
 
 ## MVP-toiminnallisuudet
 
@@ -45,18 +46,19 @@ Pisteet haetaan keskitetysti `js/scoring.js`-moduulista. Pistearvoja ei kovakood
 - Pelaajalle tallennetaan vain PDGA-pelaajatunnus.
 - Turnaukselle tallennetaan vain PDGA-kilpailutunnus.
 - Käyttöliittymä muodostaa PDGA-linkit automaattisesti muodossa `perusosoite + tunnus`.
-- Vanhoista täydellisistä PDGA-osoitteista poimitaan tunnus automaattisesti localStorage-migraatiossa aina kun se on mahdollista.
+- Vanhoista täydellisistä PDGA-osoitteista poimitaan tunnus automaattisesti tallennusdatan normalisoinnissa aina kun se on mahdollista.
 
-## localStorage-rajoitukset
+## Tallennus
 
-Tämä MVP-versio tallentaa kaiken datan selaimen `localStorageen`.
+Tämä MVP-versio tallentaa kaiken datan palvelimen `jsondb/`-hakemistoon JSON-tiedostoina REST API:n kautta.
 
-- tiedot ovat selain- ja laitekohtaisia
-- ratkaisu ei ole monikäyttäjäratkaisu
-- tietoja ei synkronoida käyttäjien välillä
+- tiedot ovat yhteisiä kaikille käyttäjille
+- palvelin luo puuttuvat JSON-tiedostot automaattisesti
+- palvelin ylläpitää lisäksi sisäistä atomista `state.json`-snapshotia, jotta kirjoitus pysyy eheänä
+- `jsondb/`-hakemisto pitää säilyttää deployjen yli
 - tietokantapohjainen backend on myöhempi kehitysvaihe
 - importia ja exportia ei ole vielä toteutettu
-- tietojen varmuuskopiointi jää käyttäjän vastuulle tässä vaiheessa
+- JSON-tiedostojen varmuuskopiointi kuuluu palvelinympäristölle
 
 ## Käynnistys paikallisesti
 
@@ -71,13 +73,16 @@ Asennus ja komennot:
 npm install
 npm test
 npm run build
+npm start
 ```
 
-Avaa tämän jälkeen `index.html` selaimessa tai tarjoile projekti haluamallasi staattisella palvelimella.
+Avaa tämän jälkeen sovellus osoitteesta `http://localhost:3000`.
+
+Palvelin kuuntelee oletuksena vain paikallista rajapintaa (`127.0.0.1`). Julkisessa ympäristössä Node-palvelin kannattaa sijoittaa autentikoidun tai muuten suojatun reverse proxyn taakse. Jos proxy ei yhdistä Node-palvelimeen loopback-osoitteesta, write-pyyntöjen pitää välittää sekä `X-SFL-Proxy-Authenticated: true` että `X-SFL-Write-Token`, kun `SFL_API_WRITE_TOKEN` on asetettu Node-palvelimelle.
 
 ## Julkaisu
 
-`.github/workflows/deploy.yml` rakentaa staattisen `dist`-hakemiston ja julkaisee sen SSH/rsync-mallilla. Workflow saa käynnistyä automaattisesti vain `main`-haaran pushista. Tässä MVP-vaiheessa ei käytetä ulkoisia API-kutsuja eikä agentti käynnistä julkaisuja manuaalisesti.
+`.github/workflows/deploy.yml` rakentaa julkaistavan `dist`-hakemiston ja julkaisee sen SSH/rsync-mallilla. Workflow suojaa palvelimen `jsondb/`-hakemiston rsync-poistoilta, jotta data säilyy deployjen yli. Workflow saa käynnistyä automaattisesti vain `main`-haaran pushista.
 
 ## Brändi ja logo
 
@@ -87,7 +92,7 @@ Tässä MVP:ssä käytetään tekstimuotoista logo-paikkavarausta “Suomen fris
 
 ## Seuraavat kehitysvaiheet
 
-- backend- ja tietokantaratkaisu localStoragen tilalle
+- tietokantapohjainen tallennus JSON-välivaiheen tilalle
 - import/export-toiminnot
 - tarkempi audit trail ja mahdolliset käyttäjäroolit
 - varsinainen logoaineisto ja brändivahvistus
