@@ -98,7 +98,7 @@ function createUiState(overrides = {}) {
     tournamentFormFocusTarget: '',
     tournamentSearch: '',
     tournamentStatusFilter: 'ALL',
-    tournamentSortField: 'startDate',
+    tournamentSortField: 'displayOrder',
     tournamentSortDirection: 'asc',
     tournamentImportDialogOpen: false,
     tournamentImportFocusTarget: '',
@@ -533,7 +533,8 @@ test('renderApp shows tournament table with required column order and PDGA name 
   assert.match(root.innerHTML, /data-open-tournament-dialog>Lisää turnaus<\/button>/);
   assert.match(root.innerHTML, /data-open-tournament-import-dialog>Tuo turnaukset<\/button>/);
   assert.match(root.innerHTML, /CSV-tuonnin ohje/);
-  assert.match(root.innerHTML, /PDGA Event ID;Turnauksen nimi/);
+  assert.match(root.innerHTML, /Järjestysnumero;PDGA Event ID;Turnauksen nimi/);
+  assert.match(root.innerHTML, /data-request-delete-all-tournaments/);
   assert.match(
     root.innerHTML,
     /<th>Turnauksen nimi<\/th>\s*<th>Tila<\/th>\s*<th>Kerroin<\/th>\s*<th>PDGA Event ID<\/th>\s*<th>Alkamispäivä<\/th>\s*<th>Päättymispäivä<\/th>\s*<th>Paikkakunta<\/th>\s*<th>Rata<\/th>\s*<th>Muokkaa<\/th>/,
@@ -573,13 +574,56 @@ test('renderApp shows tournament import dialog and summary', () => {
     }),
   );
 
-  assert.match(root.innerHTML, /<h2 id="tournament-import-dialog-title">Tuo turnaukset CSV-tiedostosta<\/h2>/);
+  assert.match(root.innerHTML, /<h2 id="tournament-import-dialog-title">Tuo turnaukset<\/h2>/);
   assert.match(root.innerHTML, /id="tournament-import-file" name="file" type="file" accept="\.csv,text\/csv" required/);
+  assert.match(root.innerHTML, /id="tournament-import-file-hint"/);
   assert.match(root.innerHTML, /Turnausten tuonti valmis/);
   assert.match(root.innerHTML, /<dt>Tuotu<\/dt><dd>3<\/dd>/);
-  assert.match(root.innerHTML, /<dt>Ohitettu \(duplikaatti PDGA Event ID\)<\/dt><dd>1<\/dd>/);
+  assert.match(root.innerHTML, /<dt>Ohitetut duplikaatit<\/dt><dd>1<\/dd>/);
   assert.match(root.innerHTML, /<dt>Validointivirheet<\/dt><dd>1<\/dd>/);
   assert.match(root.innerHTML, /Rivi 4: Turnauksen nimi puuttuu/);
+});
+
+test('renderApp shows disabled import button before file selection', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'tournaments',
+      tournamentImportDialogOpen: true,
+      tournamentImportSummary: null,
+    }),
+  );
+
+  assert.match(
+    root.innerHTML,
+    /data-submit-tournament-import disabled aria-describedby="tournament-import-file-hint">Tuo<\/button>/,
+  );
+});
+
+test('renderApp shows delete all tournaments confirmation dialog copy', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.tournaments = [{ id: 't1' }, { id: 't2' }];
+  dataState.tournamentResults = [{ id: 'r1' }];
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'tournaments',
+      confirmationDialog: { type: 'delete-all-tournaments' },
+    }),
+  );
+
+  assert.match(root.innerHTML, /<h2 id="confirm-dialog-title">VAROITUS<\/h2>/);
+  assert.match(root.innerHTML, /Tämä toiminto on pysyvä\./);
+  assert.match(root.innerHTML, /Olet poistamassa kaikki turnaukset \(2 kpl\) ja turnaustulokset \(1 kpl\)\./);
+  assert.match(root.innerHTML, /Toimintoa ei voi peruuttaa\./);
+  assert.match(root.innerHTML, /data-confirm-delete-all-tournaments>Poista kaikki turnaukset<\/button>/);
 });
 
 test('renderApp shows shared tournament modal and delete action only in edit mode', () => {
