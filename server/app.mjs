@@ -12,12 +12,15 @@ const MIME_TYPES = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
-function sendJson(response, statusCode, payload) {
+const ALLOWED_PUBLIC_ENTRIES = new Set(['index.html', 'css', 'js', 'assets', 'version.json']);
+
+function sendJson(response, statusCode, payload, extraHeaders = {}) {
   const body = `${JSON.stringify(payload, null, 2)}\n`;
   response.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
     'Cache-Control': 'no-store',
+    ...extraHeaders,
   });
   response.end(body);
 }
@@ -92,6 +95,10 @@ function validateStatePayload(payload) {
 function resolvePublicPath(publicDir, pathname) {
   const normalizedPath = pathname === '/' ? '/index.html' : pathname;
   const decodedPath = decodeURIComponent(normalizedPath);
+  const topLevelEntry = decodedPath.replace(/^\/+/, '').split('/')[0];
+  if (!ALLOWED_PUBLIC_ENTRIES.has(topLevelEntry)) {
+    return null;
+  }
   const absolutePath = path.resolve(publicDir, `.${decodedPath}`);
   const publicRoot = path.resolve(publicDir);
 
@@ -105,7 +112,7 @@ function resolvePublicPath(publicDir, pathname) {
 async function serveStaticFile(request, response, publicDir, pathname) {
   const filePath = resolvePublicPath(publicDir, pathname);
   if (!filePath) {
-    sendText(response, 403, 'Pääsy estetty.');
+    sendText(response, 404, 'Tiedostoa ei löytynyt.');
     return;
   }
 
@@ -174,12 +181,12 @@ export function createRequestHandler({ storage, publicDir, authorizeWriteRequest
           return;
         }
 
-        sendJson(response, 405, { message: 'Metodia ei tueta.' });
+        sendJson(response, 405, { message: 'Metodia ei tueta.' }, { Allow: 'GET, PUT' });
         return;
       }
 
       if (request.method !== 'GET' && request.method !== 'HEAD') {
-        sendJson(response, 405, { message: 'Metodia ei tueta.' });
+        sendJson(response, 405, { message: 'Metodia ei tueta.' }, { Allow: 'GET, HEAD' });
         return;
       }
 
@@ -187,6 +194,11 @@ export function createRequestHandler({ storage, publicDir, authorizeWriteRequest
     } catch (error) {
       if (error instanceof SyntaxError) {
         sendJson(response, 400, { message: 'Pyynnön JSON-data on virheellinen.' });
+        return;
+      }
+
+      if (error instanceof URIError) {
+        sendJson(response, 400, { message: 'Pyynnön osoite ei ole kelvollinen.' });
         return;
       }
 

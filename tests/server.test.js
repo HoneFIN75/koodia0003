@@ -157,6 +157,7 @@ test('API rejects unsupported methods for /api/state', async () => {
     });
 
     assert.equal(response.status, 405);
+    assert.equal(response.headers.get('allow'), 'GET, PUT');
     assert.match(await response.text(), /Metodia ei tueta\./);
   } finally {
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
@@ -224,6 +225,36 @@ test('static HEAD request returns headers without body', async () => {
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-length'), String('<!doctype html><title>SFL</title>'.length));
     assert.equal(await response.text(), '');
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    await rm(publicDir, { recursive: true, force: true });
+    await rm(jsondbDir, { recursive: true, force: true });
+  }
+});
+
+test('server exposes only published frontend assets and rejects invalid URL encoding', async () => {
+  const publicDir = await createTempDir();
+  const jsondbDir = await createTempDir();
+  await writeFile(path.join(publicDir, 'index.html'), '<!doctype html><title>SFL</title>', 'utf8');
+  await writeFile(path.join(publicDir, 'package.json'), '{"private":true}', 'utf8');
+  const storage = createJsonFileStorage({ directoryPath: jsondbDir });
+  const server = createServer({ publicDir, storage });
+
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    const hiddenResponse = await fetch(`http://127.0.0.1:${address.port}/package.json`);
+    assert.equal(hiddenResponse.status, 404);
+
+    const invalidUrlResponse = await fetch(`http://127.0.0.1:${address.port}/%E0%A4%A`);
+    assert.equal(invalidUrlResponse.status, 400);
+    assert.match(await invalidUrlResponse.text(), /Pyynnön osoite ei ole kelvollinen\./);
+
+    const methodResponse = await fetch(`http://127.0.0.1:${address.port}/index.html`, {
+      method: 'POST',
+    });
+    assert.equal(methodResponse.status, 405);
+    assert.equal(methodResponse.headers.get('allow'), 'GET, HEAD');
   } finally {
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     await rm(publicDir, { recursive: true, force: true });
