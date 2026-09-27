@@ -660,6 +660,11 @@ textarea {
   text-decoration-thickness: 0.15em;
 }
 
+.player-name-link:focus-visible {
+  color: inherit;
+  text-decoration-thickness: 0.15em;
+}
+
 .danger-zone {
   display: grid;
   gap: var(--spacing-sm);
