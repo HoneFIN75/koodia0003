@@ -74,7 +74,7 @@ function validateStatePayload(payload) {
   const requiredKeys = [
     'players',
     'tournaments',
-    'tournamentResults',
+    'resultCards',
     'settings',
     'pointsTable',
     'multipliers',

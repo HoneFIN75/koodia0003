@@ -49,7 +49,16 @@ test('loadState sanitizes API payload and strips unknown legacy fields', async (
             [removedTournamentField]: 'Suomi',
           },
         ],
-        tournamentResults: [],
+        tournamentResults: [
+          {
+            id: 'result-1',
+            tournamentId: 'tournament-1',
+            playerId: 'player-1',
+            place: 1,
+            multiplierSnapshot: 1,
+            calculatedPoints: 100,
+          },
+        ],
         pointsTable: { MPO: {}, FPO: {} },
       });
     },
@@ -68,6 +77,8 @@ test('loadState sanitizes API payload and strips unknown legacy fields', async (
   assert.equal(state.tournaments[0].displayOrder, 999);
   assert.ok(state.tournaments[0].multiplierId);
   assert.ok(state.multipliers.length > 0);
+  assert.equal(state.resultCards[0].multiplierId, state.tournaments[0].multiplierId);
+  assert.match(state.resultCards[0].status, /FPT/i);
   assert.deepEqual(state.settings, {
     playerBaseUrl: 'https://www.pdga.com/player/',
     eventBaseUrl: 'https://www.pdga.com/tour/event/',
@@ -102,7 +113,7 @@ test('saveState sanitizes payload before sending it to API', async () => {
           pdgaEventUrl: 'https://www.pdga.com/tour/event/321',
         },
       ],
-      tournamentResults: [],
+      resultCards: [],
       settings: {
         playerBaseUrl: 'https://www.pdga.com/player',
         eventBaseUrl: 'https://www.pdga.com/tour/event',

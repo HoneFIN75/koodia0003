@@ -121,6 +121,11 @@ function createUiState(overrides = {}) {
     pointsImportDialogOpen: false,
     pointsImportDivision: 'MPO',
     pointsImportFocusTarget: '',
+    resultCardDialogOpen: false,
+    resultCardForm: { tournamentId: '', playerIds: [] },
+    resultCardPlayersDialogOpen: false,
+    resultCardPlayersDialog: { cardId: '', playerIds: [] },
+    resultCardSorts: {},
     confirmationDialog: null,
     feedback: null,
     settingsFormErrors: {},
@@ -258,30 +263,22 @@ test('renderApp renders player names as PDGA links across summary, ranking and p
       updatedAt: '2026-01-01T00:00:00.000Z',
     },
   ];
-  dataState.tournamentResults = [
-    {
-      id: 'result-1',
-      tournamentId: 'tournament-1',
-      playerId: 'player-1',
-      place: 1,
-      basePointsSnapshot: 100,
-      multiplierSnapshot: 1,
-      calculatedPoints: 100,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    },
-    {
-      id: 'result-2',
-      tournamentId: 'tournament-1',
-      playerId: 'player-2',
-      place: 1,
-      basePointsSnapshot: 90,
-      multiplierSnapshot: 1,
-      calculatedPoints: 90,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    },
-  ];
+  dataState.resultCards = [{
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    tournamentName: 'Testi Open',
+    location: '',
+    startDate: '2026-07-03',
+    endDate: '',
+    status: 'MAJ',
+    multiplier: 1,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    results: [
+      { playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 100 },
+      { playerId: 'player-2', division: 'FPO', placement: '1', calculatedPoints: 90 },
+    ],
+  }];
 
   renderApp(root, dataState, createUiState({ activeView: 'summary' }));
 
@@ -350,30 +347,22 @@ test('renderApp näyttää yhteenvetosivulla vain dashboardin avainluvut ja TOP 
       updatedAt: '2026-01-01T00:00:00.000Z',
     },
   ];
-  dataState.tournamentResults = [
-    {
-      id: 'result-1',
-      tournamentId: 'tournament-1',
-      playerId: 'player-1',
-      place: 1,
-      basePointsSnapshot: 100,
-      multiplierSnapshot: 1,
-      calculatedPoints: 100,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    },
-    {
-      id: 'result-2',
-      tournamentId: 'tournament-1',
-      playerId: 'player-2',
-      place: 1,
-      basePointsSnapshot: 90,
-      multiplierSnapshot: 1,
-      calculatedPoints: 90,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    },
-  ];
+  dataState.resultCards = [{
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    tournamentName: 'Testi Open',
+    location: '',
+    startDate: '2026-07-03',
+    endDate: '',
+    status: 'MAJ',
+    multiplier: 1,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    results: [
+      { playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 100 },
+      { playerId: 'player-2', division: 'FPO', placement: '1', calculatedPoints: 90 },
+    ],
+  }];
   dataState.pointsTable = {
     MPO: { '1': 100 },
     FPO: { '1': 90 },
@@ -456,19 +445,19 @@ test('renderApp näyttää vain olemassa olevat pelaajat TOP 10 -listoilla', () 
       updatedAt: '2026-01-01T00:00:00.000Z',
     },
   ];
-  dataState.tournamentResults = [
-    {
-      id: 'result-1',
-      tournamentId: 'tournament-1',
-      playerId: 'player-1',
-      place: 1,
-      basePointsSnapshot: 100,
-      multiplierSnapshot: 1,
-      calculatedPoints: 100,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    },
-  ];
+  dataState.resultCards = [{
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    tournamentName: 'Testi Open',
+    location: '',
+    startDate: '2026-07-03',
+    endDate: '',
+    status: 'MAJ',
+    multiplier: 1,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    results: [{ playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 100 }],
+  }];
 
   renderApp(root, dataState, createUiState({ activeView: 'summary' }));
 
@@ -496,19 +485,19 @@ test('renderApp ranking-taulukon sijakesarakkeen lajittelupainikkeella on kuvaav
       updatedAt: '2026-01-01T00:00:00.000Z',
     },
   ];
-  dataState.tournamentResults = [
-    {
-      id: 'result-1',
-      tournamentId: 'tournament-1',
-      playerId: 'player-1',
-      place: 1,
-      basePointsSnapshot: 100,
-      multiplierSnapshot: 1,
-      calculatedPoints: 100,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    },
-  ];
+  dataState.resultCards = [{
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    tournamentName: 'Testi Open',
+    location: '',
+    startDate: '2026-07-03',
+    endDate: '',
+    status: 'MAJ',
+    multiplier: 1,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    results: [{ playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 100 }],
+  }];
 
   renderApp(root, dataState, createUiState({ activeView: 'ranking' }));
 
@@ -785,7 +774,7 @@ test('renderApp shows delete all tournaments confirmation dialog copy', () => {
   const root = createRootStub();
   const dataState = createEmptyState();
   dataState.tournaments = [{ id: 't1' }, { id: 't2' }];
-  dataState.tournamentResults = [{ id: 'r1' }];
+  dataState.resultCards = [{ id: 'card-1', results: [{ playerId: 'player-1', placement: '1', calculatedPoints: 100 }] }];
 
   renderApp(
     root,
@@ -856,19 +845,19 @@ test('renderApp shows required tournament delete confirmation dialog copy', () =
       updatedAt: '2026-01-01T00:00:00.000Z',
     },
   ];
-  dataState.tournamentResults = [
-    {
-      id: 'result-1',
-      tournamentId: 'tournament-1',
-      playerId: 'player-1',
-      place: 1,
-      basePointsSnapshot: 100,
-      multiplierSnapshot: 1,
-      calculatedPoints: 100,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    },
-  ];
+  dataState.resultCards = [{
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    tournamentName: 'Testi Open',
+    location: 'Helsinki',
+    startDate: '2026-07-03',
+    endDate: '',
+    status: 'MAJ',
+    multiplier: 1,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    results: [{ playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 100 }],
+  }];
 
   renderApp(
     root,
@@ -944,30 +933,22 @@ test('renderApp shows tournament delete confirmation copy for multiple linked re
       updatedAt: '2026-01-01T00:00:00.000Z',
     },
   ];
-  dataState.tournamentResults = [
-    {
-      id: 'result-1',
-      tournamentId: 'tournament-1',
-      playerId: 'player-1',
-      place: 1,
-      basePointsSnapshot: 100,
-      multiplierSnapshot: 1,
-      calculatedPoints: 100,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    },
-    {
-      id: 'result-2',
-      tournamentId: 'tournament-1',
-      playerId: 'player-2',
-      place: 2,
-      basePointsSnapshot: 90,
-      multiplierSnapshot: 1,
-      calculatedPoints: 90,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    },
-  ];
+  dataState.resultCards = [{
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    tournamentName: 'Testi Open',
+    location: 'Helsinki',
+    startDate: '2026-07-03',
+    endDate: '',
+    status: 'MAJ',
+    multiplier: 1,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    results: [
+      { playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 100 },
+      { playerId: 'player-2', division: 'MPO', placement: '2', calculatedPoints: 90 },
+    ],
+  }];
 
   renderApp(
     root,
@@ -1083,6 +1064,172 @@ test('renderApp näyttää kertoimen dialogin ja poiston vahvistustekstit', () =
   assert.match(root.innerHTML, /Tätä toimintoa ei voi perua\./);
   assert.match(root.innerHTML, /Haluatko varmasti jatkaa\?/);
   assert.match(root.innerHTML, /data-confirm-delete-multiplier="[^"]+">Poista<\/button>/);
+});
+
+test('renderApp näyttää navigaatiossa Tulokset-välilehden heti Rankingin jälkeen', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+
+  renderApp(root, dataState, createUiState({ activeView: 'summary' }));
+
+  assert.match(root.innerHTML, /Ranking[\s\S]*Tulokset[\s\S]*Pelaajat/);
+});
+
+test('renderApp näyttää tuloskortin taulukossa lajittelupainikkeet ja PDGA-linkin', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.settings = {
+    playerBaseUrl: 'https://example.com/player/',
+    eventBaseUrl: 'https://example.com/event/',
+  };
+  dataState.players = [
+    {
+      id: 'player-1',
+      firstName: 'Tuomo',
+      lastName: 'Rikman',
+      name: 'Tuomo Rikman',
+      division: 'MPO',
+      pdgaNumber: 12345,
+      pdgaRating: '',
+      worldRank: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.resultCards = [{
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    tournamentName: 'European Open 2027',
+    location: 'Nokia, Finland',
+    startDate: '2027-07-20',
+    endDate: '2027-07-23',
+    status: 'MAJ',
+    multiplier: 2,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    results: [{ playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 200 }],
+  }];
+
+  renderApp(root, dataState, createUiState({ activeView: 'results' }));
+
+  assert.match(root.innerHTML, /data-open-result-card-dialog>Lisää tuloskortti<\/button>/);
+  assert.match(root.innerHTML, /data-sort-table="result-card" data-sort-field="name" data-result-card-id="card-1"/);
+  assert.match(root.innerHTML, /data-sort-table="result-card" data-sort-field="placement" data-result-card-id="card-1"/);
+  assert.match(root.innerHTML, /data-sort-table="result-card" data-sort-field="calculatedPoints" data-result-card-id="card-1"/);
+  assert.match(root.innerHTML, /href="https:\/\/example\.com\/player\/12345"/);
+});
+
+test('renderApp näyttää tuloskortin luonti- ja pelaajalisäysdialogit', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [
+    {
+      id: 'player-1',
+      firstName: 'Ari',
+      lastName: 'Aalto',
+      name: 'Ari Aalto',
+      division: 'MPO',
+      pdgaNumber: 100,
+      pdgaRating: '',
+      worldRank: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+    {
+      id: 'player-2',
+      firstName: 'Bea',
+      lastName: 'Berg',
+      name: 'Bea Berg',
+      division: 'FPO',
+      pdgaNumber: 200,
+      pdgaRating: '',
+      worldRank: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Testi Open',
+      pdgaEventId: 123,
+      startDate: '2027-07-20',
+      endDate: '2027-07-23',
+      displayOrder: 1,
+      location: 'Nokia',
+      venue: '',
+      multiplierId: 'multiplier-major',
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.resultCards = [{
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    tournamentName: 'Testi Open',
+    location: 'Nokia',
+    startDate: '2027-07-20',
+    endDate: '2027-07-23',
+    status: 'MAJ',
+    multiplier: 2,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    results: [{ playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 200 }],
+  }];
+
+  renderApp(root, dataState, createUiState({
+    activeView: 'results',
+    resultCardDialogOpen: true,
+    resultCardForm: { tournamentId: 'tournament-1', playerIds: ['player-1'] },
+    resultCardPlayersDialogOpen: true,
+    resultCardPlayersDialog: { cardId: 'card-1', playerIds: ['player-2'] },
+  }));
+
+  assert.match(root.innerHTML, /<h2 id="result-card-dialog-title">Lisää tuloskortti<\/h2>/);
+  assert.match(root.innerHTML, /id="result-card-tournament" name="tournamentId"/);
+  assert.match(root.innerHTML, /name="playerIds" value="player-1" checked/);
+  assert.match(root.innerHTML, /<h2 id="result-card-players-dialog-title">Lisää pelaajia<\/h2>/);
+  assert.match(root.innerHTML, /name="playerIds" value="player-2" checked/);
+});
+
+test('renderApp näyttää tuloskortin poiston ja rivipoiston vahvistusdialogit', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [{ id: 'player-1', name: 'Ari Aalto', division: 'MPO' }];
+  dataState.resultCards = [{
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    tournamentName: 'Testi Open',
+    location: 'Nokia',
+    startDate: '2027-07-20',
+    endDate: '2027-07-23',
+    status: 'MAJ',
+    multiplier: 2,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    results: [{ playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 200 }],
+  }];
+
+  renderApp(root, dataState, createUiState({
+    activeView: 'results',
+    confirmationDialog: { type: 'remove-result-player', cardId: 'card-1', playerId: 'player-1' },
+  }));
+  assert.match(root.innerHTML, /Poista pelaaja tuloskortilta/);
+  assert.match(root.innerHTML, /data-confirm-remove-result-player>Poista<\/button>/);
+
+  renderApp(root, dataState, createUiState({
+    activeView: 'results',
+    confirmationDialog: { type: 'delete-result-card', cardId: 'card-1' },
+  }));
+  assert.match(root.innerHTML, /⚠ VAROITUS ⚠/);
+  assert.match(root.innerHTML, /Kaikki tämän kortin tulosrivit poistetaan\./);
+  assert.match(root.innerHTML, /data-confirm-delete-result-card>Poista<\/button>/);
 });
 
 test('bindUi kutsuu sarakeotsikon lajittelukäsittelijää', () => {

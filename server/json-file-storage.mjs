@@ -7,7 +7,7 @@ const STORAGE_FILES = {
   snapshot: 'state.json',
   players: 'players.json',
   tournaments: 'tournaments.json',
-  tournamentResults: 'tournamentResults.json',
+  resultCards: 'resultCards.json',
   scoreTables: 'scoreTables.json',
   multipliers: 'multipliers.json',
   settings: 'settings.json',
@@ -89,7 +89,7 @@ export class JsonFileStorage {
     await Promise.all([
       writeJsonAtomically(this.#resolvePath(STORAGE_FILES.players), state.players),
       writeJsonAtomically(this.#resolvePath(STORAGE_FILES.tournaments), state.tournaments),
-      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.tournamentResults), state.tournamentResults),
+      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.resultCards), state.resultCards),
       writeJsonAtomically(this.#resolvePath(STORAGE_FILES.scoreTables), state.pointsTable),
       writeJsonAtomically(this.#resolvePath(STORAGE_FILES.multipliers), state.multipliers),
       writeJsonAtomically(this.#resolvePath(STORAGE_FILES.settings), state.settings),

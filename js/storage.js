@@ -16,7 +16,7 @@ export function createEmptyState() {
     version: STORAGE_VERSION,
     players: [],
     tournaments: [],
-    tournamentResults: [],
+    resultCards: [],
     settings: { ...DEFAULT_PDGA_SETTINGS },
     pointsTable: createDefaultPointsTable(),
     multipliers: createDefaultMultipliers(),
@@ -83,8 +83,95 @@ function sanitizeTournament(tournament = {}) {
   };
 }
 
+function sanitizeResultCardResult(result = {}) {
+  const parsedCalculatedPoints = Number(result.calculatedPoints);
+
+  return {
+    playerId: result.playerId,
+    division: result.division,
+    placement: String(result.placement ?? '').trim().toUpperCase(),
+    calculatedPoints:
+      result.calculatedPoints === null || result.calculatedPoints === undefined || result.calculatedPoints === ''
+        ? null
+        : Number.isFinite(parsedCalculatedPoints)
+          ? parsedCalculatedPoints
+          : null,
+  };
+}
+
+function sanitizeResultCard(card = {}) {
+  return {
+    id: card.id,
+    tournamentId: card.tournamentId,
+    tournamentName: card.tournamentName,
+    location: card.location,
+    startDate: card.startDate,
+    endDate: card.endDate,
+    status: card.status,
+    multiplier: Number(card.multiplier) || 0,
+    multiplierId: card.multiplierId,
+    createdAt: card.createdAt,
+    updatedAt: card.updatedAt,
+    results: Array.isArray(card.results) ? card.results.map(sanitizeResultCardResult) : [],
+  };
+}
+
+function migrateTournamentResultsToCards(tournamentResults, tournaments, players, multipliers) {
+  if (!Array.isArray(tournamentResults) || !tournamentResults.length) {
+    return [];
+  }
+
+  const playerById = new Map(players.map((player) => [player.id, player]));
+  const tournamentById = new Map(tournaments.map((tournament) => [tournament.id, tournament]));
+  const multiplierById = new Map(multipliers.map((multiplier) => [multiplier.id, multiplier]));
+  const cardByTournament = new Map();
+
+  tournamentResults.forEach((result) => {
+    const tournamentId = result.tournamentId;
+    if (!tournamentId) {
+      return;
+    }
+
+    if (!cardByTournament.has(tournamentId)) {
+      const tournament = tournamentById.get(tournamentId) || {};
+      const tournamentMultiplier = multiplierById.get(tournament.multiplierId);
+      cardByTournament.set(tournamentId, {
+        id: `result-card-${tournamentId}`,
+        tournamentId,
+        tournamentName: tournament.name || 'Tuntematon turnaus',
+        location: tournament.location || '',
+        startDate: tournament.startDate || '',
+        endDate: tournament.endDate || '',
+        status: tournamentMultiplier?.abbreviation || '',
+        multiplier: Number(result.multiplierSnapshot) || 0,
+        multiplierId: tournament.multiplierId || '',
+        createdAt: result.createdAt || new Date().toISOString(),
+        updatedAt: result.updatedAt || new Date().toISOString(),
+        results: [],
+      });
+    }
+
+    const player = playerById.get(result.playerId);
+    const parsedCalculatedPoints = Number(result.calculatedPoints);
+    cardByTournament.get(tournamentId).results.push({
+      playerId: result.playerId,
+      division: player?.division || '',
+      placement: String(result.place ?? '').trim(),
+      calculatedPoints:
+        result.calculatedPoints === null || result.calculatedPoints === undefined || result.calculatedPoints === ''
+          ? null
+          : Number.isFinite(parsedCalculatedPoints)
+            ? parsedCalculatedPoints
+            : null,
+    });
+  });
+
+  return [...cardByTournament.values()].map(sanitizeResultCard);
+}
+
 export function sanitizeState(candidate = {}) {
   const empty = createEmptyState();
+  const sanitizedPlayers = Array.isArray(candidate.players) ? candidate.players.map(sanitizePlayer) : empty.players;
   const sanitizedTournaments = Array.isArray(candidate.tournaments)
     ? candidate.tournaments.map(sanitizeTournament)
     : empty.tournaments;
@@ -122,11 +209,11 @@ export function sanitizeState(candidate = {}) {
 
   return {
     version: STORAGE_VERSION,
-    players: Array.isArray(candidate.players) ? candidate.players.map(sanitizePlayer) : empty.players,
+    players: sanitizedPlayers,
     tournaments: migratedTournaments,
-    tournamentResults: Array.isArray(candidate.tournamentResults)
-      ? candidate.tournamentResults
-      : empty.tournamentResults,
+    resultCards: Array.isArray(candidate.resultCards)
+      ? candidate.resultCards.map(sanitizeResultCard)
+      : migrateTournamentResultsToCards(candidate.tournamentResults, migratedTournaments, sanitizedPlayers, sanitizedMultipliers),
     settings: sanitizePdgaSettings(candidate.settings),
     pointsTable: sanitizePointsTable(candidate.pointsTable),
     multipliers: sanitizedMultipliers,
