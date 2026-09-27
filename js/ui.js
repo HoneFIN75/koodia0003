@@ -1,7 +1,7 @@
 import { DIVISIONS, getVisiblePlayers } from './players.js';
 import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, MULTIPLIER_OPTIONS, sortTournaments, filterAndSortTournaments } from './tournaments.js';
 import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS } from './pdga.js';
-import { listPointsTableEntries, getBasePoints } from './scoring.js';
+import { listPointsTableEntries } from './scoring.js';
 import { buildRanking, getTopRanking } from './ranking.js';
 
 function escapeHtml(value) {
@@ -87,13 +87,6 @@ function renderDeploymentInfo(deploymentInfo) {
       <div><dt>Päivitetty:</dt><dd>${formatDeploymentTimestamp(deploymentInfo.deployedAt)}</dd></div>
     </dl>
   `;
-}
-
-function getMultiplierLabel(multiplier) {
-  return (
-    MULTIPLIER_OPTIONS.find((option) => option.key === multiplier || option.value === Number(multiplier))?.label ||
-    `Kerroin ${multiplier}`
-  );
 }
 
 function renderEmptyState(message) {
@@ -209,19 +202,6 @@ function renderPlayerDetailCard(player, settings) {
       </dl>
     </div>
   `;
-}
-
-function renderPlayerOptions(players, selectedId = '', allowedDivision = 'ALL', existingResultPlayerIds = [], currentResultPlayerId = null) {
-  const options = players
-    .filter((player) => allowedDivision === 'ALL' || player.division === allowedDivision)
-    .filter((player) => currentResultPlayerId === player.id || !existingResultPlayerIds.includes(player.id))
-    .map(
-      (player) =>
-        `<option value="${escapeHtml(player.id)}" ${player.id === selectedId ? 'selected' : ''}>${escapeHtml(player.name)} (${player.division})</option>`,
-    )
-    .join('');
-
-  return `<option value="">Valitse pelaaja</option>${options}`;
 }
 
 function renderMultiplierOptions(selectedValue) {
@@ -640,34 +620,16 @@ function renderTournamentSection(dataState, uiState) {
     sortField: uiState.tournamentSortField,
     sortDirection: uiState.tournamentSortDirection,
   });
-  const tournamentResultCounts = dataState.tournamentResults.reduce((counts, result) => {
-    counts[result.tournamentId] = (counts[result.tournamentId] || 0) + 1;
-    return counts;
-  }, {});
   const availableStatuses = [...new Set(dataState.tournaments.map((tournament) => tournament.status).filter(Boolean))].sort((left, right) =>
     left.localeCompare(right, 'fi', { sensitivity: 'base' }),
   );
-  const selectedTournament = dataState.tournaments.find((tournament) => tournament.id === uiState.selectedTournamentId) || null;
-  const editingResult = dataState.tournamentResults.find((result) => result.id === uiState.resultFormId) || null;
-  const tournamentResults = selectedTournament
-    ? dataState.tournamentResults.filter((result) => result.tournamentId === selectedTournament.id)
-    : [];
-  const allowedDivision = selectedTournament?.division || 'ALL';
-  const existingResultPlayerIds = tournamentResults.map((result) => result.playerId);
-  const selectedPlayer = editingResult
-    ? dataState.players.find((player) => player.id === editingResult.playerId) || null
-    : null;
-  const selectedTournamentPdgaUrl = selectedTournament ? buildPdgaEventUrl(dataState.settings, selectedTournament) : '';
-  const resultPreviewBasePoints = selectedTournament && selectedPlayer
-    ? getBasePoints(dataState.pointsTable, selectedPlayer.division, editingResult?.place || 1)
-    : null;
 
   return `
     <section class="section" id="section-tournaments" ${uiState.activeView === 'tournaments' ? '' : 'hidden'} aria-labelledby="tournaments-title">
       <div class="section-heading">
         <div>
           <h2 id="tournaments-title">Turnaukset</h2>
-          <p class="section-subtitle">Hallinnoi turnauksia, avaa PDGA-linkit ja päivitä tulokset poistumatta tältä sivulta.</p>
+          <p class="section-subtitle">Hallinnoi turnauksia, suodata listaa ja pidä turnaustiedot ajan tasalla.</p>
         </div>
         <button type="button" class="button" data-open-tournament-dialog>Lisää turnaus</button>
       </div>
@@ -741,25 +703,14 @@ function renderTournamentSection(dataState, uiState) {
                       ${visibleTournaments
                         .map((tournament) => {
                           const pdgaEventUrl = buildPdgaEventUrl(dataState.settings, tournament);
-                          const resultCount = tournamentResultCounts[tournament.id] || 0;
                           return `
-                            <tr${selectedTournament?.id === tournament.id ? ' class="is-selected"' : ''}>
+                            <tr>
                               <td data-label="Turnauksen nimi">
-                                <div class="stack-sm">
-                                  ${
-                                    pdgaEventUrl
-                                      ? `<a class="tournament-name-link" href="${escapeHtml(pdgaEventUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(tournament.name)}</a>`
-                                      : `<span class="tournament-name-text">${escapeHtml(tournament.name)}</span>`
-                                  }
-                                  <div class="inline-actions">
-                                    <button type="button" class="secondary-button" data-select-tournament="${escapeHtml(tournament.id)}">Tulokset (${formatNumber(resultCount)})</button>
-                                    ${
-                                      selectedTournament?.id === tournament.id
-                                        ? '<span class="badge" aria-label="Valittu turnaus tulosten hallintaan">Valittuna tuloksiin</span>'
-                                        : ''
-                                    }
-                                  </div>
-                                </div>
+                                ${
+                                  pdgaEventUrl
+                                    ? `<a class="tournament-name-link" href="${escapeHtml(pdgaEventUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(tournament.name)}</a>`
+                                    : `<span class="tournament-name-text">${escapeHtml(tournament.name)}</span>`
+                                }
                               </td>
                               <td data-label="Tila">${escapeHtml(renderValueOrDash(tournament.status))}</td>
                               <td data-label="Kerroin">${formatNumber(tournament.multiplier)}x</td>
@@ -781,112 +732,6 @@ function renderTournamentSection(dataState, uiState) {
               `
               : renderEmptyState('Yhtään hakua vastaavaa turnausta ei löytynyt.')
             : renderEmptyState('Turnauksia ei ole vielä lisätty.')
-        }
-      </article>
-      <article class="panel">
-        <div class="section-heading">
-          <div>
-            <h3>Turnaustulokset</h3>
-            <p class="section-subtitle">Valitse turnaus, lisää sijoituksia ja laske pisteet keskitetystä pistetaulukosta.</p>
-          </div>
-        </div>
-        <div class="form-field">
-          <label for="selected-tournament">Hallittava turnaus</label>
-          <select id="selected-tournament" data-selected-tournament>
-            <option value="">Valitse turnaus</option>
-            ${orderedTournaments
-              .map(
-                (tournament) =>
-                  `<option value="${escapeHtml(tournament.id)}" ${tournament.id === selectedTournament?.id ? 'selected' : ''}>${escapeHtml(tournament.name)} (${formatDate(tournament.startDate)})</option>`,
-              )
-              .join('')}
-          </select>
-        </div>
-        ${
-          selectedTournament
-            ? `
-              <div class="three-column">
-                <div class="card stat-card"><span class="eyebrow">Turnaus</span><strong>${escapeHtml(selectedTournament.name)}</strong><span class="section-subtitle">${formatDate(selectedTournament.startDate)}</span></div>
-                <div class="card stat-card"><span class="eyebrow">Kerroin</span><strong>${formatNumber(selectedTournament.multiplier)}x</strong><span class="section-subtitle">${escapeHtml(getMultiplierLabel(selectedTournament.multiplierKey || selectedTournament.multiplier))}</span></div>
-                <div class="card stat-card"><span class="eyebrow">Sarjarajaus</span><strong>${escapeHtml(selectedTournament.division || 'Ei rajattu')}</strong><span class="section-subtitle">Tuloksiin kelpaavat pelaajat</span></div>
-              </div>
-              ${selectedTournamentPdgaUrl ? `<div class="inline-actions">${renderLinkButton(selectedTournamentPdgaUrl, 'Avaa turnauksen PDGA-sivu', 'Avaa turnauksen PDGA-sivu uudessa välilehdessä')}</div>` : ''}
-              <div class="two-column">
-                <form id="result-form" class="panel">
-                  <h4>${editingResult ? 'Muokkaa turnaustulosta' : 'Lisää turnaustulos'}</h4>
-                  <input type="hidden" name="id" value="${escapeHtml(editingResult?.id || '')}" />
-                  <div class="form-grid">
-                    <div class="form-field full-width">
-                      <label for="result-player-id">Pelaaja *</label>
-                      <select id="result-player-id" name="playerId" required>
-                        ${renderPlayerOptions(dataState.players, editingResult?.playerId || '', allowedDivision, existingResultPlayerIds, editingResult?.playerId || null)}
-                      </select>
-                    </div>
-                    <div class="form-field">
-                      <label for="result-place">Sijoitus *</label>
-                      <input id="result-place" name="place" required inputmode="numeric" min="1" value="${escapeHtml(editingResult?.place || '')}" />
-                    </div>
-                    <div class="form-field">
-                      <label>Laskentasääntö</label>
-                      <div class="message">1x-pisteet × ${formatNumber(selectedTournament.multiplier)} = turnauspisteet</div>
-                    </div>
-                  </div>
-                  <div class="form-actions">
-                    <button type="submit" class="button">${editingResult ? 'Tallenna tulos' : 'Lisää tulos'}</button>
-                    <button type="button" class="secondary-button" data-reset-result-form>Tyhjennä lomake</button>
-                  </div>
-                  <p class="form-help">${resultPreviewBasePoints !== null ? `Esimerkkiperuspiste: ${formatNumber(resultPreviewBasePoints)}.` : 'Lisää sarjan pistetaulukko ennen tulosten tallentamista.'}</p>
-                </form>
-                <div class="panel">
-                  <h4>Nykyiset turnaustulokset</h4>
-                  ${
-                    tournamentResults.length
-                      ? `
-                        <div class="table-wrap">
-                          <table class="table">
-                            <thead>
-                              <tr>
-                                <th>Pelaaja</th>
-                                <th>Sijoitus</th>
-                                <th>1x-pisteet</th>
-                                <th>Kerroin</th>
-                                <th>Kokonaispisteet</th>
-                                <th>Toiminnot</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              ${tournamentResults
-                                .slice()
-                                .sort((left, right) => left.place - right.place)
-                                .map((result) => {
-                                  const player = dataState.players.find((entry) => entry.id === result.playerId);
-                                  return `
-                                    <tr>
-                                      <td>${escapeHtml(player?.name || 'Poistettu pelaaja')}<br /><span class="muted">${escapeHtml(player?.division || '—')}</span></td>
-                                      <td>${formatNumber(result.place)}</td>
-                                      <td>${formatNumber(result.basePointsSnapshot)}</td>
-                                      <td>${formatNumber(result.multiplierSnapshot)}x</td>
-                                      <td>${formatNumber(result.calculatedPoints)} p</td>
-                                      <td>
-                                        <div class="table-actions">
-                                          <button type="button" class="secondary-button" data-edit-result="${escapeHtml(result.id)}">Muokkaa</button>
-                                          <button type="button" class="danger-button" data-delete-result="${escapeHtml(result.id)}">Poista</button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  `;
-                                })
-                                .join('')}
-                            </tbody>
-                          </table>
-                        </div>
-                      `
-                      : renderEmptyState('Valitulle turnaukselle ei ole vielä tallennettu tuloksia.')
-                  }
-                </div>
-              </div>
-            `
-            : renderEmptyState('Valitse ensin turnaus, jotta voit hallita turnaustuloksia.')
         }
       </article>
     </section>
@@ -1428,29 +1273,6 @@ export function bindUi(root, dataState, uiState, handlers) {
 
   root.querySelectorAll('[data-delete-tournament]').forEach((button) => {
     button.addEventListener('click', () => handlers.requestDeleteTournament(button.dataset.deleteTournament));
-  });
-
-  root.querySelectorAll('[data-select-tournament]').forEach((button) => {
-    button.addEventListener('click', () => handlers.selectTournament(button.dataset.selectTournament));
-  });
-
-  root.querySelector('[data-selected-tournament]')?.addEventListener('change', (event) => {
-    handlers.selectTournament(event.target.value);
-  });
-
-  root.querySelector('#result-form')?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    handlers.submitResult(new FormData(event.currentTarget));
-  });
-
-  root.querySelector('[data-reset-result-form]')?.addEventListener('click', () => handlers.resetResultForm());
-
-  root.querySelectorAll('[data-edit-result]').forEach((button) => {
-    button.addEventListener('click', () => handlers.editResult(button.dataset.editResult));
-  });
-
-  root.querySelectorAll('[data-delete-result]').forEach((button) => {
-    button.addEventListener('click', () => handlers.deleteResult(button.dataset.deleteResult));
   });
 
   root.querySelector('#points-form')?.addEventListener('submit', (event) => {
