@@ -1113,7 +1113,7 @@ function renderPointsImportDialog(uiState) {
                 ${DIVISIONS.map(
                   (division) => `
                     <label>
-                      <input type="radio" name="division" value="${division}" ${selectedDivision === division ? 'checked' : ''} />
+                      <input type="radio" name="division" value="${division}" ${selectedDivision === division ? 'checked autofocus' : ''} />
                       <span>${division}</span>
                     </label>
                   `,
@@ -1126,7 +1126,7 @@ function renderPointsImportDialog(uiState) {
             </div>
           </div>
           <div class="form-actions">
-            <button type="button" class="secondary-button" data-cancel-points-import autofocus>Peruuta</button>
+            <button type="button" class="secondary-button" data-cancel-points-import>Peruuta</button>
             <button type="submit" class="button">Tuo</button>
           </div>
         </form>
