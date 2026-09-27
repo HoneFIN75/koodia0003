@@ -24,6 +24,7 @@ import {
   MultiplierValidationError,
 } from './multipliers.js';
 import { SettingsValidationError, validateSettingsInput } from './pdga.js';
+import { toggleSortState } from './table-sorting.js';
 import {
   DIVISIONS,
   upsertPointsTableEntry,
@@ -68,6 +69,12 @@ let uiState = {
   tournamentStatusFilter: 'ALL',
   tournamentSortField: 'displayOrder',
   tournamentSortDirection: 'asc',
+  rankingSortField: 'totalPoints',
+  rankingSortDirection: 'desc',
+  multipliersSortField: 'orderNumber',
+  multipliersSortDirection: 'asc',
+  pointsSortField: 'place',
+  pointsSortDirection: 'asc',
   tournamentImportDialogOpen: false,
   tournamentImportFocusTarget: '',
   tournamentImportSummary: null,
@@ -185,7 +192,9 @@ const handlers = {
     render();
   },
   setPlayerSortField(sortField) {
-    uiState.playerSortField = sortField === 'pdgaNumber' ? 'pdgaNumber' : 'name';
+    uiState.playerSortField = ['name', 'pdgaNumber', 'division', 'pdgaRating', 'worldRank'].includes(sortField)
+      ? sortField
+      : 'name';
     render();
   },
   setPlayerSortDirection(sortDirection) {
@@ -414,7 +423,7 @@ const handlers = {
     render();
   },
   setTournamentSortField(sortField) {
-    uiState.tournamentSortField = ['displayOrder', 'name', 'multiplierId', 'startDate', 'endDate', 'location'].includes(sortField)
+    uiState.tournamentSortField = ['displayOrder', 'name', 'multiplierAbbreviation', 'pdgaEventId', 'startDate', 'endDate', 'location', 'venue'].includes(sortField)
       ? sortField
       : 'displayOrder';
     render();
@@ -537,6 +546,45 @@ const handlers = {
   },
   setTournamentSortDirection(sortDirection) {
     uiState.tournamentSortDirection = sortDirection === 'desc' ? 'desc' : 'asc';
+    render();
+  },
+  toggleColumnSort(table, field) {
+    const applySort = (fieldKey, directionKey, allowedFields, defaultField, defaultDirection = 'asc') => {
+      if (!allowedFields.includes(field)) {
+        return;
+      }
+      const currentSort = {
+        field: uiState[fieldKey] || defaultField,
+        direction: uiState[directionKey] || defaultDirection,
+      };
+      const nextSort = toggleSortState(currentSort, field, defaultDirection);
+      uiState[fieldKey] = nextSort.field;
+      uiState[directionKey] = nextSort.direction;
+    };
+
+    if (table === 'players') {
+      applySort('playerSortField', 'playerSortDirection', ['name', 'pdgaNumber', 'division', 'pdgaRating', 'worldRank'], 'name');
+    } else if (table === 'tournaments') {
+      applySort(
+        'tournamentSortField',
+        'tournamentSortDirection',
+        ['displayOrder', 'name', 'multiplierAbbreviation', 'pdgaEventId', 'startDate', 'endDate', 'location', 'venue'],
+        'displayOrder',
+      );
+    } else if (table === 'ranking') {
+      applySort(
+        'rankingSortField',
+        'rankingSortDirection',
+        ['rankPosition', 'name', 'division', 'pdgaRating', 'worldRank', 'tournamentCount', 'totalPoints'],
+        'totalPoints',
+        'desc',
+      );
+    } else if (table === 'multipliers') {
+      applySort('multipliersSortField', 'multipliersSortDirection', ['orderNumber', 'name', 'abbreviation', 'multiplier'], 'orderNumber');
+    } else if (table === 'points') {
+      applySort('pointsSortField', 'pointsSortDirection', ['place', 'basePoints'], 'place');
+    }
+
     render();
   },
   openTournamentImportDialog() {

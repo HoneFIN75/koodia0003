@@ -4,6 +4,7 @@ import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS } from './
 import { listPointsTableEntries } from './scoring.js';
 import { buildRanking, getTopRanking } from './ranking.js';
 import { findMultiplier, formatMultiplier, sortMultipliers } from './multipliers.js';
+import { sortTableRows } from './table-sorting.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -202,6 +203,35 @@ function renderLinkButton(url, label, ariaLabel = '') {
   return `<a class="secondary-link-button" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer"${ariaLabel ? ` aria-label="${escapeHtml(ariaLabel)}"` : ''}>${escapeHtml(label)}</a>`;
 }
 
+function getSortState(sortField, sortDirection, fieldName) {
+  if (sortField !== fieldName) {
+    return {
+      isActive: false,
+      ariaSort: 'none',
+      indicator: '',
+    };
+  }
+
+  return {
+    isActive: true,
+    ariaSort: sortDirection === 'desc' ? 'descending' : 'ascending',
+    indicator: sortDirection === 'desc' ? '▼' : '▲',
+  };
+}
+
+function renderSortableHeader({ table, field, label, sortField, sortDirection, className = '', ariaLabel = '' }) {
+  const sortState = getSortState(sortField, sortDirection, field);
+
+  return `
+    <th${className ? ` class="${escapeHtml(className)}"` : ''} aria-sort="${sortState.ariaSort}">
+      <button type="button" class="table-sort-button${sortState.isActive ? ' is-active' : ''}" data-sort-table="${escapeHtml(table)}" data-sort-field="${escapeHtml(field)}"${ariaLabel ? ` aria-label="${escapeHtml(ariaLabel)}"` : ''}>
+        <span>${escapeHtml(label)}</span>
+        <span class="table-sort-indicator" aria-hidden="true">${sortState.indicator}</span>
+      </button>
+    </th>
+  `;
+}
+
 function renderPlayerDetailCard(player, settings) {
   if (!player) {
     return renderEmptyState('Valitse pelaaja listalta nähdäksesi tietosivun.');
@@ -339,7 +369,25 @@ function renderSummarySection(dataState, uiState) {
 }
 
 function renderRankingSection(dataState, uiState) {
-  const ranking = buildRanking(dataState.players, dataState.tournamentResults, uiState.rankingFilter);
+  const ranking = sortTableRows(
+    buildRanking(dataState.players, dataState.tournamentResults, uiState.rankingFilter).map((entry, index) => ({
+      ...entry,
+      rankPosition: index + 1,
+    })),
+    {
+      field: uiState.rankingSortField,
+      direction: uiState.rankingSortDirection,
+    },
+    {
+      rankPosition: { type: 'number' },
+      name: { type: 'text' },
+      division: { type: 'text' },
+      pdgaRating: { type: 'number' },
+      worldRank: { type: 'number' },
+      tournamentCount: { type: 'number' },
+      totalPoints: { type: 'number' },
+    },
+  );
 
   return `
     <section class="section" id="section-ranking" ${uiState.activeView === 'ranking' ? '' : 'hidden'} aria-labelledby="ranking-title">
@@ -368,13 +416,57 @@ function renderRankingSection(dataState, uiState) {
                 <table class="table">
                   <thead>
                     <tr>
-                      <th>#</th>
-                      <th>Pelaaja</th>
-                      <th>Sarja</th>
-                      <th>PDGA-rating</th>
-                      <th>World rank</th>
-                      <th>Turnauksia</th>
-                      <th class="number">Kokonaispisteet</th>
+                      ${renderSortableHeader({
+                        table: 'ranking',
+                        field: 'rankPosition',
+                        label: '#',
+                        ariaLabel: 'Sijoitus',
+                        sortField: uiState.rankingSortField,
+                        sortDirection: uiState.rankingSortDirection,
+                      })}
+                      ${renderSortableHeader({
+                        table: 'ranking',
+                        field: 'name',
+                        label: 'Pelaaja',
+                        sortField: uiState.rankingSortField,
+                        sortDirection: uiState.rankingSortDirection,
+                      })}
+                      ${renderSortableHeader({
+                        table: 'ranking',
+                        field: 'division',
+                        label: 'Sarja',
+                        sortField: uiState.rankingSortField,
+                        sortDirection: uiState.rankingSortDirection,
+                      })}
+                      ${renderSortableHeader({
+                        table: 'ranking',
+                        field: 'pdgaRating',
+                        label: 'PDGA-rating',
+                        sortField: uiState.rankingSortField,
+                        sortDirection: uiState.rankingSortDirection,
+                      })}
+                      ${renderSortableHeader({
+                        table: 'ranking',
+                        field: 'worldRank',
+                        label: 'Maailmanranking',
+                        sortField: uiState.rankingSortField,
+                        sortDirection: uiState.rankingSortDirection,
+                      })}
+                      ${renderSortableHeader({
+                        table: 'ranking',
+                        field: 'tournamentCount',
+                        label: 'Turnauksia',
+                        sortField: uiState.rankingSortField,
+                        sortDirection: uiState.rankingSortDirection,
+                      })}
+                      ${renderSortableHeader({
+                        table: 'ranking',
+                        field: 'totalPoints',
+                        label: 'Kokonaispisteet',
+                        sortField: uiState.rankingSortField,
+                        sortDirection: uiState.rankingSortDirection,
+                        className: 'number',
+                      })}
                     </tr>
                   </thead>
                   <tbody>
@@ -432,11 +524,20 @@ function getPlayerFieldSelector(fieldName) {
 }
 
 function renderPlayerSection(dataState, uiState) {
-  const visiblePlayers = getVisiblePlayers(dataState.players, {
+  const visiblePlayers = sortTableRows(getVisiblePlayers(dataState.players, {
     division: uiState.playerDivisionFilter,
     query: uiState.playerSearch,
-    sortField: uiState.playerSortField,
-    sortDirection: uiState.playerSortDirection,
+    sortField: 'name',
+    sortDirection: 'asc',
+  }), {
+    field: uiState.playerSortField,
+    direction: uiState.playerSortDirection,
+  }, {
+    name: { type: 'text' },
+    pdgaNumber: { type: 'number' },
+    division: { type: 'text' },
+    pdgaRating: { type: 'number' },
+    worldRank: { type: 'number' },
   });
   const importSummary = uiState.playerImportSummary;
   const importSummaryType = importSummary
@@ -551,6 +652,9 @@ Maija;Mallikas;54321;890;2450</pre>
             <select id="player-sort-field" data-player-sort-field>
               <option value="name" ${uiState.playerSortField === 'name' ? 'selected' : ''}>Pelaajan nimi</option>
               <option value="pdgaNumber" ${uiState.playerSortField === 'pdgaNumber' ? 'selected' : ''}>PDGA ID</option>
+              <option value="division" ${uiState.playerSortField === 'division' ? 'selected' : ''}>Sarja</option>
+              <option value="pdgaRating" ${uiState.playerSortField === 'pdgaRating' ? 'selected' : ''}>PDGA-rating</option>
+              <option value="worldRank" ${uiState.playerSortField === 'worldRank' ? 'selected' : ''}>Maailmanranking</option>
             </select>
           </div>
           <div class="form-field">
@@ -591,11 +695,41 @@ Maija;Mallikas;54321;890;2450</pre>
                       <table class="table players-table">
                         <thead>
                           <tr>
-                            <th>Pelaajan nimi</th>
-                            <th>PDGA ID</th>
-                            <th>Sarja</th>
-                            <th>PDGA-rating</th>
-                            <th>Maailmanranking</th>
+                            ${renderSortableHeader({
+                              table: 'players',
+                              field: 'name',
+                              label: 'Pelaajan nimi',
+                              sortField: uiState.playerSortField,
+                              sortDirection: uiState.playerSortDirection,
+                            })}
+                            ${renderSortableHeader({
+                              table: 'players',
+                              field: 'pdgaNumber',
+                              label: 'PDGA ID',
+                              sortField: uiState.playerSortField,
+                              sortDirection: uiState.playerSortDirection,
+                            })}
+                            ${renderSortableHeader({
+                              table: 'players',
+                              field: 'division',
+                              label: 'Sarja',
+                              sortField: uiState.playerSortField,
+                              sortDirection: uiState.playerSortDirection,
+                            })}
+                            ${renderSortableHeader({
+                              table: 'players',
+                              field: 'pdgaRating',
+                              label: 'PDGA-rating',
+                              sortField: uiState.playerSortField,
+                              sortDirection: uiState.playerSortDirection,
+                            })}
+                            ${renderSortableHeader({
+                              table: 'players',
+                              field: 'worldRank',
+                              label: 'Maailmanranking',
+                              sortField: uiState.playerSortField,
+                              sortDirection: uiState.playerSortDirection,
+                            })}
                             <th>Muokkaa</th>
                           </tr>
                         </thead>
@@ -729,16 +863,28 @@ function renderPlayerDialog(dataState, uiState) {
 
 function renderTournamentSection(dataState, uiState) {
   const orderedMultipliers = sortMultipliers(dataState.multipliers || []);
-  const visibleTournamentsWithMultipliers = filterAndSortTournaments(dataState.tournaments, {
+  const visibleTournamentsWithMultipliers = sortTableRows(filterAndSortTournaments(dataState.tournaments, {
     search: uiState.tournamentSearch,
     status: uiState.tournamentStatusFilter,
-    sortField: uiState.tournamentSortField,
-    sortDirection: uiState.tournamentSortDirection,
+    sortField: 'displayOrder',
+    sortDirection: 'asc',
   }).map((tournament) => ({
     ...tournament,
     multiplierName: getMultiplierLabel(tournament, orderedMultipliers),
     multiplierAbbreviation: getMultiplierAbbreviation(tournament, orderedMultipliers),
-  }));
+  })), {
+    field: uiState.tournamentSortField,
+    direction: uiState.tournamentSortDirection,
+  }, {
+    displayOrder: { type: 'number' },
+    name: { type: 'text' },
+    multiplierAbbreviation: { type: 'text' },
+    pdgaEventId: { type: 'number' },
+    startDate: { type: 'date' },
+    endDate: { type: 'date' },
+    location: { type: 'text' },
+    venue: { type: 'text' },
+  });
   const orderedTournaments = sortTournaments(dataState.tournaments);
   const availableStatuses = orderedMultipliers;
 
@@ -813,10 +959,12 @@ function renderTournamentSection(dataState, uiState) {
             <select id="tournament-sort-field" data-tournament-sort-field>
               <option value="displayOrder" ${uiState.tournamentSortField === 'displayOrder' ? 'selected' : ''}>Järjestysnumero</option>
               <option value="name" ${uiState.tournamentSortField === 'name' ? 'selected' : ''}>Turnauksen nimi</option>
-              <option value="multiplierId" ${uiState.tournamentSortField === 'multiplierId' ? 'selected' : ''}>Tila</option>
+              <option value="multiplierAbbreviation" ${uiState.tournamentSortField === 'multiplierAbbreviation' ? 'selected' : ''}>Tila</option>
+              <option value="pdgaEventId" ${uiState.tournamentSortField === 'pdgaEventId' ? 'selected' : ''}>PDGA Event ID</option>
               <option value="startDate" ${uiState.tournamentSortField === 'startDate' ? 'selected' : ''}>Alkamispäivä</option>
               <option value="endDate" ${uiState.tournamentSortField === 'endDate' ? 'selected' : ''}>Päättymispäivä</option>
               <option value="location" ${uiState.tournamentSortField === 'location' ? 'selected' : ''}>Paikkakunta</option>
+              <option value="venue" ${uiState.tournamentSortField === 'venue' ? 'selected' : ''}>Rata</option>
             </select>
           </div>
           <div class="form-field">
@@ -835,14 +983,63 @@ function renderTournamentSection(dataState, uiState) {
                  <table class="table tournaments-table">
                    <thead>
                      <tr>
-                       <th>Turnauksen nimi</th>
-                       <th>Tila</th>
-                       <th>PDGA Event ID</th>
-                        <th>Alkamispäivä</th>
-                        <th>Päättymispäivä</th>
-                        <th>Paikkakunta</th>
-                        <th>Rata</th>
-                        <th>Muokkaa</th>
+                       ${renderSortableHeader({
+                         table: 'tournaments',
+                         field: 'displayOrder',
+                         label: 'Järjestysnumero',
+                         sortField: uiState.tournamentSortField,
+                         sortDirection: uiState.tournamentSortDirection,
+                       })}
+                       ${renderSortableHeader({
+                         table: 'tournaments',
+                         field: 'name',
+                         label: 'Turnauksen nimi',
+                         sortField: uiState.tournamentSortField,
+                         sortDirection: uiState.tournamentSortDirection,
+                       })}
+                       ${renderSortableHeader({
+                         table: 'tournaments',
+                         field: 'multiplierAbbreviation',
+                         label: 'Tila',
+                         sortField: uiState.tournamentSortField,
+                         sortDirection: uiState.tournamentSortDirection,
+                       })}
+                       ${renderSortableHeader({
+                         table: 'tournaments',
+                         field: 'pdgaEventId',
+                         label: 'PDGA Event ID',
+                         sortField: uiState.tournamentSortField,
+                         sortDirection: uiState.tournamentSortDirection,
+                       })}
+                       ${renderSortableHeader({
+                         table: 'tournaments',
+                         field: 'startDate',
+                         label: 'Alkamispäivä',
+                         sortField: uiState.tournamentSortField,
+                         sortDirection: uiState.tournamentSortDirection,
+                       })}
+                       ${renderSortableHeader({
+                         table: 'tournaments',
+                         field: 'endDate',
+                         label: 'Päättymispäivä',
+                         sortField: uiState.tournamentSortField,
+                         sortDirection: uiState.tournamentSortDirection,
+                       })}
+                       ${renderSortableHeader({
+                         table: 'tournaments',
+                         field: 'location',
+                         label: 'Paikkakunta',
+                         sortField: uiState.tournamentSortField,
+                         sortDirection: uiState.tournamentSortDirection,
+                       })}
+                       ${renderSortableHeader({
+                         table: 'tournaments',
+                         field: 'venue',
+                         label: 'Rata',
+                         sortField: uiState.tournamentSortField,
+                         sortDirection: uiState.tournamentSortDirection,
+                       })}
+                       <th>Muokkaa</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -851,6 +1048,7 @@ function renderTournamentSection(dataState, uiState) {
                           const pdgaEventUrl = buildPdgaEventUrl(dataState.settings, tournament);
                           return `
                             <tr>
+                              <td data-label="Järjestysnumero">${escapeHtml(renderValueOrDash(tournament.displayOrder))}</td>
                               <td data-label="Turnauksen nimi">
                                 ${
                                   pdgaEventUrl
@@ -1133,7 +1331,15 @@ function renderTournamentDialog(dataState, uiState) {
 }
 
 function renderMultipliersSection(dataState, uiState) {
-  const multipliers = sortMultipliers(dataState.multipliers || []);
+  const multipliers = sortTableRows(sortMultipliers(dataState.multipliers || []), {
+    field: uiState.multipliersSortField,
+    direction: uiState.multipliersSortDirection,
+  }, {
+    orderNumber: { type: 'number' },
+    name: { type: 'text' },
+    abbreviation: { type: 'text' },
+    multiplier: { type: 'number' },
+  });
 
   return `
     <section class="section" id="section-multipliers" ${uiState.activeView === 'multipliers' ? '' : 'hidden'} aria-labelledby="multipliers-title">
@@ -1152,10 +1358,34 @@ function renderMultipliersSection(dataState, uiState) {
                 <table class="table tournaments-table">
                   <thead>
                     <tr>
-                      <th>Järjestysnumero</th>
-                      <th>Nimi</th>
-                      <th>Lyhenne</th>
-                      <th>Kerroin</th>
+                      ${renderSortableHeader({
+                        table: 'multipliers',
+                        field: 'orderNumber',
+                        label: 'Järjestysnumero',
+                        sortField: uiState.multipliersSortField,
+                        sortDirection: uiState.multipliersSortDirection,
+                      })}
+                      ${renderSortableHeader({
+                        table: 'multipliers',
+                        field: 'name',
+                        label: 'Nimi',
+                        sortField: uiState.multipliersSortField,
+                        sortDirection: uiState.multipliersSortDirection,
+                      })}
+                      ${renderSortableHeader({
+                        table: 'multipliers',
+                        field: 'abbreviation',
+                        label: 'Lyhenne',
+                        sortField: uiState.multipliersSortField,
+                        sortDirection: uiState.multipliersSortDirection,
+                      })}
+                      ${renderSortableHeader({
+                        table: 'multipliers',
+                        field: 'multiplier',
+                        label: 'Kerroin',
+                        sortField: uiState.multipliersSortField,
+                        sortDirection: uiState.multipliersSortDirection,
+                      })}
                       <th>Muokkaa</th>
                     </tr>
                   </thead>
@@ -1362,8 +1592,20 @@ function renderSettingsSection(dataState, uiState) {
 
 function renderPointsSection(dataState, uiState) {
   const editingPoint = uiState.pointsForm || { division: 'MPO', place: '', basePoints: '', editingKey: '' };
-  const mpoEntries = listPointsTableEntries(dataState.pointsTable, 'MPO');
-  const fpoEntries = listPointsTableEntries(dataState.pointsTable, 'FPO');
+  const mpoEntries = sortTableRows(listPointsTableEntries(dataState.pointsTable, 'MPO'), {
+    field: uiState.pointsSortField,
+    direction: uiState.pointsSortDirection,
+  }, {
+    place: { type: 'number' },
+    basePoints: { type: 'number' },
+  });
+  const fpoEntries = sortTableRows(listPointsTableEntries(dataState.pointsTable, 'FPO'), {
+    field: uiState.pointsSortField,
+    direction: uiState.pointsSortDirection,
+  }, {
+    place: { type: 'number' },
+    basePoints: { type: 'number' },
+  });
 
   return `
     <section class="section" id="section-points" ${uiState.activeView === 'points' ? '' : 'hidden'} aria-labelledby="points-title">
@@ -1445,8 +1687,20 @@ function renderPointsSection(dataState, uiState) {
                         <table class="table">
                           <thead>
                             <tr>
-                              <th>Sijoitus</th>
-                              <th>1x-peruspisteet</th>
+                              ${renderSortableHeader({
+                                table: 'points',
+                                field: 'place',
+                                label: 'Sijoitus',
+                                sortField: uiState.pointsSortField,
+                                sortDirection: uiState.pointsSortDirection,
+                              })}
+                              ${renderSortableHeader({
+                                table: 'points',
+                                field: 'basePoints',
+                                label: '1x-peruspisteet',
+                                sortField: uiState.pointsSortField,
+                                sortDirection: uiState.pointsSortDirection,
+                              })}
                               <th>Toiminnot</th>
                             </tr>
                           </thead>
@@ -1722,6 +1976,10 @@ export function bindUi(root, dataState, uiState, handlers) {
 
   root.querySelectorAll('[data-view-target]').forEach((button) => {
     button.addEventListener('click', () => handlers.changeView(button.dataset.viewTarget));
+  });
+
+  root.querySelectorAll('[data-sort-table][data-sort-field]').forEach((button) => {
+    button.addEventListener('click', () => handlers.toggleColumnSort(button.dataset.sortTable, button.dataset.sortField));
   });
 
   root.querySelector('#settings-form')?.addEventListener('submit', (event) => {
