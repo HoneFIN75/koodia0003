@@ -3,8 +3,6 @@ import { createPlayer, updatePlayer, findPlayer, removePlayer, canRequestPlayerD
 import { createTournament, updateTournament, findTournament, filterAndSortTournaments, TournamentValidationError } from './tournaments.js';
 import { SettingsValidationError, validateSettingsInput } from './pdga.js';
 import {
-  createTournamentResult,
-  updateTournamentResult,
   upsertPointsTableEntry,
   removePointsTableEntry,
 } from './scoring.js';
@@ -42,8 +40,6 @@ let uiState = {
   tournamentSortField: 'startDate',
   tournamentSortDirection: 'asc',
   pendingFocusSelector: '',
-  selectedTournamentId: '',
-  resultFormId: null,
   pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
   confirmationDialog: null,
   feedback: null,
@@ -239,15 +235,6 @@ const handlers = {
       if (uiState.selectedPlayerId === playerId) {
         uiState.selectedPlayerId = '';
       }
-      if (uiState.resultFormId) {
-        const editingResult = dataState.tournamentResults.find((result) => result.id === uiState.resultFormId);
-        if (editingResult?.playerId === playerId) {
-          uiState.resultFormId = null;
-        }
-      }
-      if (uiState.resultFormId && dataState.tournamentResults.every((result) => result.id !== uiState.resultFormId)) {
-        uiState.resultFormId = null;
-      }
       uiState.confirmationDialog = null;
       persistAndRender('Pelaaja poistettu onnistuneesti.');
     } catch (error) {
@@ -276,7 +263,6 @@ const handlers = {
         const tournament = createTournament(values);
         dataState.tournaments = [...dataState.tournaments, tournament];
         uiState.tournamentDialogOpen = false;
-        uiState.selectedTournamentId = tournament.id;
         uiState.tournamentFormFocusTarget = '';
         uiState.pendingFocusSelector = `[data-edit-tournament="${tournament.id}"]`;
         persistAndRender('Turnaus lisätty onnistuneesti.');
@@ -391,99 +377,11 @@ const handlers = {
     uiState.tournamentFormErrors = {};
     uiState.tournamentFormDraft = null;
     uiState.tournamentFormFocusTarget = '';
-    if (uiState.selectedTournamentId === tournamentId) {
-      uiState.selectedTournamentId = '';
-    }
     uiState.confirmationDialog = null;
     uiState.pendingFocusSelector = nextTournamentId
       ? `[data-edit-tournament="${nextTournamentId}"]`
       : '[data-open-tournament-dialog]';
     persistAndRender('Turnaus poistettiin.');
-  },
-  selectTournament(tournamentId) {
-    uiState.selectedTournamentId = tournamentId;
-    uiState.resultFormId = null;
-    uiState.feedback = null;
-    render();
-  },
-  submitResult(formData) {
-    try {
-      const values = formDataToObject(formData);
-      const selectedTournament = findTournament(dataState.tournaments, uiState.selectedTournamentId);
-      const selectedPlayer = findPlayer(dataState.players, values.playerId);
-
-      if (!selectedTournament) {
-        throw new Error('Valitse turnaus ennen tuloksen tallentamista.');
-      }
-
-      if (!selectedPlayer) {
-        throw new Error('Valitse pelaaja ennen tuloksen tallentamista.');
-      }
-
-      if (selectedTournament.division && selectedTournament.division !== selectedPlayer.division) {
-        throw new Error('Valitun turnauksen sarjarajaus ei salli tämän pelaajan lisäämistä.');
-      }
-
-      if (values.id) {
-        dataState.tournamentResults = dataState.tournamentResults.map((result) =>
-          result.id === values.id
-            ? updateTournamentResult({
-                results: dataState.tournamentResults,
-                resultId: values.id,
-                tournamentId: selectedTournament.id,
-                playerId: selectedPlayer.id,
-                place: values.place,
-                division: selectedPlayer.division,
-                pointsTable: dataState.pointsTable,
-                multiplier: selectedTournament.multiplier,
-              })
-            : result,
-        );
-        uiState.resultFormId = null;
-        persistAndRender('Turnaustulos päivitettiin.');
-      } else {
-        const newResult = createTournamentResult({
-          tournamentId: selectedTournament.id,
-          playerId: selectedPlayer.id,
-          place: values.place,
-          division: selectedPlayer.division,
-          pointsTable: dataState.pointsTable,
-          multiplier: selectedTournament.multiplier,
-          existingResults: dataState.tournamentResults,
-        });
-        dataState.tournamentResults = [...dataState.tournamentResults, newResult];
-        persistAndRender('Turnaustulos lisättiin.');
-      }
-    } catch (error) {
-      setError(error);
-    }
-  },
-  resetResultForm() {
-    uiState.resultFormId = null;
-    render();
-  },
-  editResult(resultId) {
-    uiState.resultFormId = resultId;
-    uiState.feedback = null;
-    render();
-  },
-  deleteResult(resultId) {
-    const result = dataState.tournamentResults.find((entry) => entry.id === resultId);
-    if (!result) {
-      return;
-    }
-
-    const player = findPlayer(dataState.players, result.playerId);
-    const confirmed = window.confirm(`Poistetaanko ${player?.name || 'pelaajan'} turnaustulos?`);
-    if (!confirmed) {
-      return;
-    }
-
-    dataState.tournamentResults = dataState.tournamentResults.filter((entry) => entry.id !== resultId);
-    if (uiState.resultFormId === resultId) {
-      uiState.resultFormId = null;
-    }
-    persistAndRender('Turnaustulos poistettiin.');
   },
   submitPoints(formData) {
     try {
