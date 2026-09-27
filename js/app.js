@@ -1,5 +1,12 @@
 import { createEmptyState, loadState, saveState } from './storage.js';
-import { createPlayer, updatePlayer, findPlayer, removePlayer, canRequestPlayerDeletion } from './players.js';
+import {
+  createPlayer,
+  updatePlayer,
+  findPlayer,
+  removePlayer,
+  canRequestPlayerDeletion,
+  importPlayersFromCsv,
+} from './players.js';
 import { createTournament, updateTournament, findTournament, filterAndSortTournaments, TournamentValidationError } from './tournaments.js';
 import { SettingsValidationError, validateSettingsInput } from './pdga.js';
 import {
@@ -33,6 +40,8 @@ let uiState = {
   playerFormId: null,
   playerFormErrors: {},
   playerFormDraft: null,
+  playerImportDivision: '',
+  playerImportSummary: null,
   playersStatus: 'loading',
   playersError: '',
   tournamentDialogOpen: false,
@@ -199,6 +208,28 @@ const handlers = {
         render();
         return;
       }
+      setError(error);
+    }
+  },
+  async submitPlayersImport(formData) {
+    try {
+      const division = String(formData.get('division') || '').trim().toUpperCase();
+      const file = formData.get('file');
+      if (!file || typeof file.text !== 'function' || !file.name) {
+        throw new Error('Valitse tuotava CSV-tiedosto.');
+      }
+
+      const { importedPlayers, summary } = importPlayersFromCsv(dataState.players, await file.text(), division);
+      if (importedPlayers.length) {
+        dataState.players = [...dataState.players, ...importedPlayers];
+        dataState = saveState(dataState);
+      }
+
+      uiState.playerImportDivision = division;
+      uiState.playerImportSummary = summary;
+      uiState.feedback = null;
+      render();
+    } catch (error) {
       setError(error);
     }
   },
