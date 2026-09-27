@@ -100,6 +100,12 @@ function createUiState(overrides = {}) {
     tournamentStatusFilter: 'ALL',
     tournamentSortField: 'displayOrder',
     tournamentSortDirection: 'asc',
+    rankingSortField: 'totalPoints',
+    rankingSortDirection: 'desc',
+    multipliersSortField: 'orderNumber',
+    multipliersSortDirection: 'asc',
+    pointsSortField: 'place',
+    pointsSortDirection: 'asc',
     tournamentImportDialogOpen: false,
     tournamentImportFocusTarget: '',
     tournamentImportSummary: null,
@@ -375,6 +381,43 @@ test('renderApp näyttää vain olemassa olevat pelaajat TOP 10 -listoilla', () 
   assert.match(root.innerHTML, /Sarjassa FPO ei ole vielä pisteellisiä pelaajia\./);
 });
 
+test('renderApp ranking-taulukon sijakesarakkeen lajittelupainikkeella on kuvaava aria-label', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [
+    {
+      id: 'player-1',
+      firstName: 'Ari',
+      lastName: 'Aalto',
+      name: 'Ari Aalto',
+      division: 'MPO',
+      pdgaNumber: 100,
+      pdgaRating: 990,
+      worldRank: 50,
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournamentResults = [
+    {
+      id: 'result-1',
+      tournamentId: 'tournament-1',
+      playerId: 'player-1',
+      place: 1,
+      basePointsSnapshot: 100,
+      multiplierSnapshot: 1,
+      calculatedPoints: 100,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(root, dataState, createUiState({ activeView: 'ranking' }));
+
+  assert.match(root.innerHTML, /data-sort-table="ranking" data-sort-field="rankPosition" aria-label="Sijoitus"/);
+});
+
 test('renderApp player list uses required column order and add button', () => {
   const root = createRootStub();
   const dataState = createEmptyState();
@@ -397,8 +440,39 @@ test('renderApp player list uses required column order and add button', () => {
   renderApp(root, dataState, createUiState({ activeView: 'players' }));
 
   assert.match(root.innerHTML, /data-open-player-dialog>Lisää pelaaja<\/button>/);
-  assert.match(root.innerHTML, /<th>Pelaajan nimi<\/th>\s*<th>PDGA ID<\/th>\s*<th>Sarja<\/th>\s*<th>PDGA-rating<\/th>\s*<th>Maailmanranking<\/th>\s*<th>Muokkaa<\/th>/);
+  assert.match(root.innerHTML, /data-sort-table="players" data-sort-field="name"/);
+  assert.match(root.innerHTML, /data-sort-table="players" data-sort-field="pdgaNumber"/);
+  assert.match(root.innerHTML, /data-sort-table="players" data-sort-field="division"/);
+  assert.match(root.innerHTML, /data-sort-table="players" data-sort-field="pdgaRating"/);
+  assert.match(root.innerHTML, /data-sort-table="players" data-sort-field="worldRank"/);
+  assert.match(root.innerHTML, /aria-sort="ascending"/);
+  assert.match(root.innerHTML, /<th>Muokkaa<\/th>/);
   assert.match(root.innerHTML, /data-edit-player="player-1">Muokkaa<\/button>/);
+});
+
+test('renderApp renders sortable headers as keyboard-accessible buttons', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [
+    {
+      id: 'player-1',
+      firstName: 'Testi',
+      lastName: 'Pelaaja',
+      name: 'Testi Pelaaja',
+      division: 'MPO',
+      pdgaNumber: 12345,
+      pdgaRating: 1000,
+      worldRank: 5,
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(root, dataState, createUiState({ activeView: 'players' }));
+
+  assert.match(root.innerHTML, /<button type="button" class="table-sort-button[^"]*" data-sort-table="players" data-sort-field="name">/);
+  assert.match(root.innerHTML, /<button type="button" class="table-sort-button[^"]*" data-sort-table="players" data-sort-field="pdgaNumber">/);
 });
 
 test('renderApp shows players CSV import instructions, required fields and summary', () => {
@@ -535,10 +609,16 @@ test('renderApp shows tournament table with required column order and PDGA name 
   assert.match(root.innerHTML, /CSV-tuonnin ohje/);
   assert.match(root.innerHTML, /Järjestysnumero;PDGA Event ID;Turnauksen nimi/);
   assert.match(root.innerHTML, /data-request-delete-all-tournaments/);
-  assert.match(
-    root.innerHTML,
-    /<th>Turnauksen nimi<\/th>\s*<th>Tila<\/th>\s*<th>PDGA Event ID<\/th>\s*<th>Alkamispäivä<\/th>\s*<th>Päättymispäivä<\/th>\s*<th>Paikkakunta<\/th>\s*<th>Rata<\/th>\s*<th>Muokkaa<\/th>/,
-  );
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="name"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="displayOrder"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="multiplierAbbreviation"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="pdgaEventId"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="startDate"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="endDate"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="location"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="venue"/);
+  assert.match(root.innerHTML, /data-label="Järjestysnumero">1<\/td>/);
+  assert.match(root.innerHTML, /<th>Muokkaa<\/th>/);
   assert.match(root.innerHTML, /href="https:\/\/example\.com\/event\/123456"/);
   assert.match(root.innerHTML, /target="_blank"/);
   assert.match(root.innerHTML, /rel="noopener noreferrer"/);
@@ -875,10 +955,11 @@ test('renderApp näyttää Kertoimet-välilehden ja taulukon sarakkeet', () => {
   assert.match(root.innerHTML, /data-view-target="multipliers"/);
   assert.match(root.innerHTML, /<h2 id="multipliers-title">Kertoimet<\/h2>/);
   assert.match(root.innerHTML, /data-open-multiplier-dialog>Lisää<\/button>/);
-  assert.match(
-    root.innerHTML,
-    /<th>Järjestysnumero<\/th>\s*<th>Nimi<\/th>\s*<th>Lyhenne<\/th>\s*<th>Kerroin<\/th>\s*<th>Muokkaa<\/th>/,
-  );
+  assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="orderNumber"/);
+  assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="name"/);
+  assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="abbreviation"/);
+  assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="multiplier"/);
+  assert.match(root.innerHTML, /<th>Muokkaa<\/th>/);
 });
 
 test('renderApp näyttää kertoimen dialogin ja poiston vahvistustekstit', () => {
@@ -905,6 +986,66 @@ test('renderApp näyttää kertoimen dialogin ja poiston vahvistustekstit', () =
   assert.match(root.innerHTML, /Tätä toimintoa ei voi perua\./);
   assert.match(root.innerHTML, /Haluatko varmasti jatkaa\?/);
   assert.match(root.innerHTML, /data-confirm-delete-multiplier="[^"]+">Poista<\/button>/);
+});
+
+test('bindUi kutsuu sarakeotsikon lajittelukäsittelijää', () => {
+  const restoreDocument = installDocumentStub();
+  const playerSortButton = createFocusableElement();
+  playerSortButton.dataset = { sortTable: 'players', sortField: 'name' };
+  const tournamentSortButton = createFocusableElement();
+  tournamentSortButton.dataset = { sortTable: 'tournaments', sortField: 'displayOrder' };
+  const rankingSortButton = createFocusableElement();
+  rankingSortButton.dataset = { sortTable: 'ranking', sortField: 'totalPoints' };
+  const multipliersSortButton = createFocusableElement();
+  multipliersSortButton.dataset = { sortTable: 'multipliers', sortField: 'orderNumber' };
+  const pointsSortButton = createFocusableElement();
+  pointsSortButton.dataset = { sortTable: 'points', sortField: 'place' };
+  const root = {
+    __dialogKeydownHandler: null,
+    querySelector() {
+      return null;
+    },
+    querySelectorAll(selector) {
+      if (selector === '[data-sort-table][data-sort-field]') {
+        return [playerSortButton, tournamentSortButton, rankingSortButton, multipliersSortButton, pointsSortButton];
+      }
+      return [];
+    },
+  };
+  const calls = [];
+  const handlers = new Proxy(
+    {
+      toggleColumnSort(table, field) {
+        calls.push({ table, field });
+      },
+    },
+    {
+      get(target, property) {
+        if (property in target) {
+          return target[property];
+        }
+        return () => {};
+      },
+    },
+  );
+
+  try {
+    bindUi(root, createEmptyState(), createUiState(), handlers);
+    playerSortButton.listeners.click();
+    tournamentSortButton.listeners.click();
+    rankingSortButton.listeners.click();
+    multipliersSortButton.listeners.click();
+    pointsSortButton.listeners.click();
+    assert.deepEqual(calls, [
+      { table: 'players', field: 'name' },
+      { table: 'tournaments', field: 'displayOrder' },
+      { table: 'ranking', field: 'totalPoints' },
+      { table: 'multipliers', field: 'orderNumber' },
+      { table: 'points', field: 'place' },
+    ]);
+  } finally {
+    restoreDocument();
+  }
 });
 
 test('bindUi moves focus into the tournament dialog field', () => {
