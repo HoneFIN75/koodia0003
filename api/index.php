@@ -135,6 +135,24 @@ function read_json_file(string $filePath, $fallback)
     }
 }
 
+function read_json_file_if_exists(string $filePath)
+{
+    if (!is_file($filePath)) {
+        return null;
+    }
+
+    $contents = file_get_contents($filePath);
+    if ($contents === false) {
+        throw new RuntimeException('FAILED_TO_READ_FILE');
+    }
+
+    try {
+        return json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
+    } catch (JsonException $exception) {
+        throw new RuntimeException('INVALID_JSON_FILE', 0, $exception);
+    }
+}
+
 function ensure_jsondb_directory(): void
 {
     $directoryPath = jsondb_directory_path();
@@ -153,6 +171,10 @@ function ensure_jsondb_directory(): void
 
 function normalize_state_payload(array $payload): array
 {
+    if (!array_key_exists('pointsTable', $payload) && array_key_exists('scoreTables', $payload)) {
+        $payload['pointsTable'] = $payload['scoreTables'];
+    }
+
     foreach (REQUIRED_BASE_STATE_KEYS as $requiredKey) {
         if (!array_key_exists($requiredKey, $payload)) {
             throw new InvalidArgumentException('INCOMPLETE_STATE_PAYLOAD');
@@ -190,12 +212,35 @@ function sync_state_slices(array $state): void
 function load_state(): array
 {
     ensure_jsondb_directory();
-    $snapshot = read_json_file(jsondb_file_path(STORAGE_FILES['snapshot']), create_default_state());
+    $stateFromSlices = create_default_state();
+    $stateFromSlices['players'] = read_json_file(jsondb_file_path(STORAGE_FILES['players']), $stateFromSlices['players']);
+    $stateFromSlices['tournaments'] = read_json_file(
+        jsondb_file_path(STORAGE_FILES['tournaments']),
+        $stateFromSlices['tournaments']
+    );
+    $stateFromSlices['settings'] = read_json_file(jsondb_file_path(STORAGE_FILES['settings']), $stateFromSlices['settings']);
+    $stateFromSlices['multipliers'] = read_json_file(
+        jsondb_file_path(STORAGE_FILES['multipliers']),
+        $stateFromSlices['multipliers']
+    );
+    $stateFromSlices['pointsTable'] = read_json_file(
+        jsondb_file_path(STORAGE_FILES['scoreTables']),
+        $stateFromSlices['pointsTable']
+    );
+
+    $resultCards = read_json_file_if_exists(jsondb_file_path(STORAGE_FILES['resultCards']));
+    if (!is_array($resultCards)) {
+        $resultCards = read_json_file(jsondb_file_path(STORAGE_FILES['tournamentResults']), $stateFromSlices['resultCards']);
+    }
+    $stateFromSlices['resultCards'] = $resultCards;
+
+    $snapshot = read_json_file_if_exists(jsondb_file_path(STORAGE_FILES['snapshot']));
     if (!is_array($snapshot) || array_is_list($snapshot)) {
-        throw new RuntimeException('INVALID_SNAPSHOT');
+        $snapshot = [];
     }
 
-    $state = normalize_state_payload($snapshot + ['resultCards' => $snapshot['tournamentResults'] ?? []]);
+    $state = normalize_state_payload(array_replace($stateFromSlices, $snapshot));
+    write_json_atomically(jsondb_file_path(STORAGE_FILES['snapshot']), $state);
     sync_state_slices($state);
 
     return $state;

@@ -89,7 +89,7 @@ Palvelin kuuntelee oletuksena vain paikallista rajapintaa (`127.0.0.1`). Julkise
 
 - Lataa webhotelliin `dist/`-hakemiston sisältö kokonaisuudessaan (ml. `api/` ja juuren `.htaccess`).
 - Varmista, että `jsondb/` on kirjoitettavissa PHP-prosessille (hakemisto luodaan automaattisesti tarvittaessa).
-- Tarkista toimivuus avaamalla `https://oma-domain.fi/api/health` — vastauksen tulee olla `{\"status\":\"ok\"}`.
+- Tarkista toimivuus avaamalla `https://oma-domain.fi/api/health` — vastauksen tulee olla JSON, jossa `status` on `ok`.
 
 ## Brändi ja logo
 
