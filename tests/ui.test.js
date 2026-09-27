@@ -413,6 +413,31 @@ test('renderApp player list uses required column order and add button', () => {
   assert.match(root.innerHTML, /data-edit-player="player-1">Muokkaa<\/button>/);
 });
 
+test('renderApp renders sortable headers as keyboard-accessible buttons', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [
+    {
+      id: 'player-1',
+      firstName: 'Testi',
+      lastName: 'Pelaaja',
+      name: 'Testi Pelaaja',
+      division: 'MPO',
+      pdgaNumber: 12345,
+      pdgaRating: 1000,
+      worldRank: 5,
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(root, dataState, createUiState({ activeView: 'players' }));
+
+  assert.match(root.innerHTML, /<button type="button" class="table-sort-button[^"]*" data-sort-table="players" data-sort-field="name">/);
+  assert.match(root.innerHTML, /<button type="button" class="table-sort-button[^"]*" data-sort-table="players" data-sort-field="pdgaNumber">/);
+});
+
 test('renderApp shows players CSV import instructions, required fields and summary', () => {
   const root = createRootStub();
   const dataState = createEmptyState();

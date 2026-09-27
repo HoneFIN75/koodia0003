@@ -471,9 +471,9 @@ function renderRankingSection(dataState, uiState) {
                   <tbody>
                     ${ranking
                       .map(
-                        (entry) => `
+                        (entry, index) => `
                           <tr>
-                            <td>${entry.rankPosition}</td>
+                            <td>${index + 1}</td>
                             <td>${escapeHtml(entry.name)}</td>
                             <td>${escapeHtml(entry.division)}</td>
                             <td>${escapeHtml(entry.pdgaRating || '—')}</td>
