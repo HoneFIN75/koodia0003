@@ -203,10 +203,6 @@ function renderLinkButton(url, label, ariaLabel = '') {
   return `<a class="secondary-link-button" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer"${ariaLabel ? ` aria-label="${escapeHtml(ariaLabel)}"` : ''}>${escapeHtml(label)}</a>`;
 }
 
-function getAriaSort(sortField, sortDirection, fieldName) {
-  return getSortState(sortField, sortDirection, fieldName).ariaSort;
-}
-
 function getSortState(sortField, sortDirection, fieldName) {
   if (sortField !== fieldName) {
     return {

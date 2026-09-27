@@ -555,6 +555,7 @@ test('renderApp shows tournament table with required column order and PDGA name 
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="endDate"/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="location"/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="venue"/);
+  assert.match(root.innerHTML, /data-label="Järjestysnumero">1<\/td>/);
   assert.match(root.innerHTML, /<th>Muokkaa<\/th>/);
   assert.match(root.innerHTML, /href="https:\/\/example\.com\/event\/123456"/);
   assert.match(root.innerHTML, /target="_blank"/);
@@ -931,6 +932,12 @@ test('bindUi kutsuu sarakeotsikon lajittelukäsittelijää', () => {
   playerSortButton.dataset = { sortTable: 'players', sortField: 'name' };
   const tournamentSortButton = createFocusableElement();
   tournamentSortButton.dataset = { sortTable: 'tournaments', sortField: 'displayOrder' };
+  const rankingSortButton = createFocusableElement();
+  rankingSortButton.dataset = { sortTable: 'ranking', sortField: 'totalPoints' };
+  const multipliersSortButton = createFocusableElement();
+  multipliersSortButton.dataset = { sortTable: 'multipliers', sortField: 'orderNumber' };
+  const pointsSortButton = createFocusableElement();
+  pointsSortButton.dataset = { sortTable: 'points', sortField: 'place' };
   const root = {
     __dialogKeydownHandler: null,
     querySelector() {
@@ -938,7 +945,7 @@ test('bindUi kutsuu sarakeotsikon lajittelukäsittelijää', () => {
     },
     querySelectorAll(selector) {
       if (selector === '[data-sort-table][data-sort-field]') {
-        return [playerSortButton, tournamentSortButton];
+        return [playerSortButton, tournamentSortButton, rankingSortButton, multipliersSortButton, pointsSortButton];
       }
       return [];
     },
@@ -964,9 +971,15 @@ test('bindUi kutsuu sarakeotsikon lajittelukäsittelijää', () => {
     bindUi(root, createEmptyState(), createUiState(), handlers);
     playerSortButton.listeners.click();
     tournamentSortButton.listeners.click();
+    rankingSortButton.listeners.click();
+    multipliersSortButton.listeners.click();
+    pointsSortButton.listeners.click();
     assert.deepEqual(calls, [
       { table: 'players', field: 'name' },
       { table: 'tournaments', field: 'displayOrder' },
+      { table: 'ranking', field: 'totalPoints' },
+      { table: 'multipliers', field: 'orderNumber' },
+      { table: 'points', field: 'place' },
     ]);
   } finally {
     restoreDocument();
