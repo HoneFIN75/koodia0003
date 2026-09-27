@@ -116,8 +116,8 @@ function closeTournamentImportDialogState() {
   uiState.pendingFocusSelector = '[data-open-tournament-import-dialog]';
 }
 
-function persistAndRender(successMessage = '') {
-  dataState = saveState(dataState);
+async function persistAndRender(successMessage = '') {
+  dataState = await saveState(dataState);
   if (successMessage) {
     uiState.feedback = { type: 'success', text: successMessage };
   }
@@ -148,12 +148,12 @@ const handlers = {
     uiState.navOpen = false;
     render();
   },
-  submitSettings(formData) {
+  async submitSettings(formData) {
     try {
       dataState.settings = validateSettingsInput(formDataToObject(formData));
       uiState.settingsFormErrors = {};
       uiState.settingsFormDraft = null;
-      persistAndRender('Asetukset tallennettiin.');
+      await persistAndRender('Asetukset tallennettiin.');
     } catch (error) {
       if (error instanceof SettingsValidationError) {
         uiState.settingsFormErrors = error.fieldErrors;
@@ -221,7 +221,7 @@ const handlers = {
     uiState.feedback = null;
     render();
   },
-  submitPlayer(formData) {
+  async submitPlayer(formData) {
     try {
       const values = formDataToObject(formData);
       uiState.playerFormErrors = {};
@@ -238,7 +238,7 @@ const handlers = {
         uiState.selectedPlayerId = newPlayer.id;
       }
       clearPlayerDialogState();
-      persistAndRender('Pelaajan tiedot tallennettu onnistuneesti.');
+      await persistAndRender('Pelaajan tiedot tallennettu onnistuneesti.');
     } catch (error) {
       if (error?.fieldErrors) {
         uiState.playerFormErrors = error.fieldErrors;
@@ -261,8 +261,10 @@ const handlers = {
 
       const { importedPlayers, summary } = importPlayersFromCsv(dataState.players, await file.text(), division);
       if (importedPlayers.length) {
-        dataState.players = [...dataState.players, ...importedPlayers];
-        dataState = saveState(dataState);
+        dataState = await saveState({
+          ...dataState,
+          players: [...dataState.players, ...importedPlayers],
+        });
       }
 
       uiState.playerImportDivision = division;
@@ -311,7 +313,7 @@ const handlers = {
     uiState.confirmationDialog = null;
     render();
   },
-  confirmDeletePlayer() {
+  async confirmDeletePlayer() {
     const playerId = uiState.confirmationDialog?.playerId;
     if (!playerId) {
       return;
@@ -329,7 +331,7 @@ const handlers = {
         uiState.selectedPlayerId = '';
       }
       uiState.confirmationDialog = null;
-      persistAndRender('Pelaaja poistettu onnistuneesti.');
+      await persistAndRender('Pelaaja poistettu onnistuneesti.');
     } catch (error) {
       uiState.confirmationDialog = null;
       setError(error);
@@ -338,7 +340,7 @@ const handlers = {
   retryPlayersLoad() {
     initializeDataState();
   },
-  submitTournament(formData) {
+  async submitTournament(formData) {
     try {
       const values = formDataToObject(formData);
       uiState.tournamentFormErrors = {};
@@ -353,14 +355,14 @@ const handlers = {
         uiState.tournamentFormId = null;
         uiState.tournamentFormFocusTarget = '';
         uiState.pendingFocusSelector = `[data-edit-tournament="${values.id}"]`;
-        persistAndRender('Turnauksen tiedot päivitettiin.');
+        await persistAndRender('Turnauksen tiedot päivitettiin.');
       } else {
         const tournament = createTournament(dataState.tournaments, dataState.multipliers, values);
         dataState.tournaments = [...dataState.tournaments, tournament];
         uiState.tournamentDialogOpen = false;
         uiState.tournamentFormFocusTarget = '';
         uiState.pendingFocusSelector = `[data-edit-tournament="${tournament.id}"]`;
-        persistAndRender('Turnaus lisätty onnistuneesti.');
+        await persistAndRender('Turnaus lisätty onnistuneesti.');
       }
     } catch (error) {
       if (error instanceof TournamentValidationError) {
@@ -468,7 +470,7 @@ const handlers = {
     uiState.feedback = null;
     render();
   },
-  submitMultiplier(formData) {
+  async submitMultiplier(formData) {
     try {
       const values = formDataToObject(formData);
       uiState.multiplierFormErrors = {};
@@ -483,14 +485,14 @@ const handlers = {
         uiState.multiplierFormId = null;
         uiState.multiplierFormFocusTarget = '';
         uiState.pendingFocusSelector = `[data-edit-multiplier="${values.id}"]`;
-        persistAndRender('Kertoimen tiedot päivitettiin.');
+        await persistAndRender('Kertoimen tiedot päivitettiin.');
       } else {
         const multiplier = createMultiplier(dataState.multipliers, values);
         dataState.multipliers = sortMultipliers([...dataState.multipliers, multiplier]);
         uiState.multiplierDialogOpen = false;
         uiState.multiplierFormFocusTarget = '';
         uiState.pendingFocusSelector = `[data-edit-multiplier="${multiplier.id}"]`;
-        persistAndRender('Kerroin lisätty onnistuneesti.');
+        await persistAndRender('Kerroin lisätty onnistuneesti.');
       }
     } catch (error) {
       if (error instanceof MultiplierValidationError) {
@@ -521,7 +523,7 @@ const handlers = {
     uiState.feedback = null;
     render();
   },
-  confirmDeleteMultiplier() {
+  async confirmDeleteMultiplier() {
     const multiplierId = uiState.confirmationDialog?.multiplierId;
     if (!multiplierId) {
       return;
@@ -534,15 +536,20 @@ const handlers = {
       return;
     }
 
-    dataState.multipliers = removeMultiplier(dataState.multipliers, multiplierId);
-    uiState.multiplierDialogOpen = false;
-    uiState.multiplierFormId = null;
-    uiState.multiplierFormErrors = {};
-    uiState.multiplierFormDraft = null;
-    uiState.multiplierFormFocusTarget = '';
-    uiState.confirmationDialog = null;
-    uiState.pendingFocusSelector = '[data-open-multiplier-dialog]';
-    persistAndRender('Kerroin poistettiin.');
+    try {
+      dataState.multipliers = removeMultiplier(dataState.multipliers, multiplierId);
+      uiState.multiplierDialogOpen = false;
+      uiState.multiplierFormId = null;
+      uiState.multiplierFormErrors = {};
+      uiState.multiplierFormDraft = null;
+      uiState.multiplierFormFocusTarget = '';
+      uiState.confirmationDialog = null;
+      uiState.pendingFocusSelector = '[data-open-multiplier-dialog]';
+      await persistAndRender('Kerroin poistettiin.');
+    } catch (error) {
+      uiState.confirmationDialog = null;
+      setError(error);
+    }
   },
   setTournamentSortDirection(sortDirection) {
     uiState.tournamentSortDirection = sortDirection === 'desc' ? 'desc' : 'asc';
@@ -610,8 +617,10 @@ const handlers = {
       const { importedTournaments, summary } = importTournamentsFromCsv(dataState.tournaments, await file.text());
       uiState.tournamentImportSummary = summary;
       if (importedTournaments.length) {
-        dataState.tournaments = [...dataState.tournaments, ...importedTournaments];
-        dataState = saveState(dataState);
+        dataState = await saveState({
+          ...dataState,
+          tournaments: [...dataState.tournaments, ...importedTournaments],
+        });
       }
 
       uiState.feedback = null;
@@ -637,7 +646,7 @@ const handlers = {
     uiState.feedback = null;
     render();
   },
-  confirmDeleteTournament() {
+  async confirmDeleteTournament() {
     const tournamentId = uiState.confirmationDialog?.tournamentId;
     if (!tournamentId) {
       return;
@@ -661,36 +670,46 @@ const handlers = {
       Math.min(deletedTournamentIndex === -1 ? 0 : deletedTournamentIndex, Math.max(nextVisibleTournamentIds.length - 1, 0))
     ];
 
-    dataState.tournaments = remainingTournaments;
-    dataState.tournamentResults = dataState.tournamentResults.filter((result) => result.tournamentId !== tournamentId);
-    uiState.tournamentDialogOpen = false;
-    uiState.tournamentFormId = null;
-    uiState.tournamentFormErrors = {};
-    uiState.tournamentFormDraft = null;
-    uiState.tournamentFormFocusTarget = '';
-    uiState.confirmationDialog = null;
-    uiState.pendingFocusSelector = nextTournamentId
-      ? `[data-edit-tournament="${nextTournamentId}"]`
-      : '[data-open-tournament-dialog]';
-    persistAndRender('Turnaus poistettiin.');
+    try {
+      dataState.tournaments = remainingTournaments;
+      dataState.tournamentResults = dataState.tournamentResults.filter((result) => result.tournamentId !== tournamentId);
+      uiState.tournamentDialogOpen = false;
+      uiState.tournamentFormId = null;
+      uiState.tournamentFormErrors = {};
+      uiState.tournamentFormDraft = null;
+      uiState.tournamentFormFocusTarget = '';
+      uiState.confirmationDialog = null;
+      uiState.pendingFocusSelector = nextTournamentId
+        ? `[data-edit-tournament="${nextTournamentId}"]`
+        : '[data-open-tournament-dialog]';
+      await persistAndRender('Turnaus poistettiin.');
+    } catch (error) {
+      uiState.confirmationDialog = null;
+      setError(error);
+    }
   },
-  confirmDeleteAllTournaments() {
+  async confirmDeleteAllTournaments() {
     if (!uiState.confirmationDialog || uiState.confirmationDialog.type !== 'delete-all-tournaments') {
       return;
     }
 
-    dataState.tournaments = [];
-    dataState.tournamentResults = [];
-    uiState.tournamentDialogOpen = false;
-    uiState.tournamentFormId = null;
-    uiState.tournamentFormErrors = {};
-    uiState.tournamentFormDraft = null;
-    uiState.tournamentFormFocusTarget = '';
-    uiState.confirmationDialog = null;
-    uiState.pendingFocusSelector = '[data-request-delete-all-tournaments]';
-    persistAndRender('Kaikki turnaukset on poistettu onnistuneesti.');
+    try {
+      dataState.tournaments = [];
+      dataState.tournamentResults = [];
+      uiState.tournamentDialogOpen = false;
+      uiState.tournamentFormId = null;
+      uiState.tournamentFormErrors = {};
+      uiState.tournamentFormDraft = null;
+      uiState.tournamentFormFocusTarget = '';
+      uiState.confirmationDialog = null;
+      uiState.pendingFocusSelector = '[data-request-delete-all-tournaments]';
+      await persistAndRender('Kaikki turnaukset on poistettu onnistuneesti.');
+    } catch (error) {
+      uiState.confirmationDialog = null;
+      setError(error);
+    }
   },
-  submitPoints(formData) {
+  async submitPoints(formData) {
     try {
       const values = formDataToObject(formData);
       if (values.editingKey) {
@@ -700,7 +719,7 @@ const handlers = {
 
       dataState.pointsTable = upsertPointsTableEntry(dataState.pointsTable, values);
       uiState.pointsForm = { division: 'MPO', place: '', basePoints: '', editingKey: '' };
-      persistAndRender('Pistetaulukon rivi tallennettiin.');
+      await persistAndRender('Pistetaulukon rivi tallennettiin.');
     } catch (error) {
       setError(error);
     }
@@ -741,7 +760,7 @@ const handlers = {
       dataState.pointsTable = importPointsTableDivision(dataState.pointsTable, division, entries);
       uiState.pointsImportDivision = division;
       closePointsImportDialogState();
-      persistAndRender(`Sarjan ${division} pistetaulukko tuotiin onnistuneesti.`);
+      await persistAndRender(`Sarjan ${division} pistetaulukko tuotiin onnistuneesti.`);
     } catch (error) {
       setError(error);
     }
@@ -754,18 +773,22 @@ const handlers = {
     uiState.feedback = null;
     render();
   },
-  deletePoint(editingKey) {
+  async deletePoint(editingKey) {
     const [division, place] = editingKey.split(':');
     const confirmed = window.confirm(`Poistetaanko pistetaulukon rivi ${division} / sijoitus ${place}?`);
     if (!confirmed) {
       return;
     }
 
-    dataState.pointsTable = removePointsTableEntry(dataState.pointsTable, division, place);
-    if (uiState.pointsForm.editingKey === editingKey) {
-      uiState.pointsForm = { division: 'MPO', place: '', basePoints: '', editingKey: '' };
+    try {
+      dataState.pointsTable = removePointsTableEntry(dataState.pointsTable, division, place);
+      if (uiState.pointsForm.editingKey === editingKey) {
+        uiState.pointsForm = { division: 'MPO', place: '', basePoints: '', editingKey: '' };
+      }
+      await persistAndRender('Pistetaulukon rivi poistettiin.');
+    } catch (error) {
+      setError(error);
     }
-    persistAndRender('Pistetaulukon rivi poistettiin.');
   },
   requestDeletePointsDivision(division) {
     uiState.confirmationDialog = { type: 'delete-points-division', division };
@@ -773,18 +796,23 @@ const handlers = {
     uiState.feedback = null;
     render();
   },
-  confirmDeletePointsDivision() {
+  async confirmDeletePointsDivision() {
     const division = uiState.confirmationDialog?.division;
     if (!division) {
       return;
     }
 
-    dataState.pointsTable = clearPointsTableDivision(dataState.pointsTable, division);
-    if (uiState.pointsForm.division === division) {
-      uiState.pointsForm = { division, place: '', basePoints: '', editingKey: '' };
+    try {
+      dataState.pointsTable = clearPointsTableDivision(dataState.pointsTable, division);
+      if (uiState.pointsForm.division === division) {
+        uiState.pointsForm = { division, place: '', basePoints: '', editingKey: '' };
+      }
+      uiState.confirmationDialog = null;
+      await persistAndRender(`Sarjan ${division} kaikki pistetaulukon rivit poistettiin.`);
+    } catch (error) {
+      uiState.confirmationDialog = null;
+      setError(error);
     }
-    uiState.confirmationDialog = null;
-    persistAndRender(`Sarjan ${division} kaikki pistetaulukon rivit poistettiin.`);
   },
 };
 
@@ -793,9 +821,9 @@ function initializeDataState() {
   uiState.playersError = '';
   render();
 
-  window.setTimeout(() => {
+  window.setTimeout(async () => {
     try {
-      dataState = loadState();
+      dataState = await loadState();
       uiState.playersStatus = 'ready';
     } catch (error) {
       dataState = createEmptyState();
