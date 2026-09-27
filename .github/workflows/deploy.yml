@@ -141,6 +141,9 @@ jobs:
         run: |
           set -Eeuo pipefail
 
+          APP_VERSION="$(node --input-type=module -e "import { readFileSync } from 'node:fs'; console.log(JSON.parse(readFileSync('package.json', 'utf8')).version);")"
+          SHORT_SHA="${GITHUB_SHA::7}"
+
           ssh \
             -i "$RUNNER_TEMP/deploy_key" \
             -p 22 \
@@ -148,6 +151,17 @@ jobs:
             -o ConnectTimeout=15 \
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
             "$SSH_USER@$SSH_HOST" \
-            "test -f '$DEPLOY_PATH/index.html' && find '$DEPLOY_PATH' -type f -exec chmod 644 {} +"
+            "set -Eeuo pipefail
+            test -f '$DEPLOY_PATH/index.html'
+            DEPLOYED_AT_UTC=\$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            cat > '$DEPLOY_PATH/version.json' <<EOF
+            {
+              \"version\": \"$APP_VERSION\",
+              \"deployedAt\": \"\$DEPLOYED_AT_UTC\",
+              \"commit\": \"$SHORT_SHA\"
+            }
+            EOF
+            test -f '$DEPLOY_PATH/version.json'
+            find '$DEPLOY_PATH' -type f -exec chmod 644 {} +"
 
           echo "Deployment completed successfully."

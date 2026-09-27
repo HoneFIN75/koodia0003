@@ -283,6 +283,27 @@ test('renderApp näyttää yhteenvetosivulla vain dashboardin avainluvut ja TOP 
   assert.doesNotMatch(root.innerHTML, /Syötetyt tulokset/);
 });
 
+test('renderApp näyttää deployment-metatiedot otsikon alla commit-buildillä UTC-ajassa', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      deploymentInfo: {
+        version: '1.0.15',
+        commit: '84f2c71',
+        deployedAt: '2026-09-27T11:15:00Z',
+      },
+    }),
+  );
+
+  assert.match(root.innerHTML, /SFL Pisteytystyökalu/);
+  assert.match(root.innerHTML, /Build: 84f2c71/);
+  assert.match(root.innerHTML, /Last Updated: 2026-09-27 11:15 UTC/);
+});
+
 test('renderApp näyttää vain olemassa olevat pelaajat TOP 10 -listoilla', () => {
   const root = createRootStub();
   const dataState = createEmptyState();

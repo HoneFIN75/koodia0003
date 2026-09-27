@@ -87,6 +87,24 @@ test('loadDeploymentMetadata returns null when metadata is missing', async () =>
   assert.equal(metadata, null);
 });
 
+test('loadDeploymentMetadata accepts commit-only build identifier when timestamp exists', async () => {
+  const metadata = await loadDeploymentMetadata({
+    fetchImpl: async () => ({
+      ok: true,
+      async json() {
+        return {
+          deployedAt: '2026-09-26T20:14:00Z',
+          commit: '84f2c71',
+        };
+      },
+    }),
+    moduleUrl: 'https://example.com/js/version-only-commit.js',
+  });
+
+  assert.equal(metadata?.commit, '84f2c71');
+  assert.equal(metadata?.version, '');
+});
+
 test('loadDeploymentMetadata returns null when request fails', async () => {
   const metadata = await loadDeploymentMetadata({
     fetchImpl: async () => ({ ok: false }),
