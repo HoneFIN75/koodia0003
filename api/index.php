@@ -160,9 +160,10 @@ function ensure_jsondb_directory(): void
     }
 
     $denyAccessHtaccess = $directoryPath . DIRECTORY_SEPARATOR . '.htaccess';
-    if (!is_file($denyAccessHtaccess) && file_put_contents(
+    if (file_put_contents(
         $denyAccessHtaccess,
-        "Deny from all\n<IfModule mod_authz_core.c>\n  Require all denied\n</IfModule>\n"
+        "Deny from all\n<IfModule mod_authz_core.c>\n  Require all denied\n</IfModule>\n",
+        LOCK_EX
     ) === false) {
         throw new RuntimeException('FAILED_TO_WRITE_HTACCESS');
     }
@@ -238,7 +239,7 @@ function load_state(): array
         $snapshot = [];
     }
 
-    $state = normalize_state_payload(array_replace($snapshot, $stateFromSlices));
+    $state = normalize_state_payload(array_replace($stateFromSlices, $snapshot));
     write_json_atomically(jsondb_file_path(STORAGE_FILES['snapshot']), $state);
     sync_state_slices($state);
 
@@ -258,8 +259,8 @@ function save_state(array $state): array
 
 function read_request_json_payload(): array
 {
-    $rawBody = trim((string) file_get_contents('php://input'));
-    if ($rawBody === '') {
+    $rawBody = (string) file_get_contents('php://input');
+    if (trim($rawBody) === '') {
         return [];
     }
 
