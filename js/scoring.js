@@ -277,6 +277,163 @@ export function calculatePoints({ basePoints, multiplier }) {
   return safeBasePoints * safeMultiplier;
 }
 
+const PLACEMENT_PATTERN = /^(?<place>[1-9]\d{0,2})(?:T(?<tieCount>[1-9]\d{0,1}))?$/;
+
+export function parsePlacement(value) {
+  const normalized = String(value ?? '').trim().toUpperCase();
+  if (!normalized) {
+    return null;
+  }
+
+  const match = PLACEMENT_PATTERN.exec(normalized);
+  if (!match) {
+    throw new Error('Sijoituksen muoto on virheellinen. Käytä muotoa 1 tai 3T4.');
+  }
+
+  const place = Number(match.groups.place);
+  const tieCount = match.groups.tieCount ? Number(match.groups.tieCount) : 1;
+  if (tieCount <= 0 || tieCount > 99) {
+    throw new Error('Tasatuloksen pelaajamäärä pitää olla välillä 1–99.');
+  }
+  if (match.groups.tieCount && tieCount < 2) {
+    throw new Error('Tasatuloksen pelaajamäärän pitää olla vähintään 2.');
+  }
+
+  return {
+    raw: normalized,
+    place,
+    tieCount,
+    isTie: tieCount > 1,
+    rangeStart: place,
+    rangeEnd: place + tieCount - 1,
+  };
+}
+
+function rangesOverlap(left, right) {
+  return left.rangeStart <= right.rangeEnd && right.rangeStart <= left.rangeEnd;
+}
+
+function validateResultCardPlacements(results) {
+  const parsedPlacements = [];
+
+  results.forEach((result) => {
+    const parsed = parsePlacement(result.placement);
+    if (parsed) {
+      parsedPlacements.push({
+        playerId: result.playerId,
+        parsed,
+      });
+    }
+  });
+
+  for (let index = 0; index < parsedPlacements.length; index += 1) {
+    for (let compareIndex = index + 1; compareIndex < parsedPlacements.length; compareIndex += 1) {
+      const current = parsedPlacements[index];
+      const compare = parsedPlacements[compareIndex];
+      if (!rangesOverlap(current.parsed, compare.parsed)) {
+        continue;
+      }
+
+      const sameTieNotation =
+        current.parsed.isTie &&
+        compare.parsed.isTie &&
+        current.parsed.place === compare.parsed.place &&
+        current.parsed.tieCount === compare.parsed.tieCount;
+
+      if (!sameTieNotation) {
+        throw new Error('Sijoitukset menevät päällekkäin tuloskortilla. Käytä uniikkeja sijoituksia tai samaa tasatulosta.');
+      }
+    }
+  }
+}
+
+export function calculatePlacementPoints({
+  placement,
+  division,
+  pointsTable,
+  multiplier,
+}) {
+  const safeDivision = normalizeDivision(division);
+  const parsedPlacement = parsePlacement(placement);
+  if (!parsedPlacement) {
+    return null;
+  }
+
+  if (!parsedPlacement.isTie) {
+    const basePoints = getBasePoints(pointsTable, safeDivision, parsedPlacement.place);
+    if (basePoints === null) {
+      throw new Error(`Pisteitä ei ole määritetty sarjalle ${safeDivision} sijoitukselle ${parsedPlacement.place}.`);
+    }
+
+    return calculatePoints({
+      basePoints,
+      multiplier,
+    });
+  }
+
+  let sum = 0;
+  for (let place = parsedPlacement.rangeStart; place <= parsedPlacement.rangeEnd; place += 1) {
+    const basePoints = getBasePoints(pointsTable, safeDivision, place);
+    if (basePoints === null) {
+      throw new Error(`Pisteitä ei ole määritetty sarjalle ${safeDivision} sijoitukselle ${place}.`);
+    }
+    sum += basePoints;
+  }
+
+  const averageBasePoints = sum / parsedPlacement.tieCount;
+  return calculatePoints({
+    basePoints: averageBasePoints,
+    multiplier,
+  });
+}
+
+export function recalculateResultCard({
+  card,
+  results = card?.results || [],
+  players = [],
+  pointsTable,
+  multipliers = [],
+}) {
+  const playerById = new Map(players.map((player) => [player.id, player]));
+  const resolvedMultiplier = resolveTournamentMultiplier({
+    multiplier: card?.multiplier,
+    tournament: card?.tournamentId
+      ? {
+          id: card.tournamentId,
+          multiplierId: card.multiplierId,
+        }
+      : null,
+    multipliers,
+  });
+
+  const normalizedResults = results.map((result) => {
+    const parsedPlacement = parsePlacement(result.placement);
+    return {
+      ...result,
+      placement: parsedPlacement ? parsedPlacement.raw : '',
+    };
+  });
+
+  validateResultCardPlacements(normalizedResults);
+
+  return normalizedResults.map((result) => {
+    const player = playerById.get(result.playerId);
+    const safeDivision = normalizeDivision(result.division || player?.division);
+    const calculatedPoints = calculatePlacementPoints({
+      placement: result.placement,
+      division: safeDivision,
+      pointsTable,
+      multiplier: resolvedMultiplier,
+    });
+
+    return {
+      ...result,
+      division: safeDivision,
+      calculatedPoints,
+    };
+  });
+}
+
 function resolveTournamentMultiplier({ multiplier, tournament = null, multipliers = [] }) {
   const directMultiplier = Number(multiplier);
   if (Number.isFinite(directMultiplier) && directMultiplier > 0) {

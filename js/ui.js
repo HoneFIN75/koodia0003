@@ -1,7 +1,7 @@
 import { DIVISIONS, getVisiblePlayers } from './players.js';
 import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, sortTournaments, filterAndSortTournaments } from './tournaments.js';
 import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS } from './pdga.js';
-import { listPointsTableEntries } from './scoring.js';
+import { listPointsTableEntries, parsePlacement } from './scoring.js';
 import { buildRanking, getTopRanking } from './ranking.js';
 import { findMultiplier, formatMultiplier, sortMultipliers } from './multipliers.js';
 import { sortTableRows } from './table-sorting.js';
@@ -229,12 +229,15 @@ function getSortState(sortField, sortDirection, fieldName) {
   };
 }
 
-function renderSortableHeader({ table, field, label, sortField, sortDirection, className = '', ariaLabel = '' }) {
+function renderSortableHeader({ table, field, label, sortField, sortDirection, className = '', ariaLabel = '', attributes = {} }) {
   const sortState = getSortState(sortField, sortDirection, field);
+  const serializedAttributes = Object.entries(attributes)
+    .map(([key, value]) => `${escapeHtml(key)}="${escapeHtml(value)}"`)
+    .join(' ');
 
   return `
     <th${className ? ` class="${escapeHtml(className)}"` : ''} aria-sort="${sortState.ariaSort}">
-      <button type="button" class="table-sort-button${sortState.isActive ? ' is-active' : ''}" data-sort-table="${escapeHtml(table)}" data-sort-field="${escapeHtml(field)}"${ariaLabel ? ` aria-label="${escapeHtml(ariaLabel)}"` : ''}>
+      <button type="button" class="table-sort-button${sortState.isActive ? ' is-active' : ''}" data-sort-table="${escapeHtml(table)}" data-sort-field="${escapeHtml(field)}"${serializedAttributes ? ` ${serializedAttributes}` : ''}${ariaLabel ? ` aria-label="${escapeHtml(ariaLabel)}"` : ''}>
         <span>${escapeHtml(label)}</span>
         <span class="table-sort-indicator" aria-hidden="true">${sortState.indicator}</span>
       </button>
@@ -286,6 +289,7 @@ function renderNav(activeView) {
   const items = [
     { id: 'summary', label: 'Yhteenveto' },
     { id: 'ranking', label: 'Ranking' },
+    { id: 'results', label: 'Tulokset' },
     { id: 'players', label: 'Pelaajat' },
     { id: 'tournaments', label: 'Turnaukset' },
     { id: 'points', label: 'Pistetaulukot' },
@@ -366,8 +370,8 @@ function renderTopTenCard(title, ranking, division, dataState) {
 }
 
 function renderSummarySection(dataState, uiState) {
-  const mpoRanking = buildRanking(dataState.players, dataState.tournamentResults, 'MPO');
-  const fpoRanking = buildRanking(dataState.players, dataState.tournamentResults, 'FPO');
+  const mpoRanking = buildRanking(dataState.players, dataState.resultCards, 'MPO');
+  const fpoRanking = buildRanking(dataState.players, dataState.resultCards, 'FPO');
 
   return `
     <section class="section" id="section-summary" ${uiState.activeView === 'summary' ? '' : 'hidden'} aria-labelledby="summary-title">
@@ -383,7 +387,7 @@ function renderSummarySection(dataState, uiState) {
 
 function renderRankingSection(dataState, uiState) {
   const ranking = sortTableRows(
-    buildRanking(dataState.players, dataState.tournamentResults, uiState.rankingFilter).map((entry, index) => ({
+    buildRanking(dataState.players, dataState.resultCards, uiState.rankingFilter).map((entry, index) => ({
       ...entry,
       rankPosition: index + 1,
     })),
@@ -505,6 +509,132 @@ function renderRankingSection(dataState, uiState) {
             : renderEmptyState('Ranking muodostuu, kun lisäät vähintään yhden pelaajan.')
         }
       </article>
+    </section>
+  `;
+}
+
+function getResultCardSortState(uiState, cardId) {
+  const sortState = uiState.resultCardSorts?.[cardId] || {};
+  const field = ['name', 'placement', 'calculatedPoints'].includes(sortState.field) ? sortState.field : 'name';
+  const direction = sortState.direction === 'desc' ? 'desc' : 'asc';
+  return { field, direction };
+}
+
+function getResultCardRows(dataState, card, uiState) {
+  const playerById = new Map(dataState.players.map((player) => [player.id, player]));
+  const rows = (card.results || []).map((result) => {
+    const player = playerById.get(result.playerId);
+    return {
+      ...result,
+      player,
+      name: player?.name || 'Poistettu pelaaja',
+      division: result.division || player?.division || '—',
+      placementSortValue: parsePlacement(result.placement)?.place || Number.POSITIVE_INFINITY,
+      calculatedPoints: result.calculatedPoints,
+    };
+  });
+  const sortState = getResultCardSortState(uiState, card.id);
+  return sortTableRows(rows, sortState, {
+    name: { type: 'text' },
+    placement: { type: 'number', getValue: (row) => row.placementSortValue },
+    calculatedPoints: { type: 'number' },
+  });
+}
+
+function renderResultsSection(dataState, uiState) {
+  return `
+    <section class="section" id="section-results" ${uiState.activeView === 'results' ? '' : 'hidden'} aria-labelledby="results-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="results-title">Tulokset</h2>
+          <p class="section-subtitle">Tuloskortit ovat turnaussijoitusten ja ranking-pisteiden virallinen lähde.</p>
+        </div>
+        <button type="button" class="button" data-open-result-card-dialog>Lisää tuloskortti</button>
+      </div>
+      ${
+        dataState.resultCards.length
+          ? dataState.resultCards
+            .map((card) => {
+              const rows = getResultCardRows(dataState, card, uiState);
+              const cardSortState = getResultCardSortState(uiState, card.id);
+              return `
+                <article class="panel" aria-labelledby="result-card-${escapeHtml(card.id)}-title">
+                  <div class="section-heading">
+                    <div>
+                      <h3 id="result-card-${escapeHtml(card.id)}-title">${escapeHtml(card.tournamentName || 'Nimetön turnaus')}</h3>
+                      <p>${escapeHtml(card.location || '—')}</p>
+                      <p>Alkamispäivä: ${escapeHtml(card.startDate || '—')}</p>
+                      <p>Päättymispäivä: ${escapeHtml(card.endDate || '—')}</p>
+                      <p>Tila: ${escapeHtml(card.status || '—')}</p>
+                      <p>Kerroin: ${formatMultiplier(card.multiplier)}</p>
+                    </div>
+                    <div class="section-actions">
+                      <button type="button" class="secondary-button" data-open-result-card-players-dialog="${escapeHtml(card.id)}">Lisää pelaajia</button>
+                      <button type="button" class="secondary-button" data-save-result-card="${escapeHtml(card.id)}">Tallenna</button>
+                      <button type="button" class="danger-button" data-request-delete-result-card="${escapeHtml(card.id)}">Poista tuloskortti</button>
+                    </div>
+                  </div>
+                  <div class="table-wrap">
+                    <table class="table">
+                      <thead>
+                        <tr>
+                          ${renderSortableHeader({
+                            table: 'result-card',
+                            field: 'name',
+                            label: 'Pelaajan nimi',
+                            sortField: cardSortState.field,
+                            sortDirection: cardSortState.direction,
+                            attributes: { 'data-result-card-id': card.id },
+                          })}
+                          <th>Sarja</th>
+                          ${renderSortableHeader({
+                            table: 'result-card',
+                            field: 'placement',
+                            label: 'Sijoitus',
+                            sortField: cardSortState.field,
+                            sortDirection: cardSortState.direction,
+                            attributes: { 'data-result-card-id': card.id },
+                          })}
+                          ${renderSortableHeader({
+                            table: 'result-card',
+                            field: 'calculatedPoints',
+                            label: 'Lasketut pisteet',
+                            sortField: cardSortState.field,
+                            sortDirection: cardSortState.direction,
+                            attributes: { 'data-result-card-id': card.id },
+                          })}
+                          <th>Poista</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${
+                          rows.length
+                            ? rows
+                              .map((row) => `
+                                <tr>
+                                  <td data-label="Pelaajan nimi">${row.player ? renderPlayerName(row.player, dataState.settings) : escapeHtml(row.name)}</td>
+                                  <td data-label="Sarja">${escapeHtml(row.division)}</td>
+                                  <td data-label="Sijoitus">
+                                    <input type="text" inputmode="text" maxlength="6" value="${escapeHtml(row.placement || '')}" data-result-placement data-result-card-id="${escapeHtml(card.id)}" data-result-player-id="${escapeHtml(row.playerId)}" placeholder="esim. 3 tai 3T4" />
+                                  </td>
+                                  <td data-label="Lasketut pisteet">${typeof row.calculatedPoints === 'number' ? formatNumber(row.calculatedPoints) : '—'}</td>
+                                  <td data-label="Poista">
+                                    <button type="button" class="danger-button" data-request-remove-result-player data-result-card-id="${escapeHtml(card.id)}" data-result-player-id="${escapeHtml(row.playerId)}">Poista</button>
+                                  </td>
+                                </tr>
+                              `)
+                              .join('')
+                            : '<tr><td colspan="5">Tuloskortilla ei ole vielä pelaajia.</td></tr>'
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              `;
+            })
+            .join('')
+          : renderEmptyState('Tuloskortteja ei ole vielä lisätty.')
+      }
     </section>
   `;
 }
@@ -1790,6 +1920,130 @@ function renderPointsImportDialog(uiState) {
   `;
 }
 
+function renderResultCardDialog(dataState, uiState) {
+  if (!uiState.resultCardDialogOpen) {
+    return '';
+  }
+
+  const selectedTournament = dataState.tournaments.find((tournament) => tournament.id === uiState.resultCardForm.tournamentId);
+  const selectedMultiplier = selectedTournament ? findMultiplier(dataState.multipliers, selectedTournament.multiplierId) : null;
+  const selectedPlayerIds = new Set(uiState.resultCardForm.playerIds || []);
+  const players = [...dataState.players].sort((left, right) => left.name.localeCompare(right.name, 'fi'));
+
+  return `
+    <div class="dialog-backdrop" data-result-card-dialog-backdrop>
+      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="result-card-dialog-title" data-result-card-dialog-panel tabindex="-1">
+        <form id="result-card-form">
+          <div class="section-heading">
+            <div>
+              <h2 id="result-card-dialog-title">Lisää tuloskortti</h2>
+              <p class="section-subtitle">Vaihe 1: valitse turnaus. Vaihe 2: valitse pelaajat.</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-field full-width">
+              <label for="result-card-tournament">Turnaus *</label>
+              <select id="result-card-tournament" name="tournamentId" required>
+                <option value="">Valitse turnaus</option>
+                ${sortTournaments(dataState.tournaments).map((tournament) => `<option value="${escapeHtml(tournament.id)}" ${uiState.resultCardForm.tournamentId === tournament.id ? 'selected' : ''}>${escapeHtml(tournament.name)}</option>`).join('')}
+              </select>
+            </div>
+            ${
+              selectedTournament
+                ? `
+                  <div class="form-field full-width">
+                    <p><strong>${escapeHtml(selectedTournament.name)}</strong></p>
+                    <p>${escapeHtml(selectedTournament.location || '—')}</p>
+                    <p>Alkamispäivä: ${escapeHtml(selectedTournament.startDate || '—')}</p>
+                    <p>Päättymispäivä: ${escapeHtml(selectedTournament.endDate || '—')}</p>
+                    <p>Tila: ${escapeHtml(selectedMultiplier?.abbreviation || '—')}</p>
+                    <p>Kerroin: ${formatMultiplier(selectedMultiplier?.multiplier)}</p>
+                  </div>
+                `
+                : ''
+            }
+            <fieldset class="form-field full-width">
+              <legend>Pelaajat</legend>
+              <div class="segmented-control result-player-list">
+                ${
+                  players.length
+                    ? players
+                      .map(
+                        (player) => `
+                          <label>
+                            <input type="checkbox" name="playerIds" value="${escapeHtml(player.id)}" ${selectedPlayerIds.has(player.id) ? 'checked' : ''} />
+                            <span>${escapeHtml(player.name)} (${escapeHtml(player.division)})</span>
+                          </label>
+                        `,
+                      )
+                      .join('')
+                    : '<span>Pelaajia ei ole lisättynä.</span>'
+                }
+              </div>
+            </fieldset>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button">Luo tuloskortti</button>
+            <button type="button" class="ghost-button" data-dismiss-result-card-dialog>Peruuta</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+function renderResultCardPlayersDialog(dataState, uiState) {
+  if (!uiState.resultCardPlayersDialogOpen) {
+    return '';
+  }
+
+  const card = dataState.resultCards.find((entry) => entry.id === uiState.resultCardPlayersDialog.cardId);
+  if (!card) {
+    return '';
+  }
+
+  const existingPlayerIds = new Set((card.results || []).map((result) => result.playerId));
+  const selectedPlayerIds = new Set(uiState.resultCardPlayersDialog.playerIds || []);
+  const addablePlayers = [...dataState.players]
+    .filter((player) => !existingPlayerIds.has(player.id))
+    .sort((left, right) => left.name.localeCompare(right.name, 'fi'));
+
+  return `
+    <div class="dialog-backdrop" data-result-card-players-dialog-backdrop>
+      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="result-card-players-dialog-title" data-result-card-players-dialog-panel tabindex="-1">
+        <form id="result-card-players-form">
+          <input type="hidden" name="cardId" value="${escapeHtml(card.id)}" />
+          <div class="section-heading">
+            <div>
+              <h2 id="result-card-players-dialog-title">Lisää pelaajia</h2>
+              <p class="section-subtitle">${escapeHtml(card.tournamentName || 'Tuloskortti')}</p>
+            </div>
+          </div>
+          <fieldset class="form-field full-width">
+            <legend>Valitse lisättävät pelaajat</legend>
+            <div class="segmented-control result-player-list">
+              ${
+                addablePlayers.length
+                  ? addablePlayers.map((player) => `
+                    <label>
+                      <input type="checkbox" name="playerIds" value="${escapeHtml(player.id)}" ${selectedPlayerIds.has(player.id) ? 'checked' : ''} />
+                      <span>${escapeHtml(player.name)} (${escapeHtml(player.division)})</span>
+                    </label>
+                  `).join('')
+                  : '<span>Kaikki pelaajat on jo lisätty kortille.</span>'
+              }
+            </div>
+          </fieldset>
+          <div class="form-actions">
+            <button type="submit" class="button">Lisää pelaajia</button>
+            <button type="button" class="ghost-button" data-dismiss-result-card-players-dialog>Peruuta</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
 function renderConfirmationDialog(dataState, uiState) {
   if (!uiState.confirmationDialog) {
     return '';
@@ -1846,9 +2100,65 @@ function renderConfirmationDialog(dataState, uiState) {
     `;
   }
 
+  if (uiState.confirmationDialog.type === 'remove-result-player') {
+    const card = dataState.resultCards.find((entry) => entry.id === uiState.confirmationDialog.cardId);
+    const player = dataState.players.find((entry) => entry.id === uiState.confirmationDialog.playerId);
+    if (!card) {
+      return '';
+    }
+
+    return `
+      <div class="dialog-backdrop" data-close-confirm-dialog>
+        <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
+          <div class="section-heading">
+            <div>
+              <h2 id="confirm-dialog-title">Poista pelaaja tuloskortilta</h2>
+              <p id="confirm-dialog-description" class="section-subtitle">
+                Haluatko varmasti poistaa pelaajan ${escapeHtml(player?.name || 'Poistettu pelaaja')} tuloskortilta ${escapeHtml(card.tournamentName || '')}?<br />
+                Tämä poistaa vain tuloskortin rivin.
+              </p>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
+            <button type="button" class="danger-button" data-confirm-remove-result-player>Poista</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (uiState.confirmationDialog.type === 'delete-result-card') {
+    const card = dataState.resultCards.find((entry) => entry.id === uiState.confirmationDialog.cardId);
+    if (!card) {
+      return '';
+    }
+
+    return `
+      <div class="dialog-backdrop" data-close-confirm-dialog>
+        <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
+          <div class="section-heading">
+            <div>
+              <h2 id="confirm-dialog-title">⚠ VAROITUS ⚠</h2>
+              <div id="confirm-dialog-description" class="section-subtitle">
+                <p>Olet poistamassa tuloskortin <strong>${escapeHtml(card.tournamentName || '')}</strong>.</p>
+                <p>Kaikki tämän kortin tulosrivit poistetaan.</p>
+                <p>Toimintoa ei voi peruuttaa.</p>
+              </div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
+            <button type="button" class="danger-button" data-confirm-delete-result-card>Poista</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   if (uiState.confirmationDialog.type === 'delete-all-tournaments') {
     const tournamentCount = dataState.tournaments.length;
-    const resultCount = dataState.tournamentResults.length;
+    const resultCount = dataState.resultCards.reduce((sum, card) => sum + (card.results?.length || 0), 0);
     return `
       <div class="dialog-backdrop" data-close-confirm-dialog>
         <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
@@ -1909,7 +2219,9 @@ function renderConfirmationDialog(dataState, uiState) {
     return '';
   }
 
-  const resultCount = dataState.tournamentResults.filter((result) => result.tournamentId === tournament.id).length;
+  const resultCount = dataState.resultCards
+    .filter((card) => card.tournamentId === tournament.id)
+    .reduce((sum, card) => sum + (card.results?.length || 0), 0);
   return `
     <div class="dialog-backdrop" data-close-confirm-dialog>
       <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
@@ -1952,6 +2264,7 @@ export function renderApp(root, dataState, uiState) {
         ${uiState.feedback ? `<div class="message ${uiState.feedback.type}" role="status" aria-live="polite">${escapeHtml(uiState.feedback.text)}</div>` : ''}
         ${renderSummarySection(dataState, uiState)}
         ${renderRankingSection(dataState, uiState)}
+        ${renderResultsSection(dataState, uiState)}
         ${renderPlayerSection(dataState, uiState)}
         ${renderTournamentSection(dataState, uiState)}
         ${renderPointsSection(dataState, uiState)}
@@ -1966,6 +2279,8 @@ export function renderApp(root, dataState, uiState) {
       </footer>
       ${renderPlayerDialog(dataState, uiState)}
       ${renderTournamentDialog(dataState, uiState)}
+      ${renderResultCardDialog(dataState, uiState)}
+      ${renderResultCardPlayersDialog(dataState, uiState)}
       ${renderMultiplierDialog(dataState, uiState)}
       ${renderTournamentImportDialog(uiState)}
       ${renderPointsImportDialog(uiState)}
@@ -1987,7 +2302,9 @@ export function bindUi(root, dataState, uiState, handlers) {
   });
 
   root.querySelectorAll('[data-sort-table][data-sort-field]').forEach((button) => {
-    button.addEventListener('click', () => handlers.toggleColumnSort(button.dataset.sortTable, button.dataset.sortField));
+    button.addEventListener('click', () =>
+      handlers.toggleColumnSort(button.dataset.sortTable, button.dataset.sortField, button.dataset.resultCardId || ''),
+    );
   });
 
   root.querySelector('#settings-form')?.addEventListener('submit', (event) => {
@@ -1999,6 +2316,42 @@ export function bindUi(root, dataState, uiState, handlers) {
 
   root.querySelectorAll('[data-ranking-filter]').forEach((button) => {
     button.addEventListener('click', () => handlers.setRankingFilter(button.dataset.rankingFilter));
+  });
+
+  root.querySelector('[data-open-result-card-dialog]')?.addEventListener('click', () => handlers.openResultCardDialog());
+  root.querySelector('#result-card-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handlers.submitResultCard(new FormData(event.currentTarget));
+  });
+  root.querySelector('#result-card-tournament')?.addEventListener('change', (event) => {
+    handlers.updateResultCardTournament(event.target.value);
+  });
+  root.querySelector('[data-dismiss-result-card-dialog]')?.addEventListener('click', () => handlers.closeResultCardDialog());
+  root.querySelector('[data-result-card-dialog-backdrop]')?.addEventListener('click', () => handlers.closeResultCardDialog());
+  root.querySelector('[data-result-card-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
+
+  root.querySelectorAll('[data-open-result-card-players-dialog]').forEach((button) => {
+    button.addEventListener('click', () => handlers.openResultCardPlayersDialog(button.dataset.openResultCardPlayersDialog));
+  });
+  root.querySelector('#result-card-players-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handlers.submitResultCardPlayers(new FormData(event.currentTarget));
+  });
+  root.querySelector('[data-dismiss-result-card-players-dialog]')?.addEventListener('click', () => handlers.closeResultCardPlayersDialog());
+  root.querySelector('[data-result-card-players-dialog-backdrop]')?.addEventListener('click', () => handlers.closeResultCardPlayersDialog());
+  root.querySelector('[data-result-card-players-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
+
+  root.querySelectorAll('input[data-result-placement]').forEach((input) => {
+    input.addEventListener('change', () => handlers.updateResultPlacement(input.dataset.resultCardId, input.dataset.resultPlayerId, input.value));
+  });
+  root.querySelectorAll('[data-save-result-card]').forEach((button) => {
+    button.addEventListener('click', () => handlers.saveResultCard(button.dataset.saveResultCard));
+  });
+  root.querySelectorAll('[data-request-remove-result-player]').forEach((button) => {
+    button.addEventListener('click', () => handlers.requestRemoveResultPlayer(button.dataset.resultCardId, button.dataset.resultPlayerId));
+  });
+  root.querySelectorAll('[data-request-delete-result-card]').forEach((button) => {
+    button.addEventListener('click', () => handlers.requestDeleteResultCard(button.dataset.requestDeleteResultCard));
   });
 
   root.querySelectorAll('[data-summary-filter]').forEach((button) => {
@@ -2166,6 +2519,8 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-confirm-delete-all-tournaments]')?.addEventListener('click', () => handlers.confirmDeleteAllTournaments());
   root.querySelector('[data-confirm-delete-multiplier]')?.addEventListener('click', () => handlers.confirmDeleteMultiplier());
   root.querySelector('[data-confirm-delete-points-division]')?.addEventListener('click', () => handlers.confirmDeletePointsDivision());
+  root.querySelector('[data-confirm-remove-result-player]')?.addEventListener('click', () => handlers.confirmRemoveResultPlayer());
+  root.querySelector('[data-confirm-delete-result-card]')?.addEventListener('click', () => handlers.confirmDeleteResultCard());
 
   if (root.__dialogKeydownHandler) {
     document.removeEventListener('keydown', root.__dialogKeydownHandler);
@@ -2173,6 +2528,8 @@ export function bindUi(root, dataState, uiState, handlers) {
   }
 
   if (
+    uiState.resultCardDialogOpen ||
+    uiState.resultCardPlayersDialogOpen ||
     uiState.tournamentDialogOpen ||
     uiState.multiplierDialogOpen ||
     uiState.playerDialogOpen ||
@@ -2185,6 +2542,14 @@ export function bindUi(root, dataState, uiState, handlers) {
         event.preventDefault();
         if (uiState.confirmationDialog) {
           handlers.closeConfirmationDialog();
+          return;
+        }
+        if (uiState.resultCardPlayersDialogOpen) {
+          handlers.closeResultCardPlayersDialog();
+          return;
+        }
+        if (uiState.resultCardDialogOpen) {
+          handlers.closeResultCardDialog();
           return;
         }
         if (uiState.pointsImportDialogOpen) {
@@ -2209,6 +2574,8 @@ export function bindUi(root, dataState, uiState, handlers) {
 
       if (
         !uiState.confirmationDialog &&
+        !uiState.resultCardDialogOpen &&
+        !uiState.resultCardPlayersDialogOpen &&
         !uiState.playerDialogOpen &&
         !uiState.tournamentDialogOpen &&
         !uiState.multiplierDialogOpen &&
@@ -2220,6 +2587,10 @@ export function bindUi(root, dataState, uiState, handlers) {
 
       const activeDialogPanel = uiState.confirmationDialog
         ? root.querySelector('[data-confirm-dialog-panel]')
+        : uiState.resultCardPlayersDialogOpen
+          ? root.querySelector('[data-result-card-players-dialog-panel]')
+        : uiState.resultCardDialogOpen
+          ? root.querySelector('[data-result-card-dialog-panel]')
         : uiState.tournamentImportDialogOpen
           ? root.querySelector('[data-tournament-import-dialog-panel]')
         : uiState.pointsImportDialogOpen
@@ -2237,6 +2608,10 @@ export function bindUi(root, dataState, uiState, handlers) {
   if (uiState.tournamentDialogOpen && uiState.tournamentFormFocusTarget) {
     root.querySelector(getTournamentFieldSelector(uiState.tournamentFormFocusTarget))?.focus();
     uiState.tournamentFormFocusTarget = '';
+  } else if (uiState.resultCardPlayersDialogOpen) {
+    root.querySelector('[data-result-card-players-dialog-panel]')?.focus();
+  } else if (uiState.resultCardDialogOpen) {
+    root.querySelector('[data-result-card-dialog-panel]')?.focus();
   } else if (uiState.tournamentDialogOpen) {
     root.querySelector('[data-tournament-dialog-panel]')?.focus();
   } else if (uiState.multiplierDialogOpen && uiState.multiplierFormFocusTarget) {

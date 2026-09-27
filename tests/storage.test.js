@@ -49,7 +49,7 @@ test('loadState sanitizes API payload and strips unknown legacy fields', async (
             [removedTournamentField]: 'Suomi',
           },
         ],
-        tournamentResults: [],
+        resultCards: [],
         pointsTable: { MPO: {}, FPO: {} },
       });
     },
@@ -102,7 +102,7 @@ test('saveState sanitizes payload before sending it to API', async () => {
           pdgaEventUrl: 'https://www.pdga.com/tour/event/321',
         },
       ],
-      tournamentResults: [],
+      resultCards: [],
       settings: {
         playerBaseUrl: 'https://www.pdga.com/player',
         eventBaseUrl: 'https://www.pdga.com/tour/event',
