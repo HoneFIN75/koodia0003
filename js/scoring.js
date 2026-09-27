@@ -111,6 +111,41 @@ function isHeaderRow(columns) {
   );
 }
 
+function parseDelimitedRow(line, separator = ';') {
+  const columns = [];
+  let current = '';
+  let quoted = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+
+    if (character === '"') {
+      if (quoted && line[index + 1] === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+      continue;
+    }
+
+    if (character === separator && !quoted) {
+      columns.push(current.trim());
+      current = '';
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (quoted) {
+    throw new Error('CSV-rivillä on sulkematon lainausmerkki.');
+  }
+
+  columns.push(current.trim());
+  return columns;
+}
+
 export function parsePointsTableCsv(csvText) {
   const lines = String(csvText ?? '')
     .replace(/^\uFEFF/, '')
@@ -124,7 +159,7 @@ export function parsePointsTableCsv(csvText) {
       return;
     }
 
-    const columns = line.split(';').map((value) => value.trim());
+    const columns = parseDelimitedRow(line);
     if (!skippedHeader && isHeaderRow(columns)) {
       skippedHeader = true;
       return;

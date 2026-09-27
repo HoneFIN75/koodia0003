@@ -3,6 +3,7 @@ import { createPlayer, updatePlayer, findPlayer, removePlayer, canRequestPlayerD
 import { createTournament, updateTournament, findTournament, filterAndSortTournaments, TournamentValidationError } from './tournaments.js';
 import { SettingsValidationError, validateSettingsInput } from './pdga.js';
 import {
+  DIVISIONS,
   upsertPointsTableEntry,
   removePointsTableEntry,
   clearPointsTableDivision,
@@ -429,6 +430,10 @@ const handlers = {
   async submitPointsImport(formData) {
     try {
       const division = String(formData.get('division') || '').trim().toUpperCase();
+      if (!DIVISIONS.includes(division)) {
+        throw new Error('Sarjan pitää olla MPO tai FPO.');
+      }
+
       const file = formData.get('file');
       const existingEntries = listPointsTableEntries(dataState.pointsTable, division);
       if (existingEntries.length) {

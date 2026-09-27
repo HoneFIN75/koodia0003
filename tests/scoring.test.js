@@ -98,6 +98,15 @@ test('parsePointsTableCsv accepts header row and Finnish decimal commas', () => 
   ]);
 });
 
+test('parsePointsTableCsv accepts quoted semicolon-delimited values', () => {
+  const entries = parsePointsTableCsv('"Sijoitus";"Pisteet"\n"1";"100"\n"2";"10,5"\n');
+
+  assert.deepEqual(entries, [
+    { place: 1, basePoints: 100 },
+    { place: 2, basePoints: 10.5 },
+  ]);
+});
+
 test('parsePointsTableCsv rejects gaps in placements', () => {
   assert.throws(
     () => parsePointsTableCsv('1;100\n2;85\n4;75\n'),
