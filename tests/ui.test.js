@@ -381,6 +381,43 @@ test('renderApp näyttää vain olemassa olevat pelaajat TOP 10 -listoilla', () 
   assert.match(root.innerHTML, /Sarjassa FPO ei ole vielä pisteellisiä pelaajia\./);
 });
 
+test('renderApp ranking-taulukon sijakesarakkeen lajittelupainikkeella on kuvaava aria-label', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [
+    {
+      id: 'player-1',
+      firstName: 'Ari',
+      lastName: 'Aalto',
+      name: 'Ari Aalto',
+      division: 'MPO',
+      pdgaNumber: 100,
+      pdgaRating: 990,
+      worldRank: 50,
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournamentResults = [
+    {
+      id: 'result-1',
+      tournamentId: 'tournament-1',
+      playerId: 'player-1',
+      place: 1,
+      basePointsSnapshot: 100,
+      multiplierSnapshot: 1,
+      calculatedPoints: 100,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+
+  renderApp(root, dataState, createUiState({ activeView: 'ranking' }));
+
+  assert.match(root.innerHTML, /data-sort-table="ranking" data-sort-field="rankPosition" aria-label="Sijoitus"/);
+});
+
 test('renderApp player list uses required column order and add button', () => {
   const root = createRootStub();
   const dataState = createEmptyState();

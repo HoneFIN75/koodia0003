@@ -219,12 +219,12 @@ function getSortState(sortField, sortDirection, fieldName) {
   };
 }
 
-function renderSortableHeader({ table, field, label, sortField, sortDirection, className = '' }) {
+function renderSortableHeader({ table, field, label, sortField, sortDirection, className = '', ariaLabel = '' }) {
   const sortState = getSortState(sortField, sortDirection, field);
 
   return `
     <th${className ? ` class="${escapeHtml(className)}"` : ''} aria-sort="${sortState.ariaSort}">
-      <button type="button" class="table-sort-button${sortState.isActive ? ' is-active' : ''}" data-sort-table="${escapeHtml(table)}" data-sort-field="${escapeHtml(field)}">
+      <button type="button" class="table-sort-button${sortState.isActive ? ' is-active' : ''}" data-sort-table="${escapeHtml(table)}" data-sort-field="${escapeHtml(field)}"${ariaLabel ? ` aria-label="${escapeHtml(ariaLabel)}"` : ''}>
         <span>${escapeHtml(label)}</span>
         <span class="table-sort-indicator" aria-hidden="true">${sortState.indicator}</span>
       </button>
@@ -420,6 +420,7 @@ function renderRankingSection(dataState, uiState) {
                         table: 'ranking',
                         field: 'rankPosition',
                         label: '#',
+                        ariaLabel: 'Sijoitus',
                         sortField: uiState.rankingSortField,
                         sortDirection: uiState.rankingSortDirection,
                       })}
