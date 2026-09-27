@@ -146,7 +146,17 @@ jobs:
           APP_VERSION_JSON="$(node --input-type=module -e "process.stdout.write(JSON.stringify(process.argv[1]));" "$APP_VERSION")"
           SHORT_SHA_JSON="$(node --input-type=module -e "process.stdout.write(JSON.stringify(process.argv[1]));" "$SHORT_SHA")"
 
-          ssh \
+          REMOTE_SCRIPT='set -Eeuo pipefail
+          test -f "$DEPLOY_PATH/index.html"
+          find "$DEPLOY_PATH" -type f -exec chmod 644 {} +
+          DEPLOYED_AT_UTC="$(date -u +'\''%Y-%m-%dT%H:%M:%SZ'\'')"
+          VERSION_TMP_PATH="$DEPLOY_PATH/version.json.tmp"
+          printf '\''{\n  "version": %s,\n  "deployedAt": "%s",\n  "commit": %s\n}\n'\'' "$APP_VERSION_JSON" "$DEPLOYED_AT_UTC" "$SHORT_SHA_JSON" > "$VERSION_TMP_PATH"
+          chmod 644 "$VERSION_TMP_PATH"
+          mv "$VERSION_TMP_PATH" "$DEPLOY_PATH/version.json"
+          test -f "$DEPLOY_PATH/version.json"'
+
+          printf '%s\n' "$REMOTE_SCRIPT" | ssh \
             -i "$RUNNER_TEMP/deploy_key" \
             -p 22 \
             -o BatchMode=yes \
@@ -154,16 +164,6 @@ jobs:
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
             "$SSH_USER@$SSH_HOST" \
             APP_VERSION_JSON="$APP_VERSION_JSON" SHORT_SHA_JSON="$SHORT_SHA_JSON" DEPLOY_PATH="$DEPLOY_PATH" \
-            'bash -s' <<'REMOTE_SCRIPT'
-            set -Eeuo pipefail
-            test -f "$DEPLOY_PATH/index.html"
-            find "$DEPLOY_PATH" -type f -exec chmod 644 {} +
-            DEPLOYED_AT_UTC="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-            VERSION_TMP_PATH="$DEPLOY_PATH/version.json.tmp"
-            printf '{\n  "version": %s,\n  "deployedAt": "%s",\n  "commit": %s\n}\n' "$APP_VERSION_JSON" "$DEPLOYED_AT_UTC" "$SHORT_SHA_JSON" > "$VERSION_TMP_PATH"
-            chmod 644 "$VERSION_TMP_PATH"
-            mv "$VERSION_TMP_PATH" "$DEPLOY_PATH/version.json"
-            test -f "$DEPLOY_PATH/version.json"
-REMOTE_SCRIPT
+            'bash -s'
 
           echo "Deployment completed successfully."
