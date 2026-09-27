@@ -68,6 +68,25 @@ test('create and update tournament result stores snapshot values', () => {
     existingResults: [],
   });
 
+  test('createTournamentResult resolves multiplier from tournament reference', () => {
+    let pointsTable = createEmptyPointsTable();
+    pointsTable = upsertPointsTableEntry(pointsTable, { division: 'MPO', place: 1, basePoints: 20 });
+
+    const result = createTournamentResult({
+      tournamentId: 't-1',
+      playerId: 'p-1',
+      place: 1,
+      division: 'MPO',
+      pointsTable,
+      tournament: { id: 't-1', multiplierId: 'multiplier-major' },
+      multipliers: [{ id: 'multiplier-major', multiplier: 2 }],
+      existingResults: [],
+    });
+
+    assert.equal(result.multiplierSnapshot, 2);
+    assert.equal(result.calculatedPoints, 40);
+  });
+
   assert.equal(created.basePointsSnapshot, 20);
   assert.equal(created.multiplierSnapshot, 3);
   assert.equal(created.calculatedPoints, 60);

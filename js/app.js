@@ -15,6 +15,14 @@ import {
   TournamentValidationError,
   importTournamentsFromCsv,
 } from './tournaments.js';
+import {
+  createMultiplier,
+  updateMultiplier,
+  findMultiplier,
+  removeMultiplier,
+  sortMultipliers,
+  MultiplierValidationError,
+} from './multipliers.js';
 import { SettingsValidationError, validateSettingsInput } from './pdga.js';
 import {
   DIVISIONS,
@@ -63,6 +71,11 @@ let uiState = {
   tournamentImportDialogOpen: false,
   tournamentImportFocusTarget: '',
   tournamentImportSummary: null,
+  multiplierDialogOpen: false,
+  multiplierFormId: null,
+  multiplierFormErrors: {},
+  multiplierFormDraft: null,
+  multiplierFormFocusTarget: '',
   pendingFocusSelector: '',
   pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
   pointsImportDialogOpen: false,
@@ -279,6 +292,10 @@ const handlers = {
         : '[data-open-tournament-dialog]';
     } else if (uiState.confirmationDialog?.type === 'delete-all-tournaments') {
       uiState.pendingFocusSelector = '[data-request-delete-all-tournaments]';
+    } else if (uiState.confirmationDialog?.type === 'delete-multiplier') {
+      uiState.pendingFocusSelector = uiState.multiplierFormId
+        ? `[data-edit-multiplier="${uiState.multiplierFormId}"]`
+        : '[data-open-multiplier-dialog]';
     } else if (uiState.confirmationDialog?.type === 'delete-points-division') {
       uiState.pendingFocusSelector = `[data-request-delete-points="${uiState.confirmationDialog.division}"]`;
     }
@@ -319,7 +336,9 @@ const handlers = {
       uiState.tournamentFormDraft = null;
       if (values.id) {
         dataState.tournaments = dataState.tournaments.map((tournament) =>
-          tournament.id === values.id ? updateTournament(dataState.tournaments, values.id, values) : tournament,
+          tournament.id === values.id
+            ? updateTournament(dataState.tournaments, dataState.multipliers, values.id, values)
+            : tournament,
         );
         uiState.tournamentDialogOpen = false;
         uiState.tournamentFormId = null;
@@ -327,7 +346,7 @@ const handlers = {
         uiState.pendingFocusSelector = `[data-edit-tournament="${values.id}"]`;
         persistAndRender('Turnauksen tiedot päivitettiin.');
       } else {
-        const tournament = createTournament(values);
+        const tournament = createTournament(dataState.tournaments, dataState.multipliers, values);
         dataState.tournaments = [...dataState.tournaments, tournament];
         uiState.tournamentDialogOpen = false;
         uiState.tournamentFormFocusTarget = '';
@@ -395,10 +414,126 @@ const handlers = {
     render();
   },
   setTournamentSortField(sortField) {
-    uiState.tournamentSortField = ['displayOrder', 'name', 'status', 'startDate', 'endDate', 'location'].includes(sortField)
+    uiState.tournamentSortField = ['displayOrder', 'name', 'multiplierId', 'startDate', 'endDate', 'location'].includes(sortField)
       ? sortField
       : 'displayOrder';
     render();
+  },
+  openMultiplierDialog() {
+    uiState.activeView = 'multipliers';
+    uiState.multiplierDialogOpen = true;
+    uiState.multiplierFormId = null;
+    uiState.multiplierFormErrors = {};
+    uiState.multiplierFormDraft = null;
+    uiState.multiplierFormFocusTarget = 'orderNumber';
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  closeMultiplierDialog() {
+    const returnFocusSelector = uiState.multiplierFormId
+      ? `[data-edit-multiplier="${uiState.multiplierFormId}"]`
+      : '[data-open-multiplier-dialog]';
+    uiState.multiplierDialogOpen = false;
+    uiState.multiplierFormId = null;
+    uiState.multiplierFormErrors = {};
+    uiState.multiplierFormDraft = null;
+    uiState.multiplierFormFocusTarget = '';
+    uiState.pendingFocusSelector = returnFocusSelector;
+    render();
+  },
+  resetMultiplierForm() {
+    uiState.multiplierFormErrors = {};
+    uiState.multiplierFormDraft = null;
+    uiState.multiplierFormFocusTarget = '';
+    render();
+  },
+  editMultiplier(multiplierId) {
+    uiState.activeView = 'multipliers';
+    uiState.multiplierDialogOpen = true;
+    uiState.multiplierFormId = multiplierId;
+    uiState.multiplierFormErrors = {};
+    uiState.multiplierFormDraft = null;
+    uiState.multiplierFormFocusTarget = 'orderNumber';
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  submitMultiplier(formData) {
+    try {
+      const values = formDataToObject(formData);
+      uiState.multiplierFormErrors = {};
+      uiState.multiplierFormDraft = null;
+      if (values.id) {
+        dataState.multipliers = sortMultipliers(
+          dataState.multipliers.map((multiplier) =>
+            multiplier.id === values.id ? updateMultiplier(dataState.multipliers, values.id, values) : multiplier,
+          ),
+        );
+        uiState.multiplierDialogOpen = false;
+        uiState.multiplierFormId = null;
+        uiState.multiplierFormFocusTarget = '';
+        uiState.pendingFocusSelector = `[data-edit-multiplier="${values.id}"]`;
+        persistAndRender('Kertoimen tiedot päivitettiin.');
+      } else {
+        const multiplier = createMultiplier(dataState.multipliers, values);
+        dataState.multipliers = sortMultipliers([...dataState.multipliers, multiplier]);
+        uiState.multiplierDialogOpen = false;
+        uiState.multiplierFormFocusTarget = '';
+        uiState.pendingFocusSelector = `[data-edit-multiplier="${multiplier.id}"]`;
+        persistAndRender('Kerroin lisätty onnistuneesti.');
+      }
+    } catch (error) {
+      if (error instanceof MultiplierValidationError) {
+        uiState.multiplierFormErrors = error.fieldErrors;
+        uiState.multiplierFormDraft = formDataToObject(formData);
+        uiState.multiplierFormFocusTarget = Object.keys(error.fieldErrors)[0] || 'orderNumber';
+        uiState.feedback = { type: 'error', text: 'Korjaa kertoimen tiedot ja yritä uudelleen.' };
+        render();
+        return;
+      }
+      setError(error);
+    }
+  },
+  requestDeleteMultiplier(multiplierId) {
+    const multiplier = findMultiplier(dataState.multipliers, multiplierId);
+    if (!multiplier) {
+      return;
+    }
+
+    const linkedTournament = dataState.tournaments.find((tournament) => tournament.multiplierId === multiplierId);
+    if (linkedTournament) {
+      setError(new Error('Kerrointa ei voi poistaa, koska se on käytössä turnauksissa.'));
+      return;
+    }
+
+    uiState.confirmationDialog = { type: 'delete-multiplier', multiplierId };
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  confirmDeleteMultiplier() {
+    const multiplierId = uiState.confirmationDialog?.multiplierId;
+    if (!multiplierId) {
+      return;
+    }
+
+    const linkedTournament = dataState.tournaments.find((tournament) => tournament.multiplierId === multiplierId);
+    if (linkedTournament) {
+      uiState.confirmationDialog = null;
+      setError(new Error('Kerrointa ei voi poistaa, koska se on käytössä turnauksissa.'));
+      return;
+    }
+
+    dataState.multipliers = removeMultiplier(dataState.multipliers, multiplierId);
+    uiState.multiplierDialogOpen = false;
+    uiState.multiplierFormId = null;
+    uiState.multiplierFormErrors = {};
+    uiState.multiplierFormDraft = null;
+    uiState.multiplierFormFocusTarget = '';
+    uiState.confirmationDialog = null;
+    uiState.pendingFocusSelector = '[data-open-multiplier-dialog]';
+    persistAndRender('Kerroin poistettiin.');
   },
   setTournamentSortDirection(sortDirection) {
     uiState.tournamentSortDirection = sortDirection === 'desc' ? 'desc' : 'asc';
