@@ -100,6 +100,12 @@ function createUiState(overrides = {}) {
     tournamentStatusFilter: 'ALL',
     tournamentSortField: 'displayOrder',
     tournamentSortDirection: 'asc',
+    rankingSortField: 'totalPoints',
+    rankingSortDirection: 'desc',
+    multipliersSortField: 'orderNumber',
+    multipliersSortDirection: 'asc',
+    pointsSortField: 'place',
+    pointsSortDirection: 'asc',
     tournamentImportDialogOpen: false,
     tournamentImportFocusTarget: '',
     tournamentImportSummary: null,
@@ -397,7 +403,13 @@ test('renderApp player list uses required column order and add button', () => {
   renderApp(root, dataState, createUiState({ activeView: 'players' }));
 
   assert.match(root.innerHTML, /data-open-player-dialog>Lisää pelaaja<\/button>/);
-  assert.match(root.innerHTML, /<th>Pelaajan nimi<\/th>\s*<th>PDGA ID<\/th>\s*<th>Sarja<\/th>\s*<th>PDGA-rating<\/th>\s*<th>Maailmanranking<\/th>\s*<th>Muokkaa<\/th>/);
+  assert.match(root.innerHTML, /data-sort-table="players" data-sort-field="name"/);
+  assert.match(root.innerHTML, /data-sort-table="players" data-sort-field="pdgaNumber"/);
+  assert.match(root.innerHTML, /data-sort-table="players" data-sort-field="division"/);
+  assert.match(root.innerHTML, /data-sort-table="players" data-sort-field="pdgaRating"/);
+  assert.match(root.innerHTML, /data-sort-table="players" data-sort-field="worldRank"/);
+  assert.match(root.innerHTML, /aria-sort="ascending"/);
+  assert.match(root.innerHTML, /<th>Muokkaa<\/th>/);
   assert.match(root.innerHTML, /data-edit-player="player-1">Muokkaa<\/button>/);
 });
 
@@ -535,10 +547,14 @@ test('renderApp shows tournament table with required column order and PDGA name 
   assert.match(root.innerHTML, /CSV-tuonnin ohje/);
   assert.match(root.innerHTML, /Järjestysnumero;PDGA Event ID;Turnauksen nimi/);
   assert.match(root.innerHTML, /data-request-delete-all-tournaments/);
-  assert.match(
-    root.innerHTML,
-    /<th>Turnauksen nimi<\/th>\s*<th>Tila<\/th>\s*<th>PDGA Event ID<\/th>\s*<th>Alkamispäivä<\/th>\s*<th>Päättymispäivä<\/th>\s*<th>Paikkakunta<\/th>\s*<th>Rata<\/th>\s*<th>Muokkaa<\/th>/,
-  );
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="name"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="multiplierAbbreviation"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="pdgaEventId"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="startDate"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="endDate"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="location"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="venue"/);
+  assert.match(root.innerHTML, /<th>Muokkaa<\/th>/);
   assert.match(root.innerHTML, /href="https:\/\/example\.com\/event\/123456"/);
   assert.match(root.innerHTML, /target="_blank"/);
   assert.match(root.innerHTML, /rel="noopener noreferrer"/);
@@ -875,10 +891,11 @@ test('renderApp näyttää Kertoimet-välilehden ja taulukon sarakkeet', () => {
   assert.match(root.innerHTML, /data-view-target="multipliers"/);
   assert.match(root.innerHTML, /<h2 id="multipliers-title">Kertoimet<\/h2>/);
   assert.match(root.innerHTML, /data-open-multiplier-dialog>Lisää<\/button>/);
-  assert.match(
-    root.innerHTML,
-    /<th>Järjestysnumero<\/th>\s*<th>Nimi<\/th>\s*<th>Lyhenne<\/th>\s*<th>Kerroin<\/th>\s*<th>Muokkaa<\/th>/,
-  );
+  assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="orderNumber"/);
+  assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="name"/);
+  assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="abbreviation"/);
+  assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="multiplier"/);
+  assert.match(root.innerHTML, /<th>Muokkaa<\/th>/);
 });
 
 test('renderApp näyttää kertoimen dialogin ja poiston vahvistustekstit', () => {
