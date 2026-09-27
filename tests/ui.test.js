@@ -100,6 +100,9 @@ function createUiState(overrides = {}) {
     tournamentStatusFilter: 'ALL',
     tournamentSortField: 'startDate',
     tournamentSortDirection: 'asc',
+    tournamentImportDialogOpen: false,
+    tournamentImportFocusTarget: '',
+    tournamentImportSummary: null,
     pendingFocusSelector: '',
     selectedTournamentId: '',
     resultFormId: null,
@@ -528,6 +531,9 @@ test('renderApp shows tournament table with required column order and PDGA name 
   renderApp(root, dataState, createUiState({ activeView: 'tournaments' }));
 
   assert.match(root.innerHTML, /data-open-tournament-dialog>Lisää turnaus<\/button>/);
+  assert.match(root.innerHTML, /data-open-tournament-import-dialog>Tuo turnaukset<\/button>/);
+  assert.match(root.innerHTML, /CSV-tuonnin ohje/);
+  assert.match(root.innerHTML, /PDGA Event ID;Turnauksen nimi/);
   assert.match(
     root.innerHTML,
     /<th>Turnauksen nimi<\/th>\s*<th>Tila<\/th>\s*<th>Kerroin<\/th>\s*<th>PDGA Event ID<\/th>\s*<th>Alkamispäivä<\/th>\s*<th>Päättymispäivä<\/th>\s*<th>Paikkakunta<\/th>\s*<th>Rata<\/th>\s*<th>Muokkaa<\/th>/,
@@ -542,6 +548,38 @@ test('renderApp shows tournament table with required column order and PDGA name 
   assert.doesNotMatch(root.innerHTML, /Tulokset \(\d+\)/);
   assert.doesNotMatch(root.innerHTML, /Valittuna tuloksiin/);
   assert.doesNotMatch(root.innerHTML, /data-delete-tournament="tournament-1">Poista turnaus<\/button>/);
+});
+
+test('renderApp shows tournament import dialog and summary', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'tournaments',
+      tournamentImportDialogOpen: true,
+      tournamentImportSummary: {
+        totalRows: 5,
+        importedCount: 3,
+        duplicateCount: 1,
+        validationErrorCount: 1,
+        failures: [
+          { rowNumber: 4, reason: 'Turnauksen nimi puuttuu' },
+          { rowNumber: 5, reason: 'PDGA Event ID on jo järjestelmässä (123456)' },
+        ],
+      },
+    }),
+  );
+
+  assert.match(root.innerHTML, /<h2 id="tournament-import-dialog-title">Tuo turnaukset CSV-tiedostosta<\/h2>/);
+  assert.match(root.innerHTML, /id="tournament-import-file" name="file" type="file" accept="\.csv,text\/csv" required/);
+  assert.match(root.innerHTML, /Turnausten tuonti valmis/);
+  assert.match(root.innerHTML, /Tuotu: 3/);
+  assert.match(root.innerHTML, /Ohitettu \(duplikaatti PDGA Event ID\): 1/);
+  assert.match(root.innerHTML, /Validointivirheet: 1/);
+  assert.match(root.innerHTML, /Rivi 4: Turnauksen nimi puuttuu/);
 });
 
 test('renderApp shows shared tournament modal and delete action only in edit mode', () => {
@@ -825,6 +863,24 @@ test('bindUi moves focus into the score table import file field', () => {
 
   assert.equal(global.document.activeElement, importFileField);
   assert.equal(uiState.pointsImportFocusTarget, '');
+});
+
+test('bindUi moves focus into the tournament import file field', () => {
+  const restoreDocument = installDocumentStub();
+  const importFileField = createFocusableElement();
+  const root = createInteractiveRoot({
+    '#tournament-import-file': importFileField,
+  });
+  const uiState = createUiState({
+    tournamentImportDialogOpen: true,
+    tournamentImportFocusTarget: 'file',
+  });
+
+  bindUi(root, createEmptyState(), uiState, createNoopHandlers());
+
+  assert.equal(global.document.activeElement, importFileField);
+  assert.equal(uiState.tournamentImportFocusTarget, '');
+  restoreDocument();
   restoreDocument();
 });
 

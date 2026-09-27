@@ -7,7 +7,14 @@ import {
   canRequestPlayerDeletion,
   importPlayersFromCsv,
 } from './players.js';
-import { createTournament, updateTournament, findTournament, filterAndSortTournaments, TournamentValidationError } from './tournaments.js';
+import {
+  createTournament,
+  updateTournament,
+  findTournament,
+  filterAndSortTournaments,
+  TournamentValidationError,
+  importTournamentsFromCsv,
+} from './tournaments.js';
 import { SettingsValidationError, validateSettingsInput } from './pdga.js';
 import {
   DIVISIONS,
@@ -53,6 +60,9 @@ let uiState = {
   tournamentStatusFilter: 'ALL',
   tournamentSortField: 'startDate',
   tournamentSortDirection: 'asc',
+  tournamentImportDialogOpen: false,
+  tournamentImportFocusTarget: '',
+  tournamentImportSummary: null,
   pendingFocusSelector: '',
   pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
   pointsImportDialogOpen: false,
@@ -77,6 +87,12 @@ function closePointsImportDialogState() {
   uiState.pointsImportDialogOpen = false;
   uiState.pointsImportFocusTarget = '';
   uiState.pendingFocusSelector = `[data-open-points-import="${uiState.pointsImportDivision || 'MPO'}"]`;
+}
+
+function closeTournamentImportDialogState() {
+  uiState.tournamentImportDialogOpen = false;
+  uiState.tournamentImportFocusTarget = '';
+  uiState.pendingFocusSelector = '[data-open-tournament-import-dialog]';
 }
 
 function persistAndRender(successMessage = '') {
@@ -382,6 +398,39 @@ const handlers = {
   setTournamentSortDirection(sortDirection) {
     uiState.tournamentSortDirection = sortDirection === 'desc' ? 'desc' : 'asc';
     render();
+  },
+  openTournamentImportDialog() {
+    uiState.activeView = 'tournaments';
+    uiState.tournamentImportDialogOpen = true;
+    uiState.tournamentImportFocusTarget = 'file';
+    uiState.tournamentImportSummary = null;
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  closeTournamentImportDialog() {
+    closeTournamentImportDialogState();
+    render();
+  },
+  async submitTournamentImport(formData) {
+    try {
+      const file = formData.get('file');
+      if (!file || typeof file.text !== 'function' || !file.name) {
+        throw new Error('Valitse tuotava CSV-tiedosto.');
+      }
+
+      const { importedTournaments, summary } = importTournamentsFromCsv(dataState.tournaments, await file.text());
+      if (importedTournaments.length) {
+        dataState.tournaments = [...dataState.tournaments, ...importedTournaments];
+        dataState = saveState(dataState);
+      }
+
+      uiState.tournamentImportSummary = summary;
+      uiState.feedback = null;
+      render();
+    } catch (error) {
+      setError(error);
+    }
   },
   requestDeleteTournament(tournamentId) {
     const tournament = findTournament(dataState.tournaments, tournamentId);

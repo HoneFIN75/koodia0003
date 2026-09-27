@@ -145,6 +145,10 @@ function getPointsImportFieldSelector(fieldName) {
   return fieldName === 'file' ? '#points-import-file' : '[data-points-import-dialog-panel]';
 }
 
+function getTournamentImportFieldSelector(fieldName) {
+  return fieldName === 'file' ? '#tournament-import-file' : '[data-tournament-import-dialog-panel]';
+}
+
 function getFocusableElements(container) {
   if (!container) {
     return [];
@@ -718,8 +722,27 @@ function renderTournamentSection(dataState, uiState) {
           <h2 id="tournaments-title">Turnaukset</h2>
           <p class="section-subtitle">Hallinnoi turnauksia, suodata listaa ja pidä turnaustiedot ajan tasalla.</p>
         </div>
-        <button type="button" class="button" data-open-tournament-dialog>Lisää turnaus</button>
+        <div class="section-actions">
+          <button type="button" class="secondary-button" data-open-tournament-import-dialog>Tuo turnaukset</button>
+          <button type="button" class="button" data-open-tournament-dialog>Lisää turnaus</button>
+        </div>
       </div>
+      <article class="panel">
+        <h3>CSV-tuonnin ohje</h3>
+        <p>
+          Muoto:
+        </p>
+        <pre>PDGA Event ID;Turnauksen nimi
+
+123456;European Open 2027
+123457;Finnish Nationals 2027</pre>
+        <ul>
+          <li>Erotin on puolipiste (;).</li>
+          <li>UTF-8-koodaus on suositeltu (å, ä, ö).</li>
+          <li>Otsikkorivi on sallittu.</li>
+          <li>Pakolliset kentät: PDGA Event ID ja Turnauksen nimi.</li>
+        </ul>
+      </article>
       <article class="panel">
         <div class="section-heading">
           <div>
@@ -822,6 +845,71 @@ function renderTournamentSection(dataState, uiState) {
         }
       </article>
     </section>
+  `;
+}
+
+function renderTournamentImportDialog(uiState) {
+  if (!uiState.tournamentImportDialogOpen) {
+    return '';
+  }
+
+  const importSummary = uiState.tournamentImportSummary;
+  const importSummaryType = importSummary
+    ? importSummary.validationErrorCount > 0 || importSummary.duplicateCount > 0
+      ? 'warning'
+      : 'success'
+    : '';
+  const importSummaryRole = importSummary && (importSummary.validationErrorCount > 0 || importSummary.duplicateCount > 0) ? 'alert' : 'status';
+  const importSummaryAriaLive =
+    importSummary && (importSummary.validationErrorCount > 0 || importSummary.duplicateCount > 0) ? 'assertive' : 'polite';
+
+  return `
+    <div class="dialog-backdrop" data-close-tournament-import-dialog>
+      <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="tournament-import-dialog-title" aria-describedby="tournament-import-dialog-description" data-tournament-import-dialog-panel tabindex="-1">
+        <form id="tournament-import-form">
+          <div class="section-heading">
+            <div>
+              <h2 id="tournament-import-dialog-title">Tuo turnaukset CSV-tiedostosta</h2>
+              <p id="tournament-import-dialog-description" class="section-subtitle">Valitse CSV-tiedosto. Tuonti luo vain uusia turnauksia eikä koskaan ylikirjoita olemassa olevia.</p>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-field full-width">
+              <label for="tournament-import-file">CSV-tiedosto *</label>
+              <input id="tournament-import-file" name="file" type="file" accept=".csv,text/csv" required />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="secondary-button" data-cancel-tournament-import>${importSummary ? 'Sulje' : 'Peruuta'}</button>
+            <button type="submit" class="button">Tuo</button>
+          </div>
+        </form>
+        ${
+          importSummary
+            ? `
+              <div class="message ${importSummaryType}" role="${importSummaryRole}" aria-live="${importSummaryAriaLive}">
+                <strong>Turnausten tuonti valmis</strong><br />
+                Tuotu: ${formatNumber(importSummary.importedCount)}<br />
+                Ohitettu (duplikaatti PDGA Event ID): ${formatNumber(importSummary.duplicateCount)}<br />
+                Validointivirheet: ${formatNumber(importSummary.validationErrorCount)}
+                ${
+                  importSummary.failures.length
+                    ? `
+                      <p>Virheet:</p>
+                      <ul>
+                        ${importSummary.failures
+                          .map((failure) => `<li>Rivi ${formatNumber(failure.rowNumber)}: ${escapeHtml(failure.reason)}</li>`)
+                          .join('')}
+                      </ul>
+                    `
+                    : ''
+                }
+              </div>
+            `
+            : ''
+        }
+      </div>
+    </div>
   `;
 }
 
@@ -1343,6 +1431,7 @@ export function renderApp(root, dataState, uiState) {
       </footer>
       ${renderPlayerDialog(dataState, uiState)}
       ${renderTournamentDialog(dataState, uiState)}
+      ${renderTournamentImportDialog(uiState)}
       ${renderPointsImportDialog(uiState)}
       ${renderConfirmationDialog(dataState, uiState)}
     </div>
@@ -1426,10 +1515,18 @@ export function bindUi(root, dataState, uiState, handlers) {
   });
 
   root.querySelector('[data-open-tournament-dialog]')?.addEventListener('click', () => handlers.openTournamentDialog());
+  root.querySelector('[data-open-tournament-import-dialog]')?.addEventListener('click', () => handlers.openTournamentImportDialog());
   root.querySelector('[data-reset-tournament-form]')?.addEventListener('click', () => handlers.resetTournamentForm());
   root.querySelector('[data-dismiss-tournament-dialog]')?.addEventListener('click', () => handlers.closeTournamentDialog());
   root.querySelector('[data-tournament-dialog-backdrop]')?.addEventListener('click', () => handlers.closeTournamentDialog());
   root.querySelector('[data-tournament-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
+  root.querySelector('#tournament-import-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handlers.submitTournamentImport(new FormData(event.currentTarget));
+  });
+  root.querySelector('[data-cancel-tournament-import]')?.addEventListener('click', () => handlers.closeTournamentImportDialog());
+  root.querySelector('[data-close-tournament-import-dialog]')?.addEventListener('click', () => handlers.closeTournamentImportDialog());
+  root.querySelector('[data-tournament-import-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
 
   root.querySelectorAll('[data-edit-tournament]').forEach((button) => {
     button.addEventListener('click', () => handlers.editTournament(button.dataset.editTournament));
@@ -1505,7 +1602,13 @@ export function bindUi(root, dataState, uiState, handlers) {
     root.__dialogKeydownHandler = null;
   }
 
-  if (uiState.tournamentDialogOpen || uiState.playerDialogOpen || uiState.pointsImportDialogOpen || uiState.confirmationDialog) {
+  if (
+    uiState.tournamentDialogOpen ||
+    uiState.playerDialogOpen ||
+    uiState.tournamentImportDialogOpen ||
+    uiState.pointsImportDialogOpen ||
+    uiState.confirmationDialog
+  ) {
     root.__dialogKeydownHandler = (event) => {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -1517,6 +1620,10 @@ export function bindUi(root, dataState, uiState, handlers) {
           handlers.closePointsImportDialog();
           return;
         }
+        if (uiState.tournamentImportDialogOpen) {
+          handlers.closeTournamentImportDialog();
+          return;
+        }
         if (uiState.playerDialogOpen) {
           handlers.closePlayerDialog();
           return;
@@ -1525,12 +1632,20 @@ export function bindUi(root, dataState, uiState, handlers) {
         return;
       }
 
-      if (!uiState.confirmationDialog && !uiState.playerDialogOpen && !uiState.tournamentDialogOpen && !uiState.pointsImportDialogOpen) {
+      if (
+        !uiState.confirmationDialog &&
+        !uiState.playerDialogOpen &&
+        !uiState.tournamentDialogOpen &&
+        !uiState.tournamentImportDialogOpen &&
+        !uiState.pointsImportDialogOpen
+      ) {
         return;
       }
 
       const activeDialogPanel = uiState.confirmationDialog
         ? root.querySelector('[data-confirm-dialog-panel]')
+        : uiState.tournamentImportDialogOpen
+          ? root.querySelector('[data-tournament-import-dialog-panel]')
         : uiState.pointsImportDialogOpen
           ? root.querySelector('[data-points-import-dialog-panel]')
         : uiState.playerDialogOpen
@@ -1546,6 +1661,11 @@ export function bindUi(root, dataState, uiState, handlers) {
     uiState.tournamentFormFocusTarget = '';
   } else if (uiState.tournamentDialogOpen) {
     root.querySelector('[data-tournament-dialog-panel]')?.focus();
+  } else if (uiState.tournamentImportDialogOpen && uiState.tournamentImportFocusTarget) {
+    root.querySelector(getTournamentImportFieldSelector(uiState.tournamentImportFocusTarget))?.focus();
+    uiState.tournamentImportFocusTarget = '';
+  } else if (uiState.tournamentImportDialogOpen) {
+    root.querySelector('[data-tournament-import-dialog-panel]')?.focus();
   } else if (uiState.pointsImportDialogOpen && uiState.pointsImportFocusTarget) {
     root.querySelector(getPointsImportFieldSelector(uiState.pointsImportFocusTarget))?.focus();
     uiState.pointsImportFocusTarget = '';

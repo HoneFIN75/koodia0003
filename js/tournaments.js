@@ -30,6 +30,127 @@ function normalizeText(value) {
   return String(value ?? '').trim();
 }
 
+function normalizeCsvInteger(value) {
+  const normalized = normalizeText(value);
+  if (!normalized || !/^\d+$/.test(normalized)) {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function parseDelimitedRow(line, separator = ';') {
+  const columns = [];
+  let current = '';
+  let quoted = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+
+    if (character === '"') {
+      if (quoted && line[index + 1] === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+      continue;
+    }
+
+    if (character === separator && !quoted) {
+      columns.push(current.trim());
+      current = '';
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (quoted) {
+    throw new Error('CSV-rivillä on sulkematon lainausmerkki.');
+  }
+
+  columns.push(current.trim());
+  return columns;
+}
+
+function splitCsvRecords(csvText) {
+  const records = [];
+  let current = '';
+  let quoted = false;
+  let currentLine = 1;
+  let recordStartLine = 1;
+
+  for (let index = 0; index < csvText.length; index += 1) {
+    const character = csvText[index];
+
+    if (character === '"') {
+      if (quoted && csvText[index + 1] === '"') {
+        current += '""';
+        index += 1;
+      } else {
+        quoted = !quoted;
+        current += character;
+      }
+      continue;
+    }
+
+    if (character === '\n' || character === '\r') {
+      if (quoted) {
+        if (character === '\r' && csvText[index + 1] === '\n') {
+          current += '\r\n';
+          index += 1;
+        } else {
+          current += character;
+        }
+        currentLine += 1;
+        continue;
+      }
+
+      if (character === '\r' && csvText[index + 1] === '\n') {
+        index += 1;
+      }
+      records.push({ value: current, lineNumber: recordStartLine });
+      current = '';
+      currentLine += 1;
+      recordStartLine = currentLine;
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (quoted) {
+    throw new Error('CSV-rivillä on sulkematon lainausmerkki.');
+  }
+
+  records.push({ value: current, lineNumber: recordStartLine });
+  return records;
+}
+
+function normalizeHeaderToken(value) {
+  return String(value ?? '')
+    .trim()
+    .toLocaleLowerCase('fi')
+    .replace(/[\s_-]+/g, '');
+}
+
+function isTournamentsCsvHeader(columns) {
+  if (columns.length < 2) {
+    return false;
+  }
+
+  const firstColumn = normalizeHeaderToken(columns[0]);
+  const secondColumn = normalizeHeaderToken(columns[1]);
+
+  return ['pdgaeventid', 'pdgaid', 'pdgaevent'].includes(firstColumn) && ['turnauksennimi', 'tournamentname', 'nimi'].includes(secondColumn);
+}
+
 function addFieldError(fieldErrors, fieldName, message) {
   if (!fieldErrors[fieldName]) {
     fieldErrors[fieldName] = message;
@@ -177,6 +298,124 @@ export function createTournament(input) {
     id: createId(),
     createdAt: now,
     updatedAt: now,
+  };
+}
+
+function buildImportedTournament({ name, pdgaEventId }) {
+  const now = new Date().toISOString();
+  return {
+    id: createId(),
+    name,
+    pdgaEventId,
+    startDate: '',
+    endDate: '',
+    displayOrder: DEFAULT_TOURNAMENT_DISPLAY_ORDER,
+    location: '',
+    venue: '',
+    status: '',
+    multiplierKey: '',
+    division: '',
+    externalUrl: '',
+    notes: '',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function parseTournamentImportRow(columns, rowNumber, existingPdgaEventIds) {
+  if (columns.length < 2) {
+    return { failure: { rowNumber, reason: 'CSV-rivin sarakemäärä on virheellinen' } };
+  }
+
+  const pdgaEventIdText = normalizeText(columns[0]);
+  const name = normalizeText(columns[1]);
+  const parsedPdgaEventId = normalizeCsvInteger(pdgaEventIdText);
+
+  if (!pdgaEventIdText) {
+    return { failure: { rowNumber, reason: 'PDGA Event ID puuttuu' } };
+  }
+
+  if (parsedPdgaEventId === null) {
+    return { failure: { rowNumber, reason: 'Virheellinen PDGA Event ID' } };
+  }
+
+  if (!name) {
+    return { failure: { rowNumber, reason: 'Turnauksen nimi puuttuu' } };
+  }
+
+  if (existingPdgaEventIds.has(parsedPdgaEventId)) {
+    return {
+      duplicate: {
+        rowNumber,
+        reason: `PDGA Event ID on jo järjestelmässä (${parsedPdgaEventId})`,
+      },
+    };
+  }
+
+  return {
+    tournament: buildImportedTournament({
+      pdgaEventId: parsedPdgaEventId,
+      name,
+    }),
+  };
+}
+
+export function importTournamentsFromCsv(tournaments, csvText) {
+  const records = splitCsvRecords(String(csvText ?? '').replace(/^\uFEFF/, ''));
+  const existingPdgaEventIds = new Set(
+    tournaments
+      .map((tournament) => normalizeCsvInteger(tournament.pdgaEventId))
+      .filter((pdgaEventId) => pdgaEventId !== null),
+  );
+  const importedTournaments = [];
+  const failures = [];
+  let totalRows = 0;
+  let duplicateCount = 0;
+  let skippedHeader = false;
+
+  records.forEach((record) => {
+    const line = record.value;
+    if (!line.trim()) {
+      return;
+    }
+
+    const columns = parseDelimitedRow(line);
+    if (!skippedHeader && isTournamentsCsvHeader(columns)) {
+      skippedHeader = true;
+      return;
+    }
+
+    totalRows += 1;
+    const rowNumber = record.lineNumber;
+    const parsedRow = parseTournamentImportRow(columns, rowNumber, existingPdgaEventIds);
+    if (parsedRow.failure) {
+      failures.push(parsedRow.failure);
+      return;
+    }
+
+    if (parsedRow.duplicate) {
+      duplicateCount += 1;
+      failures.push(parsedRow.duplicate);
+      return;
+    }
+
+    importedTournaments.push(parsedRow.tournament);
+    existingPdgaEventIds.add(parsedRow.tournament.pdgaEventId);
+  });
+
+  if (!totalRows) {
+    throw new Error('CSV-tiedostossa ei ole tuotavia turnausrivejä.');
+  }
+
+  return {
+    importedTournaments,
+    summary: {
+      totalRows,
+      importedCount: importedTournaments.length,
+      duplicateCount,
+      validationErrorCount: failures.length - duplicateCount,
+      failures,
+    },
   };
 }
 
