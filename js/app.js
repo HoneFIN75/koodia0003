@@ -212,6 +212,7 @@ const handlers = {
     }
   },
   async submitPlayersImport(formData) {
+    uiState.playerImportSummary = null;
     try {
       const division = String(formData.get('division') || '').trim().toUpperCase();
       const file = formData.get('file');

@@ -224,6 +224,28 @@ test('imports players from CSV to selected division and allows empty optional fi
   });
 });
 
+test('imports players CSV supports quoted values, separators and quoted line breaks', () => {
+  const csv =
+    '"Etunimi";"Sukunimi";"PDGA ID";"PDGA-rating";"Maailmanranking"\n"Matti;M";"Meikäläinen";"12345";"950";"1250"\n"Maija\nMaria";"Mallikas";"54321";"";""\n';
+  const { importedPlayers, summary } = importPlayersFromCsv([], csv, 'MPO');
+
+  assert.equal(importedPlayers.length, 2);
+  assert.equal(importedPlayers[0].firstName, 'Matti;M');
+  assert.equal(importedPlayers[1].firstName, 'Maija\nMaria');
+  assert.equal(importedPlayers[0].pdgaNumber, 12345);
+  assert.equal(importedPlayers[0].pdgaRating, 950);
+  assert.equal(summary.failedCount, 0);
+});
+
+test('imports players CSV failure summary uses original CSV line numbers', () => {
+  const csv =
+    '"Etunimi";"Sukunimi";"PDGA ID";"PDGA-rating";"Maailmanranking"\n"Maija\nMaria";"Mallikas";"54321";"";""\n"Toinen";"Mallikas";"54321";"";""\n';
+  const { summary } = importPlayersFromCsv([], csv, 'MPO');
+
+  assert.equal(summary.failedCount, 1);
+  assert.deepEqual(summary.failures, [{ rowNumber: 4, pdgaId: '54321', reason: 'Pelaaja löytyy jo järjestelmästä' }]);
+});
+
 test('imports players CSV reports required and integer validation errors', () => {
   const csv = 'Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking\nA;A;;900;1\nB;B;ABC123;900;1\nC;C;200;950,5;1\nD;D;201;950;1 250\n';
   const { importedPlayers, summary } = importPlayersFromCsv([], csv, 'MPO');
@@ -237,6 +259,17 @@ test('imports players CSV reports required and integer validation errors', () =>
     { rowNumber: 3, pdgaId: 'ABC123', reason: 'Virheellinen PDGA ID' },
     { rowNumber: 4, pdgaId: '200', reason: 'Virheellinen PDGA-rating' },
     { rowNumber: 5, pdgaId: '201', reason: 'Virheellinen maailmanranking' },
+  ]);
+});
+
+test('imports players CSV reports malformed column count separately', () => {
+  const csv = 'Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking\nEtu;Suku;12345;900\nEtu;Suku;12346;900;1000;ylimääräinen\n';
+  const { summary } = importPlayersFromCsv([], csv, 'MPO');
+
+  assert.equal(summary.failedCount, 2);
+  assert.deepEqual(summary.failures, [
+    { rowNumber: 2, pdgaId: '', reason: 'CSV-rivin sarakemäärä on virheellinen' },
+    { rowNumber: 3, pdgaId: '', reason: 'CSV-rivin sarakemäärä on virheellinen' },
   ]);
 });
 

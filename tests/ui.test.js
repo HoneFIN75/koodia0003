@@ -420,11 +420,13 @@ test('renderApp shows players CSV import instructions, required fields and summa
 
   assert.match(root.innerHTML, /Pelaajien CSV-tuonti/);
   assert.match(root.innerHTML, /Sarake-erottimena tulee käyttää puolipistettä \(\;\)/);
+  assert.match(root.innerHTML, /<li>PDGA ID<\/li>/);
   assert.match(root.innerHTML, /Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking/);
   assert.match(root.innerHTML, /id="players-import-division" name="division" required/);
   assert.match(root.innerHTML, /id="players-import-file" name="file" type="file" accept="\.csv,text\/csv" required/);
   assert.match(root.innerHTML, /<button type="submit" class="button">Tuo<\/button>/);
   assert.match(root.innerHTML, /Importti valmis/);
+  assert.match(root.innerHTML, /class="message warning" role="alert" aria-live="assertive"/);
   assert.match(root.innerHTML, /Yhteensä rivejä: 4/);
   assert.match(root.innerHTML, /PDGA ID 67890 — Syy: Virheellinen PDGA-rating/);
   assert.match(root.innerHTML, /Rivi 18 — Syy: PDGA ID puuttuu/);

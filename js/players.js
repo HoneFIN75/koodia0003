@@ -92,6 +92,8 @@ function splitCsvRecords(csvText) {
   const records = [];
   let current = '';
   let quoted = false;
+  let currentLine = 1;
+  let recordStartLine = 1;
 
   for (let index = 0; index < csvText.length; index += 1) {
     const character = csvText[index];
@@ -109,14 +111,23 @@ function splitCsvRecords(csvText) {
 
     if (character === '\n' || character === '\r') {
       if (quoted) {
-        throw new Error('CSV-tiedoston tietueet eivät saa sisältää rivinvaihtoja lainausmerkkien sisällä.');
+        if (character === '\r' && csvText[index + 1] === '\n') {
+          current += '\r\n';
+          index += 1;
+        } else {
+          current += character;
+        }
+        currentLine += 1;
+        continue;
       }
 
       if (character === '\r' && csvText[index + 1] === '\n') {
         index += 1;
       }
-      records.push(current);
+      records.push({ value: current, lineNumber: recordStartLine });
       current = '';
+      currentLine += 1;
+      recordStartLine = currentLine;
       continue;
     }
 
@@ -127,7 +138,7 @@ function splitCsvRecords(csvText) {
     throw new Error('CSV-rivillä on sulkematon lainausmerkki.');
   }
 
-  records.push(current);
+  records.push({ value: current, lineNumber: recordStartLine });
   return records;
 }
 
@@ -152,6 +163,70 @@ function isPlayersCsvHeader(columns) {
     ['sukunimi', 'lastname'].includes(secondColumn) &&
     ['pdgaid', 'pdga'].includes(thirdColumn)
   );
+}
+
+function buildImportedPlayer({ firstName, lastName, pdgaNumber, pdgaRating, worldRank, division }) {
+  const now = new Date().toISOString();
+
+  return {
+    id: createId(),
+    firstName,
+    lastName,
+    name: `${firstName} ${lastName}`.trim(),
+    division,
+    pdgaNumber,
+    pdgaRating,
+    worldRank,
+    notes: '',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function parsePlayerImportRow(columns, rowNumber, safeDivision, existingPdgaNumbers) {
+  if (columns.length !== 5) {
+    return { failure: { rowNumber, pdgaId: '', reason: 'CSV-rivin sarakemäärä on virheellinen' } };
+  }
+
+  const firstName = normalizeText(columns[0]);
+  const lastName = normalizeText(columns[1]);
+  const pdgaNumber = normalizeCsvInteger(columns[2]);
+  const pdgaNumberText = normalizeText(columns[2]);
+  const pdgaRatingText = normalizeText(columns[3]);
+  const worldRankText = normalizeText(columns[4]);
+
+  if (!pdgaNumberText) {
+    return { failure: { rowNumber, pdgaId: '', reason: 'PDGA ID puuttuu' } };
+  }
+
+  if (pdgaNumber === null) {
+    return { failure: { rowNumber, pdgaId: pdgaNumberText, reason: 'Virheellinen PDGA ID' } };
+  }
+
+  const pdgaRating = pdgaRatingText ? normalizeCsvInteger(pdgaRatingText) : '';
+  if (pdgaRatingText && pdgaRating === null) {
+    return { failure: { rowNumber, pdgaId: String(pdgaNumber), reason: 'Virheellinen PDGA-rating' } };
+  }
+
+  const worldRank = worldRankText ? normalizeCsvInteger(worldRankText) : '';
+  if (worldRankText && worldRank === null) {
+    return { failure: { rowNumber, pdgaId: String(pdgaNumber), reason: 'Virheellinen maailmanranking' } };
+  }
+
+  if (existingPdgaNumbers.has(pdgaNumber)) {
+    return { failure: { rowNumber, pdgaId: String(pdgaNumber), reason: 'Pelaaja löytyy jo järjestelmästä' } };
+  }
+
+  return {
+    player: buildImportedPlayer({
+      firstName,
+      lastName,
+      pdgaNumber,
+      pdgaRating,
+      worldRank,
+      division: safeDivision,
+    }),
+  };
 }
 
 function normalizeRequiredPositiveInteger(value, label, fieldName, fieldErrors) {
@@ -272,7 +347,8 @@ export function importPlayersFromCsv(players, csvText, division) {
   let totalRows = 0;
   let skippedHeader = false;
 
-  records.forEach((line, index) => {
+  records.forEach((record) => {
+    const line = record.value;
     if (!line.trim()) {
       return;
     }
@@ -284,56 +360,15 @@ export function importPlayersFromCsv(players, csvText, division) {
     }
 
     totalRows += 1;
-    const rowNumber = index + 1;
-    const firstName = normalizeText(columns[0]);
-    const lastName = normalizeText(columns[1]);
-    const pdgaNumber = normalizeCsvInteger(columns[2]);
-    const pdgaNumberText = normalizeText(columns[2]);
-    const pdgaRatingText = normalizeText(columns[3]);
-    const worldRankText = normalizeText(columns[4]);
-
-    if (!pdgaNumberText) {
-      failures.push({ rowNumber, pdgaId: '', reason: 'PDGA ID puuttuu' });
+    const rowNumber = record.lineNumber;
+    const parsedRow = parsePlayerImportRow(columns, rowNumber, safeDivision, existingPdgaNumbers);
+    if (parsedRow.failure) {
+      failures.push(parsedRow.failure);
       return;
     }
 
-    if (pdgaNumber === null) {
-      failures.push({ rowNumber, pdgaId: pdgaNumberText, reason: 'Virheellinen PDGA ID' });
-      return;
-    }
-
-    const pdgaRating = pdgaRatingText ? normalizeCsvInteger(pdgaRatingText) : '';
-    if (pdgaRatingText && pdgaRating === null) {
-      failures.push({ rowNumber, pdgaId: String(pdgaNumber), reason: 'Virheellinen PDGA-rating' });
-      return;
-    }
-
-    const worldRank = worldRankText ? normalizeCsvInteger(worldRankText) : '';
-    if (worldRankText && worldRank === null) {
-      failures.push({ rowNumber, pdgaId: String(pdgaNumber), reason: 'Virheellinen maailmanranking' });
-      return;
-    }
-
-    if (existingPdgaNumbers.has(pdgaNumber)) {
-      failures.push({ rowNumber, pdgaId: String(pdgaNumber), reason: 'Pelaaja löytyy jo järjestelmästä' });
-      return;
-    }
-
-    const now = new Date().toISOString();
-    importedPlayers.push({
-      id: createId(),
-      firstName,
-      lastName,
-      name: `${firstName} ${lastName}`.trim(),
-      division: safeDivision,
-      pdgaNumber,
-      pdgaRating,
-      worldRank,
-      notes: '',
-      createdAt: now,
-      updatedAt: now,
-    });
-    existingPdgaNumbers.add(pdgaNumber);
+    importedPlayers.push(parsedRow.player);
+    existingPdgaNumbers.add(parsedRow.player.pdgaNumber);
   });
 
   if (!totalRows) {

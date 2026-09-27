@@ -416,6 +416,8 @@ function renderPlayerSection(dataState, uiState) {
       ? 'warning'
       : 'success'
     : '';
+  const importSummaryRole = importSummary?.failedCount > 0 ? 'alert' : 'status';
+  const importSummaryAriaLive = importSummary?.failedCount > 0 ? 'assertive' : 'polite';
 
   return `
     <section class="section" id="section-players" ${uiState.activeView === 'players' ? '' : 'hidden'} aria-labelledby="players-title">
@@ -438,20 +440,20 @@ function renderPlayerSection(dataState, uiState) {
           Sarake-erottimena tulee käyttää puolipistettä (;).
         </p>
         <p>
-          Pakollinen tieto:<br />
-          - PDGA ID
+          Pakollinen tieto:
         </p>
+        <ul>
+          <li>PDGA ID</li>
+        </ul>
         <p>
           Muut kentät voivat olla tyhjiä.
         </p>
         <p>
           Esimerkki:
         </p>
-        <p>
-          Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking<br />
-          Matti;Meikäläinen;12345;950;1250<br />
-          Maija;Mallikas;54321;890;2450
-        </p>
+        <pre>Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking
+Matti;Meikäläinen;12345;950;1250
+Maija;Mallikas;54321;890;2450</pre>
         <form id="players-import-form">
           <div class="form-grid compact-grid">
             <div class="form-field">
@@ -476,7 +478,7 @@ function renderPlayerSection(dataState, uiState) {
         ${
           importSummary
             ? `
-              <div class="message ${importSummaryType}" role="status" aria-live="polite">
+              <div class="message ${importSummaryType}" role="${importSummaryRole}" aria-live="${importSummaryAriaLive}">
                 <strong>Importti valmis</strong><br />
                 Yhteensä rivejä: ${formatNumber(importSummary.totalRows)}<br />
                 Onnistuneesti tuotu: ${formatNumber(importSummary.importedCount)}<br />
