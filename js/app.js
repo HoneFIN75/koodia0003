@@ -449,7 +449,6 @@ const handlers = {
       const entries = parsePointsTableCsv(await file.text());
       dataState.pointsTable = importPointsTableDivision(dataState.pointsTable, division, entries);
       uiState.pointsImportDivision = division;
-      uiState.pointsImportDivision = division;
       closePointsImportDialogState();
       persistAndRender(`Sarjan ${division} pistetaulukko tuotiin onnistuneesti.`);
     } catch (error) {

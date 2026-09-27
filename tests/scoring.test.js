@@ -114,6 +114,13 @@ test('parsePointsTableCsv rejects gaps in placements', () => {
   );
 });
 
+test('parsePointsTableCsv rejects line breaks inside quoted fields', () => {
+  assert.throws(
+    () => parsePointsTableCsv('"Sijoitus";"Pisteet"\n"1";"10,\n5"\n'),
+    /CSV-tiedoston tietueet eivät saa sisältää rivinvaihtoja lainausmerkkien sisällä\./,
+  );
+});
+
 test('parsePointsTableCsv rejects duplicate placements and missing points', () => {
   assert.throws(
     () => parsePointsTableCsv('1;100\n1;90\n'),

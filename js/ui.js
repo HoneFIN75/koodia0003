@@ -1113,7 +1113,7 @@ function renderPointsImportDialog(uiState) {
           <div class="form-grid">
             <fieldset class="form-field full-width">
               <legend>Sarja *</legend>
-              <div class="segmented-control" role="radiogroup" aria-label="Valitse kohdesarja">
+              <div class="segmented-control">
                 ${DIVISIONS.map(
                   (division) => `
                     <label>

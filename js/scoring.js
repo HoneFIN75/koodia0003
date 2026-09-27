@@ -146,10 +146,51 @@ function parseDelimitedRow(line, separator = ';') {
   return columns;
 }
 
+function splitCsvRecords(csvText) {
+  const records = [];
+  let current = '';
+  let quoted = false;
+
+  for (let index = 0; index < csvText.length; index += 1) {
+    const character = csvText[index];
+
+    if (character === '"') {
+      if (quoted && csvText[index + 1] === '"') {
+        current += '""';
+        index += 1;
+      } else {
+        quoted = !quoted;
+        current += character;
+      }
+      continue;
+    }
+
+    if (character === '\n' || character === '\r') {
+      if (quoted) {
+        throw new Error('CSV-tiedoston tietueet eivät saa sisältää rivinvaihtoja lainausmerkkien sisällä.');
+      }
+
+      if (character === '\r' && csvText[index + 1] === '\n') {
+        index += 1;
+      }
+      records.push(current);
+      current = '';
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (quoted) {
+    throw new Error('CSV-rivillä on sulkematon lainausmerkki.');
+  }
+
+  records.push(current);
+  return records;
+}
+
 export function parsePointsTableCsv(csvText) {
-  const lines = String(csvText ?? '')
-    .replace(/^\uFEFF/, '')
-    .split(/\r?\n/);
+  const lines = splitCsvRecords(String(csvText ?? '').replace(/^\uFEFF/, ''));
   const entries = [];
   const seenPlaces = new Set();
   let skippedHeader = false;
