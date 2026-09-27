@@ -54,6 +54,7 @@ Tämä MVP-versio tallentaa kaiken datan palvelimen `jsondb/`-hakemistoon JSON-t
 
 - tiedot ovat yhteisiä kaikille käyttäjille
 - palvelin luo puuttuvat JSON-tiedostot automaattisesti
+- palvelin ylläpitää lisäksi sisäistä atomista `state.json`-snapshotia, jotta kirjoitus pysyy eheänä
 - `jsondb/`-hakemisto pitää säilyttää deployjen yli
 - tietokantapohjainen backend on myöhempi kehitysvaihe
 - importia ja exportia ei ole vielä toteutettu

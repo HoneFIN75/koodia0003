@@ -67,6 +67,28 @@ function defaultAuthorizeWriteRequest(request) {
   return false;
 }
 
+function validateStatePayload(payload) {
+  const requiredKeys = [
+    'players',
+    'tournaments',
+    'tournamentResults',
+    'settings',
+    'pointsTable',
+    'multipliers',
+  ];
+
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('INVALID_STATE_PAYLOAD');
+  }
+
+  const missingKeys = requiredKeys.filter((key) => !(key in payload));
+  if (missingKeys.length > 0) {
+    throw new Error('INCOMPLETE_STATE_PAYLOAD');
+  }
+
+  return payload;
+}
+
 function resolvePublicPath(publicDir, pathname) {
   const normalizedPath = pathname === '/' ? '/index.html' : pathname;
   const decodedPath = decodeURIComponent(normalizedPath);
@@ -147,7 +169,7 @@ export function createRequestHandler({ storage, publicDir, authorizeWriteRequest
             return;
           }
 
-          const payload = await readRequestJson(request);
+          const payload = validateStatePayload(await readRequestJson(request));
           sendJson(response, 200, await storage.saveState(payload));
           return;
         }
@@ -165,6 +187,13 @@ export function createRequestHandler({ storage, publicDir, authorizeWriteRequest
     } catch (error) {
       if (error instanceof SyntaxError) {
         sendJson(response, 400, { message: 'Pyynnön JSON-data on virheellinen.' });
+        return;
+      }
+
+      if (error?.message === 'INVALID_STATE_PAYLOAD' || error?.message === 'INCOMPLETE_STATE_PAYLOAD') {
+        sendJson(response, 400, {
+          message: 'Tallennettava tila on puutteellinen. Lähetä koko sovelluksen tila yhdessä pyynnössä.',
+        });
         return;
       }
 

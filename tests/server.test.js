@@ -22,6 +22,7 @@ test('json storage creates expected files automatically', async () => {
     assert.deepEqual(state.tournamentResults, []);
 
     const fileNames = [
+      'state.json',
       'players.json',
       'tournaments.json',
       'tournamentResults.json',
@@ -62,6 +63,7 @@ test('API loads and saves shared state through JSON storage', async () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        ...initialState,
         players: [
           {
             id: 'player-1',
@@ -115,6 +117,32 @@ test('API rejects malformed JSON bodies with Finnish error message', async () =>
   }
 });
 
+test('API rejects partial state payloads to avoid clearing unrelated data', async () => {
+  const publicDir = await createTempDir();
+  const jsondbDir = await createTempDir();
+  const storage = createJsonFileStorage({ directoryPath: jsondbDir });
+  const server = createServer({ publicDir, storage });
+
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/state`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ players: [] }),
+    });
+
+    assert.equal(response.status, 400);
+    assert.match(await response.text(), /Tallennettava tila on puutteellinen\./);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    await rm(publicDir, { recursive: true, force: true });
+    await rm(jsondbDir, { recursive: true, force: true });
+  }
+});
+
 test('API rejects unsupported methods for /api/state', async () => {
   const publicDir = await createTempDir();
   const jsondbDir = await createTempDir();
@@ -150,13 +178,14 @@ test('API rejects unauthorized writes and accepts authorized proxy writes', asyn
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
     const baseUrl = `http://127.0.0.1:${address.port}/api/state`;
+    const initialState = await (await fetch(baseUrl)).json();
 
     const forbiddenResponse = await fetch(baseUrl, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ players: [] }),
+      body: JSON.stringify(initialState),
     });
     assert.equal(forbiddenResponse.status, 403);
     assert.match(await forbiddenResponse.text(), /Tallennus on sallittu vain paikallisen palvelimen kautta tai suojatulla välityspalvelimella\./);
@@ -168,7 +197,7 @@ test('API rejects unauthorized writes and accepts authorized proxy writes', asyn
         'X-SFL-Proxy-Authenticated': 'true',
         'X-SFL-Write-Token': 'proxy-token',
       },
-      body: JSON.stringify({ players: [] }),
+      body: JSON.stringify(initialState),
     });
     assert.equal(authorizedResponse.status, 200);
   } finally {

@@ -261,8 +261,10 @@ const handlers = {
 
       const { importedPlayers, summary } = importPlayersFromCsv(dataState.players, await file.text(), division);
       if (importedPlayers.length) {
-        dataState.players = [...dataState.players, ...importedPlayers];
-        dataState = await saveState(dataState);
+        dataState = await saveState({
+          ...dataState,
+          players: [...dataState.players, ...importedPlayers],
+        });
       }
 
       uiState.playerImportDivision = division;
@@ -615,8 +617,10 @@ const handlers = {
       const { importedTournaments, summary } = importTournamentsFromCsv(dataState.tournaments, await file.text());
       uiState.tournamentImportSummary = summary;
       if (importedTournaments.length) {
-        dataState.tournaments = [...dataState.tournaments, ...importedTournaments];
-        dataState = await saveState(dataState);
+        dataState = await saveState({
+          ...dataState,
+          tournaments: [...dataState.tournaments, ...importedTournaments],
+        });
       }
 
       uiState.feedback = null;

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { createEmptyState, sanitizeState } from '../js/storage.js';
 
 const STORAGE_FILES = {
+  snapshot: 'state.json',
   players: 'players.json',
   tournaments: 'tournaments.json',
   tournamentResults: 'tournamentResults.json',
@@ -49,43 +50,19 @@ export class JsonFileStorage {
     const defaultState = createEmptyState();
     await mkdir(this.directoryPath, { recursive: true });
 
-    await Promise.all([
-      readJsonFile(this.#resolvePath(STORAGE_FILES.players), defaultState.players),
-      readJsonFile(this.#resolvePath(STORAGE_FILES.tournaments), defaultState.tournaments),
-      readJsonFile(this.#resolvePath(STORAGE_FILES.tournamentResults), defaultState.tournamentResults),
-      readJsonFile(this.#resolvePath(STORAGE_FILES.scoreTables), defaultState.pointsTable),
-      readJsonFile(this.#resolvePath(STORAGE_FILES.multipliers), defaultState.multipliers),
-      readJsonFile(this.#resolvePath(STORAGE_FILES.settings), defaultState.settings),
-    ]);
+    const snapshot = sanitizeState(
+      await readJsonFile(this.#resolvePath(STORAGE_FILES.snapshot), defaultState),
+    );
+    await this.#syncSlices(snapshot);
   }
 
   async loadState() {
     await this.ensureInitialized();
-
-    const [
-      players,
-      tournaments,
-      tournamentResults,
-      pointsTable,
-      multipliers,
-      settings,
-    ] = await Promise.all([
-      readJsonFile(this.#resolvePath(STORAGE_FILES.players), []),
-      readJsonFile(this.#resolvePath(STORAGE_FILES.tournaments), []),
-      readJsonFile(this.#resolvePath(STORAGE_FILES.tournamentResults), []),
-      readJsonFile(this.#resolvePath(STORAGE_FILES.scoreTables), createEmptyState().pointsTable),
-      readJsonFile(this.#resolvePath(STORAGE_FILES.multipliers), createEmptyState().multipliers),
-      readJsonFile(this.#resolvePath(STORAGE_FILES.settings), createEmptyState().settings),
-    ]);
-
-    return sanitizeState({
-      players,
-      tournaments,
-      tournamentResults,
-      pointsTable,
-      multipliers,
-      settings,
-    });
+    const snapshot = sanitizeState(
+      await readJsonFile(this.#resolvePath(STORAGE_FILES.snapshot), createEmptyState()),
+    );
+    await this.#syncSlices(snapshot);
+    return snapshot;
   }
 
   async saveState(state) {
@@ -93,14 +70,8 @@ export class JsonFileStorage {
     const sanitized = sanitizeState(state);
 
     const persistState = async () => {
-      await Promise.all([
-        writeJsonAtomically(this.#resolvePath(STORAGE_FILES.players), sanitized.players),
-        writeJsonAtomically(this.#resolvePath(STORAGE_FILES.tournaments), sanitized.tournaments),
-        writeJsonAtomically(this.#resolvePath(STORAGE_FILES.tournamentResults), sanitized.tournamentResults),
-        writeJsonAtomically(this.#resolvePath(STORAGE_FILES.scoreTables), sanitized.pointsTable),
-        writeJsonAtomically(this.#resolvePath(STORAGE_FILES.multipliers), sanitized.multipliers),
-        writeJsonAtomically(this.#resolvePath(STORAGE_FILES.settings), sanitized.settings),
-      ]);
+      await writeJsonAtomically(this.#resolvePath(STORAGE_FILES.snapshot), sanitized);
+      await this.#syncSlices(sanitized);
 
       return sanitized;
     };
@@ -112,6 +83,17 @@ export class JsonFileStorage {
 
   #resolvePath(fileName) {
     return path.join(this.directoryPath, fileName);
+  }
+
+  async #syncSlices(state) {
+    await Promise.all([
+      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.players), state.players),
+      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.tournaments), state.tournaments),
+      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.tournamentResults), state.tournamentResults),
+      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.scoreTables), state.pointsTable),
+      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.multipliers), state.multipliers),
+      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.settings), state.settings),
+    ]);
   }
 }
 
