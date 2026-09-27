@@ -1413,7 +1413,7 @@ function renderConfirmationDialog(dataState, uiState) {
             </div>
           </div>
           <div class="form-actions">
-            <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
+            <button type="button" class="secondary-button" data-cancel-confirm-dialog>Peruuta</button>
             <button type="button" class="danger-button" data-confirm-delete-all-tournaments>Poista kaikki turnaukset</button>
           </div>
         </div>
