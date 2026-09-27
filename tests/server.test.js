@@ -19,13 +19,13 @@ test('json storage creates expected files automatically', async () => {
 
     assert.deepEqual(state.players, []);
     assert.deepEqual(state.tournaments, []);
-    assert.deepEqual(state.tournamentResults, []);
+    assert.deepEqual(state.resultCards, []);
 
     const fileNames = [
       'state.json',
       'players.json',
       'tournaments.json',
-      'tournamentResults.json',
+      'resultCards.json',
       'scoreTables.json',
       'multipliers.json',
       'settings.json',

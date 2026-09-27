@@ -9,6 +9,9 @@ import {
   importPointsTableDivision,
   listPointsTableEntries,
   parsePointsTableCsv,
+  parsePlacement,
+  calculatePlacementPoints,
+  recalculateResultCard,
   updateTournamentResult,
 } from '../js/scoring.js';
 
@@ -167,4 +170,137 @@ test('points table division can be imported and cleared', () => {
   const cleared = clearPointsTableDivision(pointsTable, 'MPO');
   assert.deepEqual(listPointsTableEntries(cleared, 'MPO'), []);
   assert.deepEqual(listPointsTableEntries(cleared, 'FPO'), []);
+});
+
+test('parsePlacement accepts normal and tie formats and rejects invalid values', () => {
+  assert.deepEqual(parsePlacement('1'), {
+    raw: '1',
+    place: 1,
+    tieCount: 1,
+    isTie: false,
+    rangeStart: 1,
+    rangeEnd: 1,
+  });
+  assert.deepEqual(parsePlacement('3t4'), {
+    raw: '3T4',
+    place: 3,
+    tieCount: 4,
+    isTie: true,
+    rangeStart: 3,
+    rangeEnd: 6,
+  });
+
+  assert.throws(() => parsePlacement('T4'), /Sijoituksen muoto on virheellinen/);
+  assert.throws(() => parsePlacement('3T'), /Sijoituksen muoto on virheellinen/);
+  assert.throws(() => parsePlacement('3TT4'), /Sijoituksen muoto on virheellinen/);
+  assert.throws(() => parsePlacement('3-T-4'), /Sijoituksen muoto on virheellinen/);
+  assert.throws(() => parsePlacement('ABC'), /Sijoituksen muoto on virheellinen/);
+});
+
+test('calculatePlacementPoints averages tie placements before multiplier', () => {
+  const pointsTable = {
+    MPO: {
+      3: 75,
+      4: 65,
+      5: 55,
+      6: 45,
+    },
+    FPO: {},
+  };
+
+  assert.equal(calculatePlacementPoints({
+    placement: '3T4',
+    division: 'MPO',
+    pointsTable,
+    multiplier: 2,
+  }), 120);
+});
+
+test('recalculateResultCard rejects overlapping placements unless same tie notation', () => {
+  const pointsTable = {
+    MPO: { 1: 100, 2: 85, 3: 75, 4: 65, 5: 55, 6: 45 },
+    FPO: {},
+  };
+  const card = {
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    multiplier: 1,
+    results: [
+      { playerId: 'player-1', division: 'MPO', placement: '3T4', calculatedPoints: null },
+      { playerId: 'player-2', division: 'MPO', placement: '4', calculatedPoints: null },
+    ],
+  };
+
+  assert.throws(() => recalculateResultCard({
+    card,
+    players: [],
+    pointsTable,
+    multipliers: [],
+  }), /Sijoitukset menevät päällekkäin/);
+});
+
+test('recalculateResultCard laskee sekä normaalin sijoituksen että tasatuloksen oikein', () => {
+  const pointsTable = {
+    MPO: { 1: 100, 2: 85, 3: 75, 4: 65 },
+    FPO: {},
+  };
+  const card = {
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    multiplier: 2,
+    results: [
+      { playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: null },
+      { playerId: 'player-2', division: 'MPO', placement: '3T2', calculatedPoints: null },
+      { playerId: 'player-3', division: 'MPO', placement: '3T2', calculatedPoints: null },
+    ],
+  };
+
+  const recalculated = recalculateResultCard({
+    card,
+    players: [],
+    pointsTable,
+    multipliers: [],
+  });
+
+  assert.equal(recalculated[0].calculatedPoints, 200);
+  assert.equal(recalculated[1].calculatedPoints, 140);
+  assert.equal(recalculated[2].calculatedPoints, 140);
+});
+
+test('calculatePlacementPoints hylkää tasatuloksen jos jokin sijoituksen piste puuttuu', () => {
+  const pointsTable = {
+    MPO: { 3: 75, 4: 65, 6: 45 },
+    FPO: {},
+  };
+
+  assert.throws(() => calculatePlacementPoints({
+    placement: '3T4',
+    division: 'MPO',
+    pointsTable,
+    multiplier: 2,
+  }), /Pisteitä ei ole määritetty sarjalle MPO sijoitukselle 5/);
+});
+
+test('recalculateResultCard hylkää tasatuloksen jos rivejä on enemmän kuin tieCount', () => {
+  const pointsTable = {
+    MPO: { 3: 75, 4: 65 },
+    FPO: {},
+  };
+  const card = {
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    multiplier: 1,
+    results: [
+      { playerId: 'player-1', division: 'MPO', placement: '3T2', calculatedPoints: null },
+      { playerId: 'player-2', division: 'MPO', placement: '3T2', calculatedPoints: null },
+      { playerId: 'player-3', division: 'MPO', placement: '3T2', calculatedPoints: null },
+    ],
+  };
+
+  assert.throws(() => recalculateResultCard({
+    card,
+    players: [],
+    pointsTable,
+    multipliers: [],
+  }), /liikaa rivejä/);
 });

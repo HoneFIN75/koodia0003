@@ -1,5 +1,17 @@
-export function buildRanking(players, tournamentResults, filter = 'ALL') {
-  const totals = tournamentResults.reduce((accumulator, result) => {
+function flattenResultCards(resultCards = []) {
+  return resultCards.flatMap((card) =>
+    (card.results || [])
+      .filter((result) => result.placement && Number.isFinite(Number(result.calculatedPoints)))
+      .map((result) => ({
+        ...result,
+        calculatedPoints: Number(result.calculatedPoints),
+        tournamentId: card.tournamentId,
+      })),
+  );
+}
+
+export function buildRanking(players, resultCards, filter = 'ALL') {
+  const totals = flattenResultCards(resultCards).reduce((accumulator, result) => {
     const current = accumulator.get(result.playerId) || {
       tournamentCount: 0,
       totalPoints: 0,
@@ -34,8 +46,8 @@ export function getTopRanking(ranking, limit = 10) {
   return ranking.slice(0, limit);
 }
 
-export function getPlayerResults({ playerId, tournamentResults, tournaments }) {
-  return tournamentResults
+export function getPlayerResults({ playerId, resultCards, tournaments }) {
+  return flattenResultCards(resultCards)
     .filter((result) => result.playerId === playerId)
     .map((result) => ({
       ...result,
