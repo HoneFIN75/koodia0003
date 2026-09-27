@@ -39,7 +39,7 @@ function formatDeploymentTimestamp(value) {
     return escapeHtml(value);
   }
 
-  const parts = new Intl.DateTimeFormat('fi-FI', {
+  const formatterOptions = {
     timeZone: 'Europe/Helsinki',
     year: 'numeric',
     month: '2-digit',
@@ -47,9 +47,30 @@ function formatDeploymentTimestamp(value) {
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',
-  }).formatToParts(parsedDate);
-  const partMap = Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
-  return `${partMap.day}.${partMap.month}.${partMap.year} ${partMap.hour}:${partMap.minute}`;
+  };
+  const formatter = new Intl.DateTimeFormat('fi-FI', formatterOptions);
+
+  if (typeof formatter.formatToParts === 'function') {
+    const parts = formatter.formatToParts(parsedDate);
+    const partMap = Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
+    return `${partMap.day}.${partMap.month}.${partMap.year} ${partMap.hour}:${partMap.minute}`;
+  }
+
+  const date = new Intl.DateTimeFormat('fi-FI', {
+    timeZone: 'Europe/Helsinki',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(parsedDate);
+  const time = new Intl.DateTimeFormat('fi-FI', {
+    timeZone: 'Europe/Helsinki',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  })
+    .format(parsedDate)
+    .replace(/^(\d{2})\.(\d{2})$/, '$1:$2');
+  return `${date} ${time}`;
 }
 
 function renderDeploymentInfo(deploymentInfo) {
