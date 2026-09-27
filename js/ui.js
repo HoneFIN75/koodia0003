@@ -1406,10 +1406,10 @@ function renderConfirmationDialog(dataState, uiState) {
             <div>
               <h2 id="confirm-dialog-title">VAROITUS</h2>
               <p class="warning-text"><span aria-hidden="true">⚠</span> Tämä toiminto on pysyvä.</p>
-              <p id="confirm-dialog-description" class="section-subtitle">
-                Olet poistamassa kaikki turnaukset (${formatNumber(tournamentCount)} kpl) ja turnaustulokset (${formatNumber(resultCount)} kpl).<br />
-                Toimintoa ei voi peruuttaa.
-              </p>
+              <div id="confirm-dialog-description" class="section-subtitle">
+                <p>Olet poistamassa kaikki turnaukset (${formatNumber(tournamentCount)} kpl) ja turnaustulokset (${formatNumber(resultCount)} kpl).</p>
+                <p>Toimintoa ei voi peruuttaa.</p>
+              </div>
             </div>
           </div>
           <div class="form-actions">
