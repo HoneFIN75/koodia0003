@@ -35,6 +35,200 @@ function splitName(nameValue) {
   };
 }
 
+function normalizeCsvInteger(value) {
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    return null;
+  }
+
+  if (!/^\d+$/.test(normalized)) {
+    return null;
+  }
+
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function parseDelimitedRow(line, separator = ';') {
+  const columns = [];
+  let current = '';
+  let quoted = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+
+    if (character === '"') {
+      if (quoted && line[index + 1] === '"') {
+        current += '"';
+        index += 1;
+      } else {
+        quoted = !quoted;
+      }
+      continue;
+    }
+
+    if (character === separator && !quoted) {
+      columns.push(current.trim());
+      current = '';
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (quoted) {
+    throw new Error('CSV-rivillä on sulkematon lainausmerkki.');
+  }
+
+  columns.push(current.trim());
+  return columns;
+}
+
+function splitCsvRecords(csvText) {
+  const records = [];
+  let current = '';
+  let quoted = false;
+  let currentLine = 1;
+  let recordStartLine = 1;
+
+  for (let index = 0; index < csvText.length; index += 1) {
+    const character = csvText[index];
+
+    if (character === '"') {
+      if (quoted && csvText[index + 1] === '"') {
+        current += '""';
+        index += 1;
+      } else {
+        quoted = !quoted;
+        current += character;
+      }
+      continue;
+    }
+
+    if (character === '\n' || character === '\r') {
+      if (quoted) {
+        if (character === '\r' && csvText[index + 1] === '\n') {
+          current += '\r\n';
+          index += 1;
+        } else {
+          current += character;
+        }
+        currentLine += 1;
+        continue;
+      }
+
+      if (character === '\r' && csvText[index + 1] === '\n') {
+        index += 1;
+      }
+      records.push({ value: current, lineNumber: recordStartLine });
+      current = '';
+      currentLine += 1;
+      recordStartLine = currentLine;
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (quoted) {
+    throw new Error('CSV-rivillä on sulkematon lainausmerkki.');
+  }
+
+  records.push({ value: current, lineNumber: recordStartLine });
+  return records;
+}
+
+function normalizeHeaderToken(value) {
+  return String(value ?? '')
+    .trim()
+    .toLocaleLowerCase('fi')
+    .replace(/[\s_-]+/g, '');
+}
+
+function isPlayersCsvHeader(columns) {
+  if (columns.length < 3) {
+    return false;
+  }
+
+  const firstColumn = normalizeHeaderToken(columns[0]);
+  const secondColumn = normalizeHeaderToken(columns[1]);
+  const thirdColumn = normalizeHeaderToken(columns[2]);
+
+  return (
+    ['etunimi', 'firstname'].includes(firstColumn) &&
+    ['sukunimi', 'lastname'].includes(secondColumn) &&
+    ['pdgaid', 'pdga'].includes(thirdColumn)
+  );
+}
+
+function buildImportedPlayer({ firstName, lastName, pdgaNumber, pdgaRating, worldRank, division }) {
+  const now = new Date().toISOString();
+
+  return {
+    id: createId(),
+    firstName,
+    lastName,
+    name: `${firstName} ${lastName}`.trim(),
+    division,
+    pdgaNumber,
+    pdgaRating,
+    worldRank,
+    notes: '',
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function parsePlayerImportRow(columns, rowNumber, safeDivision, existingPdgaNumbers) {
+  if (columns.length !== 5) {
+    return { failure: { rowNumber, pdgaId: '', reason: 'CSV-rivin sarakemäärä on virheellinen' } };
+  }
+
+  const firstName = normalizeText(columns[0]);
+  const lastName = normalizeText(columns[1]);
+  const pdgaNumber = normalizeCsvInteger(columns[2]);
+  const pdgaNumberText = normalizeText(columns[2]);
+  const pdgaRatingText = normalizeText(columns[3]);
+  const worldRankText = normalizeText(columns[4]);
+
+  if (!pdgaNumberText) {
+    return { failure: { rowNumber, pdgaId: '', reason: 'PDGA ID puuttuu' } };
+  }
+
+  if (pdgaNumber === null) {
+    return { failure: { rowNumber, pdgaId: pdgaNumberText, reason: 'Virheellinen PDGA ID' } };
+  }
+
+  const pdgaRating = pdgaRatingText ? normalizeCsvInteger(pdgaRatingText) : '';
+  if (pdgaRatingText && pdgaRating === null) {
+    return { failure: { rowNumber, pdgaId: String(pdgaNumber), reason: 'Virheellinen PDGA-rating' } };
+  }
+
+  const worldRank = worldRankText ? normalizeCsvInteger(worldRankText) : '';
+  if (worldRankText && worldRank === null) {
+    return { failure: { rowNumber, pdgaId: String(pdgaNumber), reason: 'Virheellinen maailmanranking' } };
+  }
+
+  if (existingPdgaNumbers.has(pdgaNumber)) {
+    return { failure: { rowNumber, pdgaId: String(pdgaNumber), reason: 'Pelaaja löytyy jo järjestelmästä' } };
+  }
+
+  return {
+    player: buildImportedPlayer({
+      firstName,
+      lastName,
+      pdgaNumber,
+      pdgaRating,
+      worldRank,
+      division: safeDivision,
+    }),
+  };
+}
+
 function normalizeRequiredPositiveInteger(value, label, fieldName, fieldErrors) {
   const normalized = normalizeText(value);
   if (!normalized) {
@@ -133,6 +327,62 @@ export function createPlayer(players, input) {
     id: createId(),
     createdAt: now,
     updatedAt: now,
+  };
+}
+
+export function importPlayersFromCsv(players, csvText, division) {
+  const safeDivision = normalizeText(division).toUpperCase();
+  if (!DIVISIONS.includes(safeDivision)) {
+    throw new Error('Valitse divisioona ennen CSV-tuontia.');
+  }
+
+  const records = splitCsvRecords(String(csvText ?? '').replace(/^\uFEFF/, ''));
+  const existingPdgaNumbers = new Set(
+    players
+      .map((player) => normalizeCsvInteger(player.pdgaNumber))
+      .filter((pdgaNumber) => pdgaNumber !== null),
+  );
+  const importedPlayers = [];
+  const failures = [];
+  let totalRows = 0;
+  let skippedHeader = false;
+
+  records.forEach((record) => {
+    const line = record.value;
+    if (!line.trim()) {
+      return;
+    }
+
+    const columns = parseDelimitedRow(line);
+    if (!skippedHeader && isPlayersCsvHeader(columns)) {
+      skippedHeader = true;
+      return;
+    }
+
+    totalRows += 1;
+    const rowNumber = record.lineNumber;
+    const parsedRow = parsePlayerImportRow(columns, rowNumber, safeDivision, existingPdgaNumbers);
+    if (parsedRow.failure) {
+      failures.push(parsedRow.failure);
+      return;
+    }
+
+    importedPlayers.push(parsedRow.player);
+    existingPdgaNumbers.add(parsedRow.player.pdgaNumber);
+  });
+
+  if (!totalRows) {
+    throw new Error('CSV-tiedostossa ei ole tuotavia pelaajarivejä.');
+  }
+
+  return {
+    importedPlayers,
+    summary: {
+      totalRows,
+      importedCount: importedPlayers.length,
+      failedCount: failures.length,
+      failures,
+    },
   };
 }
 
