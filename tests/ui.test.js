@@ -201,6 +201,7 @@ test('renderApp builds PDGA links from centralized settings', () => {
   assert.match(root.innerHTML, /href="https:\/\/example\.com\/player\/12345"/);
   assert.match(root.innerHTML, /target="_blank"/);
   assert.match(root.innerHTML, /rel="noopener noreferrer"/);
+  assert.match(root.innerHTML, /aria-label="Avaa pelaajan Testi Pelaaja PDGA-profiili"/);
 });
 
 test('renderApp renders player names as PDGA links across summary, ranking and player list views and falls back to text without PDGA ID', () => {
@@ -286,15 +287,15 @@ test('renderApp renders player names as PDGA links across summary, ranking and p
 
   assert.match(
     root.innerHTML,
-    /id="section-summary"[\s\S]*class="player-name-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili">Linkki Pelaaja<\/a>[\s\S]*<span class="player-name-text">Teksti Pelaaja<\/span>/,
+    /id="section-summary"[\s\S]*class="player-name-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan Linkki Pelaaja PDGA-profiili">Linkki Pelaaja<\/a>[\s\S]*<span class="player-name-text">Teksti Pelaaja<\/span>/,
   );
   assert.match(
     root.innerHTML,
-    /id="section-ranking"[\s\S]*class="player-name-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili">Linkki Pelaaja<\/a>[\s\S]*<span class="player-name-text">Teksti Pelaaja<\/span>/,
+    /id="section-ranking"[\s\S]*class="player-name-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan Linkki Pelaaja PDGA-profiili">Linkki Pelaaja<\/a>[\s\S]*<span class="player-name-text">Teksti Pelaaja<\/span>/,
   );
   assert.match(
     root.innerHTML,
-    /id="section-players"[\s\S]*class="player-name-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili">Linkki Pelaaja<\/a>[\s\S]*<span class="player-name-text">Teksti Pelaaja<\/span>/,
+    /id="section-players"[\s\S]*class="player-name-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan Linkki Pelaaja PDGA-profiili">Linkki Pelaaja<\/a>[\s\S]*<span class="player-name-text">Teksti Pelaaja<\/span>/,
   );
   assert.doesNotMatch(root.innerHTML, /href="https:\/\/example\.com\/player\/[^"]*">Teksti Pelaaja<\/a>/);
 });

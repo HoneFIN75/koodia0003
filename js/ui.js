@@ -210,7 +210,7 @@ function renderPlayerName(player, settings) {
     return `<span class="player-name-text">${playerName}</span>`;
   }
 
-  return `<a class="player-name-link" href="${escapeHtml(playerPdgaUrl)}" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili">${playerName}</a>`;
+  return `<a class="player-name-link" href="${escapeHtml(playerPdgaUrl)}" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan ${playerName} PDGA-profiili">${playerName}</a>`;
 }
 
 function getSortState(sortField, sortDirection, fieldName) {
