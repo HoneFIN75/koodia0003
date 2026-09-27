@@ -58,7 +58,7 @@ let uiState = {
   tournamentFormFocusTarget: '',
   tournamentSearch: '',
   tournamentStatusFilter: 'ALL',
-  tournamentSortField: 'startDate',
+  tournamentSortField: 'displayOrder',
   tournamentSortDirection: 'asc',
   tournamentImportDialogOpen: false,
   tournamentImportFocusTarget: '',
@@ -277,6 +277,8 @@ const handlers = {
       uiState.pendingFocusSelector = uiState.tournamentFormId
         ? `[data-delete-tournament="${uiState.tournamentFormId}"]`
         : '[data-open-tournament-dialog]';
+    } else if (uiState.confirmationDialog?.type === 'delete-all-tournaments') {
+      uiState.pendingFocusSelector = '[data-request-delete-all-tournaments]';
     } else if (uiState.confirmationDialog?.type === 'delete-points-division') {
       uiState.pendingFocusSelector = `[data-request-delete-points="${uiState.confirmationDialog.division}"]`;
     }
@@ -393,7 +395,9 @@ const handlers = {
     render();
   },
   setTournamentSortField(sortField) {
-    uiState.tournamentSortField = sortField;
+    uiState.tournamentSortField = ['displayOrder', 'name', 'status', 'startDate', 'endDate', 'location'].includes(sortField)
+      ? sortField
+      : 'displayOrder';
     render();
   },
   setTournamentSortDirection(sortDirection) {
@@ -444,6 +448,12 @@ const handlers = {
     uiState.feedback = null;
     render();
   },
+  requestDeleteAllTournaments() {
+    uiState.confirmationDialog = { type: 'delete-all-tournaments' };
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
   confirmDeleteTournament() {
     const tournamentId = uiState.confirmationDialog?.tournamentId;
     if (!tournamentId) {
@@ -480,6 +490,22 @@ const handlers = {
       ? `[data-edit-tournament="${nextTournamentId}"]`
       : '[data-open-tournament-dialog]';
     persistAndRender('Turnaus poistettiin.');
+  },
+  confirmDeleteAllTournaments() {
+    if (!uiState.confirmationDialog || uiState.confirmationDialog.type !== 'delete-all-tournaments') {
+      return;
+    }
+
+    dataState.tournaments = [];
+    dataState.tournamentResults = [];
+    uiState.tournamentDialogOpen = false;
+    uiState.tournamentFormId = null;
+    uiState.tournamentFormErrors = {};
+    uiState.tournamentFormDraft = null;
+    uiState.tournamentFormFocusTarget = '';
+    uiState.confirmationDialog = null;
+    uiState.pendingFocusSelector = '[data-request-delete-all-tournaments]';
+    persistAndRender('Kaikki turnaukset on poistettu onnistuneesti.');
   },
   submitPoints(formData) {
     try {
