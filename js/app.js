@@ -64,6 +64,12 @@ function clearPlayerDialogState() {
   uiState.playerFormDraft = null;
 }
 
+function closePointsImportDialogState() {
+  uiState.pointsImportDialogOpen = false;
+  uiState.pointsImportFocusTarget = '';
+  uiState.pendingFocusSelector = `[data-open-points-import="${uiState.pointsImportDivision || 'MPO'}"]`;
+}
+
 function persistAndRender(successMessage = '') {
   dataState = saveState(dataState);
   if (successMessage) {
@@ -422,9 +428,7 @@ const handlers = {
     render();
   },
   closePointsImportDialog() {
-    uiState.pointsImportDialogOpen = false;
-    uiState.pointsImportFocusTarget = '';
-    uiState.pendingFocusSelector = `[data-open-points-import="${uiState.pointsImportDivision || 'MPO'}"]`;
+    closePointsImportDialogState();
     render();
   },
   async submitPointsImport(formData) {
@@ -442,12 +446,11 @@ const handlers = {
       if (!file || typeof file.text !== 'function' || !file.name) {
         throw new Error('Valitse tuotava CSV-tiedosto.');
       }
-
       const entries = parsePointsTableCsv(await file.text());
       dataState.pointsTable = importPointsTableDivision(dataState.pointsTable, division, entries);
       uiState.pointsImportDivision = division;
-      uiState.pointsImportDialogOpen = false;
-      uiState.pointsImportFocusTarget = '';
+      uiState.pointsImportDivision = division;
+      closePointsImportDialogState();
       persistAndRender(`Sarjan ${division} pistetaulukko tuotiin onnistuneesti.`);
     } catch (error) {
       setError(error);
