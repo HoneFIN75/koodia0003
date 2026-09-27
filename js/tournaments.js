@@ -137,18 +137,25 @@ function normalizeHeaderToken(value) {
   return String(value ?? '')
     .trim()
     .toLocaleLowerCase('fi')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[\s_-]+/g, '');
 }
 
 function isTournamentsCsvHeader(columns) {
-  if (columns.length < 2) {
+  if (columns.length < 3) {
     return false;
   }
 
   const firstColumn = normalizeHeaderToken(columns[0]);
   const secondColumn = normalizeHeaderToken(columns[1]);
+  const thirdColumn = normalizeHeaderToken(columns[2]);
 
-  return ['pdgaeventid', 'pdgaid', 'pdgaevent'].includes(firstColumn) && ['turnauksennimi', 'tournamentname', 'nimi'].includes(secondColumn);
+  return (
+    ['jarjestysnumero', 'orderingnumber', 'order', 'displayorder'].includes(firstColumn) &&
+    ['pdgaeventid', 'pdgaid', 'pdgaevent'].includes(secondColumn) &&
+    ['turnauksennimi', 'tournamentname', 'nimi'].includes(thirdColumn)
+  );
 }
 
 function addFieldError(fieldErrors, fieldName, message) {
@@ -301,7 +308,7 @@ export function createTournament(input) {
   };
 }
 
-function buildImportedTournament({ name, pdgaEventId }) {
+function buildImportedTournament({ name, pdgaEventId, displayOrder }) {
   const now = new Date().toISOString();
   return {
     id: createId(),
@@ -309,7 +316,7 @@ function buildImportedTournament({ name, pdgaEventId }) {
     pdgaEventId,
     startDate: '',
     endDate: '',
-    displayOrder: DEFAULT_TOURNAMENT_DISPLAY_ORDER,
+    displayOrder,
     location: '',
     venue: '',
     status: '',
@@ -322,14 +329,24 @@ function buildImportedTournament({ name, pdgaEventId }) {
   };
 }
 
-function parseTournamentImportRow(columns, rowNumber, existingPdgaEventIds) {
-  if (columns.length < 2) {
+function parseTournamentImportRow(columns, rowNumber, existingPdgaEventIds, existingDisplayOrders) {
+  if (columns.length < 3) {
     return { failure: { rowNumber, reason: 'CSV-rivin sarakemäärä on virheellinen' } };
   }
 
-  const pdgaEventIdText = normalizeText(columns[0]);
-  const name = normalizeText(columns[1]);
+  const displayOrderText = normalizeText(columns[0]);
+  const pdgaEventIdText = normalizeText(columns[1]);
+  const name = normalizeText(columns[2]);
+  const parsedDisplayOrder = normalizeCsvInteger(displayOrderText);
   const parsedPdgaEventId = normalizeCsvInteger(pdgaEventIdText);
+
+  if (!displayOrderText) {
+    return { failure: { rowNumber, reason: 'Järjestysnumero puuttuu' } };
+  }
+
+  if (parsedDisplayOrder === null) {
+    return { failure: { rowNumber, reason: 'Virheellinen järjestysnumero' } };
+  }
 
   if (!pdgaEventIdText) {
     return { failure: { rowNumber, reason: 'PDGA Event ID puuttuu' } };
@@ -343,17 +360,27 @@ function parseTournamentImportRow(columns, rowNumber, existingPdgaEventIds) {
     return { failure: { rowNumber, reason: 'Turnauksen nimi puuttuu' } };
   }
 
+  if (existingDisplayOrders.has(parsedDisplayOrder)) {
+    return {
+      failure: {
+        rowNumber,
+        reason: `Järjestysnumero on jo käytössä (${parsedDisplayOrder})`,
+      },
+    };
+  }
+
   if (existingPdgaEventIds.has(parsedPdgaEventId)) {
     return {
       duplicate: {
         rowNumber,
-        reason: `PDGA Event ID on jo järjestelmässä (${parsedPdgaEventId})`,
+        reason: `PDGA Event ID on jo olemassa (${parsedPdgaEventId})`,
       },
     };
   }
 
   return {
     tournament: buildImportedTournament({
+      displayOrder: parsedDisplayOrder,
       pdgaEventId: parsedPdgaEventId,
       name,
     }),
@@ -366,6 +393,11 @@ export function importTournamentsFromCsv(tournaments, csvText) {
     tournaments
       .map((tournament) => normalizeCsvInteger(tournament.pdgaEventId))
       .filter((pdgaEventId) => pdgaEventId !== null),
+  );
+  const existingDisplayOrders = new Set(
+    tournaments
+      .map((tournament) => normalizeCsvInteger(tournament.displayOrder))
+      .filter((displayOrder) => displayOrder !== null),
   );
   const importedTournaments = [];
   const failures = [];
@@ -387,7 +419,7 @@ export function importTournamentsFromCsv(tournaments, csvText) {
 
     totalRows += 1;
     const rowNumber = record.lineNumber;
-    const parsedRow = parseTournamentImportRow(columns, rowNumber, existingPdgaEventIds);
+    const parsedRow = parseTournamentImportRow(columns, rowNumber, existingPdgaEventIds, existingDisplayOrders);
     if (parsedRow.failure) {
       failures.push(parsedRow.failure);
       return;
@@ -401,6 +433,7 @@ export function importTournamentsFromCsv(tournaments, csvText) {
 
     importedTournaments.push(parsedRow.tournament);
     existingPdgaEventIds.add(parsedRow.tournament.pdgaEventId);
+    existingDisplayOrders.add(parsedRow.tournament.displayOrder);
   });
 
   if (!totalRows) {
@@ -497,15 +530,15 @@ function compareTournamentValues(leftValue, rightValue, direction) {
 
 export function filterAndSortTournaments(
   tournaments,
-  { search = '', status = 'ALL', sortField = 'startDate', sortDirection = 'asc' } = {},
+  { search = '', status = 'ALL', sortField = 'displayOrder', sortDirection = 'asc' } = {},
 ) {
   const baseOrder = sortTournaments(tournaments);
   const baseOrderById = new Map(baseOrder.map((tournament, index) => [tournament.id, index]));
   const normalizedSearch = normalizeFilterValue(search);
   const normalizedStatus = normalizeFilterValue(status);
-  const normalizedSortField = ['name', 'status', 'startDate', 'endDate', 'location'].includes(sortField)
+  const normalizedSortField = ['displayOrder', 'name', 'status', 'startDate', 'endDate', 'location'].includes(sortField)
     ? sortField
-    : 'startDate';
+    : 'displayOrder';
   const normalizedSortDirection = sortDirection === 'desc' ? 'desc' : 'asc';
 
   return baseOrder

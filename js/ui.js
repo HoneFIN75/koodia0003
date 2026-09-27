@@ -732,16 +732,25 @@ function renderTournamentSection(dataState, uiState) {
         <p>
           Muoto:
         </p>
-        <pre>PDGA Event ID;Turnauksen nimi
+        <pre>Järjestysnumero;PDGA Event ID;Turnauksen nimi
 
-123456;European Open 2027
-123457;Finnish Nationals 2027</pre>
+1;123456;European Open 2027
+2;123457;Finnish Nationals 2027</pre>
         <ul>
           <li>Erotin on puolipiste (;).</li>
           <li>UTF-8-koodaus on suositeltu (å, ä, ö).</li>
           <li>Otsikkorivi on sallittu.</li>
-          <li>Pakolliset kentät: PDGA Event ID ja Turnauksen nimi.</li>
+          <li>Pakolliset kentät: Järjestysnumero, PDGA Event ID ja Turnauksen nimi.</li>
         </ul>
+      </article>
+      <article class="panel danger-zone" aria-labelledby="delete-all-tournaments-title">
+        <div>
+          <h3 id="delete-all-tournaments-title">Vaaravyöhyke: poista kaikki turnaukset</h3>
+          <p class="section-subtitle">Toiminto poistaa kaikki turnaukset ja niihin liittyvät turnaustulokset pysyvästi.</p>
+        </div>
+        <button type="button" class="danger-button" data-request-delete-all-tournaments>
+          ⚠ Poista kaikki turnaukset
+        </button>
       </article>
       <article class="panel">
         <div class="section-heading">
@@ -775,6 +784,7 @@ function renderTournamentSection(dataState, uiState) {
           <div class="form-field">
             <label for="tournament-sort-field">Lajittelu</label>
             <select id="tournament-sort-field" data-tournament-sort-field>
+              <option value="displayOrder" ${uiState.tournamentSortField === 'displayOrder' ? 'selected' : ''}>Järjestysnumero</option>
               <option value="name" ${uiState.tournamentSortField === 'name' ? 'selected' : ''}>Turnauksen nimi</option>
               <option value="status" ${uiState.tournamentSortField === 'status' ? 'selected' : ''}>Tila</option>
               <option value="startDate" ${uiState.tournamentSortField === 'startDate' ? 'selected' : ''}>Alkamispäivä</option>
@@ -869,10 +879,23 @@ function renderTournamentImportDialog(uiState) {
         <form id="tournament-import-form">
           <div class="section-heading">
             <div>
-              <h2 id="tournament-import-dialog-title">Tuo turnaukset CSV-tiedostosta</h2>
-              <p id="tournament-import-dialog-description" class="section-subtitle">Valitse CSV-tiedosto. Tuonti luo vain uusia turnauksia eikä koskaan ylikirjoita olemassa olevia.</p>
+              <h2 id="tournament-import-dialog-title">Tuo turnaukset</h2>
+              <p id="tournament-import-dialog-description" class="section-subtitle">Tuonti luo vain uusia turnauksia eikä koskaan ylikirjoita olemassa olevia.</p>
             </div>
           </div>
+          <article class="panel import-instructions" aria-label="CSV-tuonnin ohjeet">
+            <h3>Tuonnin tuettu muoto</h3>
+            <p><code>Järjestysnumero;PDGA Event ID;Turnauksen nimi</code></p>
+            <pre>1;123456;European Open 2027
+2;123457;Finnish Nationals 2027
+3;123458;Tyyni 2027</pre>
+            <ul>
+              <li>Erotin on puolipiste (;).</li>
+              <li>Otsikkorivi on sallittu.</li>
+              <li>UTF-8-koodaus on suositeltu (å, ä, ö).</li>
+              <li>Pakolliset kentät: Järjestysnumero, PDGA Event ID ja Turnauksen nimi.</li>
+            </ul>
+          </article>
           <div class="form-grid">
             <div class="form-field full-width">
               <label for="tournament-import-file">CSV-tiedosto *</label>
@@ -881,7 +904,7 @@ function renderTournamentImportDialog(uiState) {
           </div>
           <div class="form-actions">
             <button type="button" class="secondary-button" data-cancel-tournament-import>${importSummary ? 'Sulje' : 'Peruuta'}</button>
-            ${importSummary ? '' : '<button type="submit" class="button">Tuo</button>'}
+            ${importSummary ? '' : '<button type="submit" class="button" data-submit-tournament-import disabled>Tuo</button>'}
           </div>
         </form>
         ${
@@ -891,7 +914,7 @@ function renderTournamentImportDialog(uiState) {
                 <strong>Turnausten tuonti valmis</strong>
                 <dl>
                   <div><dt>Tuotu</dt><dd>${formatNumber(importSummary.importedCount)}</dd></div>
-                  <div><dt>Ohitettu (duplikaatti PDGA Event ID)</dt><dd>${formatNumber(importSummary.duplicateCount)}</dd></div>
+                  <div><dt>Ohitetut duplikaatit</dt><dd>${formatNumber(importSummary.duplicateCount)}</dd></div>
                   <div><dt>Validointivirheet</dt><dd>${formatNumber(importSummary.validationErrorCount)}</dd></div>
                 </dl>
                 ${
@@ -1368,6 +1391,31 @@ function renderConfirmationDialog(dataState, uiState) {
     `;
   }
 
+  if (uiState.confirmationDialog.type === 'delete-all-tournaments') {
+    const tournamentCount = dataState.tournaments.length;
+    const resultCount = dataState.tournamentResults.length;
+    return `
+      <div class="dialog-backdrop" data-close-confirm-dialog>
+        <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
+          <div class="section-heading">
+            <div>
+              <h2 id="confirm-dialog-title">VAROITUS</h2>
+              <p class="warning-text">⚠ Tämä toiminto on pysyvä.</p>
+              <p id="confirm-dialog-description" class="section-subtitle">
+                Olet poistamassa kaikki turnaukset (${formatNumber(tournamentCount)} kpl) ja turnaustulokset (${formatNumber(resultCount)} kpl).<br />
+                Toimintoa ei voi peruuttaa.
+              </p>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
+            <button type="button" class="danger-button" data-confirm-delete-all-tournaments>Poista kaikki turnaukset</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   if (uiState.confirmationDialog.type !== 'delete-tournament') {
     return '';
   }
@@ -1526,9 +1574,20 @@ export function bindUi(root, dataState, uiState, handlers) {
     event.preventDefault();
     handlers.submitTournamentImport(new FormData(event.currentTarget));
   });
+  root.querySelector('#tournament-import-file')?.addEventListener('change', (event) => {
+    const submitButton = root.querySelector('[data-submit-tournament-import]');
+    if (!submitButton) {
+      return;
+    }
+    const hasFile = Boolean(event.target?.files?.length);
+    submitButton.disabled = !hasFile;
+  });
   root.querySelector('[data-cancel-tournament-import]')?.addEventListener('click', () => handlers.closeTournamentImportDialog());
   root.querySelector('[data-close-tournament-import-dialog]')?.addEventListener('click', () => handlers.closeTournamentImportDialog());
   root.querySelector('[data-tournament-import-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
+  root
+    .querySelector('[data-request-delete-all-tournaments]')
+    ?.addEventListener('click', () => handlers.requestDeleteAllTournaments());
 
   root.querySelectorAll('[data-edit-tournament]').forEach((button) => {
     button.addEventListener('click', () => handlers.editTournament(button.dataset.editTournament));
@@ -1597,6 +1656,7 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-cancel-confirm-dialog]')?.addEventListener('click', () => handlers.closeConfirmationDialog());
   root.querySelector('[data-confirm-delete-player]')?.addEventListener('click', () => handlers.confirmDeletePlayer());
   root.querySelector('[data-confirm-delete-tournament]')?.addEventListener('click', () => handlers.confirmDeleteTournament());
+  root.querySelector('[data-confirm-delete-all-tournaments]')?.addEventListener('click', () => handlers.confirmDeleteAllTournaments());
   root.querySelector('[data-confirm-delete-points-division]')?.addEventListener('click', () => handlers.confirmDeletePointsDivision());
 
   if (root.__dialogKeydownHandler) {

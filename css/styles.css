@@ -551,6 +551,12 @@ textarea {
   background: rgba(155, 107, 22, 0.08);
 }
 
+.warning-text {
+  margin: var(--spacing-xs) 0;
+  color: var(--color-error);
+  font-weight: 700;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -617,6 +623,10 @@ textarea {
   margin-top: var(--spacing-lg);
   padding-top: var(--spacing-lg);
   border-top: 1px solid var(--color-border);
+}
+
+.import-instructions pre {
+  margin: var(--spacing-xs) 0;
 }
 
 .chart {
