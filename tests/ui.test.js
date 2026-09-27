@@ -495,6 +495,11 @@ test('renderApp shows tournament table with required column order and PDGA name 
   assert.match(root.innerHTML, /target="_blank"/);
   assert.match(root.innerHTML, /rel="noopener noreferrer"/);
   assert.match(root.innerHTML, /data-edit-tournament="tournament-1">Muokkaa<\/button>/);
+  assert.match(root.innerHTML, /Hae nimellä, statuksella, paikkakunnalla tai radalla/);
+  assert.doesNotMatch(root.innerHTML, /Turnaustulokset/);
+  assert.doesNotMatch(root.innerHTML, /Hallittava turnaus/);
+  assert.doesNotMatch(root.innerHTML, /Tulokset \(\d+\)/);
+  assert.doesNotMatch(root.innerHTML, /Valittuna tuloksiin/);
   assert.doesNotMatch(root.innerHTML, /data-delete-tournament="tournament-1">Poista turnaus<\/button>/);
 });
 
