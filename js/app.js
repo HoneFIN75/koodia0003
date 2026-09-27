@@ -92,6 +92,7 @@ function closePointsImportDialogState() {
 function closeTournamentImportDialogState() {
   uiState.tournamentImportDialogOpen = false;
   uiState.tournamentImportFocusTarget = '';
+  uiState.tournamentImportSummary = null;
   uiState.pendingFocusSelector = '[data-open-tournament-import-dialog]';
 }
 
@@ -420,12 +421,12 @@ const handlers = {
       }
 
       const { importedTournaments, summary } = importTournamentsFromCsv(dataState.tournaments, await file.text());
+      uiState.tournamentImportSummary = summary;
       if (importedTournaments.length) {
         dataState.tournaments = [...dataState.tournaments, ...importedTournaments];
         dataState = saveState(dataState);
       }
 
-      uiState.tournamentImportSummary = summary;
       uiState.feedback = null;
       render();
     } catch (error) {

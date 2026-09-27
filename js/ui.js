@@ -881,17 +881,19 @@ function renderTournamentImportDialog(uiState) {
           </div>
           <div class="form-actions">
             <button type="button" class="secondary-button" data-cancel-tournament-import>${importSummary ? 'Sulje' : 'Peruuta'}</button>
-            <button type="submit" class="button">Tuo</button>
+            ${importSummary ? '' : '<button type="submit" class="button">Tuo</button>'}
           </div>
         </form>
         ${
           importSummary
             ? `
               <div class="message ${importSummaryType}" role="${importSummaryRole}" aria-live="${importSummaryAriaLive}">
-                <strong>Turnausten tuonti valmis</strong><br />
-                Tuotu: ${formatNumber(importSummary.importedCount)}<br />
-                Ohitettu (duplikaatti PDGA Event ID): ${formatNumber(importSummary.duplicateCount)}<br />
-                Validointivirheet: ${formatNumber(importSummary.validationErrorCount)}
+                <strong>Turnausten tuonti valmis</strong>
+                <dl>
+                  <div><dt>Tuotu</dt><dd>${formatNumber(importSummary.importedCount)}</dd></div>
+                  <div><dt>Ohitettu (duplikaatti PDGA Event ID)</dt><dd>${formatNumber(importSummary.duplicateCount)}</dd></div>
+                  <div><dt>Validointivirheet</dt><dd>${formatNumber(importSummary.validationErrorCount)}</dd></div>
+                </dl>
                 ${
                   importSummary.failures.length
                     ? `

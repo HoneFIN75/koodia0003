@@ -186,3 +186,14 @@ test('imports tournaments CSV reports required and validation errors', () => {
     { rowNumber: 4, reason: 'Turnauksen nimi puuttuu' },
   ]);
 });
+
+test('importTournamentsFromCsv reports empty CSV as validation summary', () => {
+  const headerOnly = importTournamentsFromCsv([], 'PDGA Event ID;Turnauksen nimi\n');
+  const emptyFile = importTournamentsFromCsv([], '\n\n');
+
+  assert.equal(headerOnly.summary.totalRows, 0);
+  assert.equal(headerOnly.summary.importedCount, 0);
+  assert.equal(headerOnly.summary.validationErrorCount, 1);
+  assert.deepEqual(headerOnly.summary.failures, [{ rowNumber: 1, reason: 'CSV-tiedostossa ei ole tuotavia turnausrivejä.' }]);
+  assert.equal(emptyFile.summary.validationErrorCount, 1);
+});

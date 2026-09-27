@@ -576,9 +576,9 @@ test('renderApp shows tournament import dialog and summary', () => {
   assert.match(root.innerHTML, /<h2 id="tournament-import-dialog-title">Tuo turnaukset CSV-tiedostosta<\/h2>/);
   assert.match(root.innerHTML, /id="tournament-import-file" name="file" type="file" accept="\.csv,text\/csv" required/);
   assert.match(root.innerHTML, /Turnausten tuonti valmis/);
-  assert.match(root.innerHTML, /Tuotu: 3/);
-  assert.match(root.innerHTML, /Ohitettu \(duplikaatti PDGA Event ID\): 1/);
-  assert.match(root.innerHTML, /Validointivirheet: 1/);
+  assert.match(root.innerHTML, /<dt>Tuotu<\/dt><dd>3<\/dd>/);
+  assert.match(root.innerHTML, /<dt>Ohitettu \(duplikaatti PDGA Event ID\)<\/dt><dd>1<\/dd>/);
+  assert.match(root.innerHTML, /<dt>Validointivirheet<\/dt><dd>1<\/dd>/);
   assert.match(root.innerHTML, /Rivi 4: Turnauksen nimi puuttuu/);
 });
 
@@ -880,7 +880,6 @@ test('bindUi moves focus into the tournament import file field', () => {
 
   assert.equal(global.document.activeElement, importFileField);
   assert.equal(uiState.tournamentImportFocusTarget, '');
-  restoreDocument();
   restoreDocument();
 });
 

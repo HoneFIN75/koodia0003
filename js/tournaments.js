@@ -404,7 +404,16 @@ export function importTournamentsFromCsv(tournaments, csvText) {
   });
 
   if (!totalRows) {
-    throw new Error('CSV-tiedostossa ei ole tuotavia turnausrivejä.');
+    return {
+      importedTournaments,
+      summary: {
+        totalRows: 0,
+        importedCount: 0,
+        duplicateCount: 0,
+        validationErrorCount: 1,
+        failures: [{ rowNumber: 1, reason: 'CSV-tiedostossa ei ole tuotavia turnausrivejä.' }],
+      },
+    };
   }
 
   return {
