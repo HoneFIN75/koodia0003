@@ -97,11 +97,11 @@ export function sortTableRows(rows, sortState, columnConfig = {}) {
       }
 
       if (leftEmpty) {
-        return 1;
+        return direction === 'desc' ? -1 : 1;
       }
 
       if (rightEmpty) {
-        return -1;
+        return direction === 'desc' ? 1 : -1;
       }
 
       const comparison = compareValues(leftValue, rightValue, type);

@@ -56,6 +56,22 @@ test('sortTableRows lajittelee päivämäärät vanhimmasta uusimpaan ja takaisi
   );
 });
 
+test('sortTableRows käsittelee tyhjät arvot lajittelusuunnan mukaan', () => {
+  const rows = [{ value: '' }, { value: 'B' }, { value: 'A' }];
+
+  const asc = sortTableRows(rows, { field: 'value', direction: 'asc' }, { value: { type: 'text' } });
+  const desc = sortTableRows(rows, { field: 'value', direction: 'desc' }, { value: { type: 'text' } });
+
+  assert.deepEqual(
+    asc.map((row) => row.value),
+    ['A', 'B', ''],
+  );
+  assert.deepEqual(
+    desc.map((row) => row.value),
+    ['', 'B', 'A'],
+  );
+});
+
 test('toggleSortState vaihtaa suuntaa samalla kentällä ja nollaa uudelle kentälle', () => {
   const first = toggleSortState({ field: 'name', direction: 'asc' }, 'name');
   const second = toggleSortState(first, 'name');

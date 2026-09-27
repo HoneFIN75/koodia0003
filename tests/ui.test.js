@@ -927,8 +927,10 @@ test('renderApp näyttää kertoimen dialogin ja poiston vahvistustekstit', () =
 
 test('bindUi kutsuu sarakeotsikon lajittelukäsittelijää', () => {
   const restoreDocument = installDocumentStub();
-  const sortButton = createFocusableElement();
-  sortButton.dataset = { sortTable: 'players', sortField: 'name' };
+  const playerSortButton = createFocusableElement();
+  playerSortButton.dataset = { sortTable: 'players', sortField: 'name' };
+  const tournamentSortButton = createFocusableElement();
+  tournamentSortButton.dataset = { sortTable: 'tournaments', sortField: 'displayOrder' };
   const root = {
     __dialogKeydownHandler: null,
     querySelector() {
@@ -936,16 +938,16 @@ test('bindUi kutsuu sarakeotsikon lajittelukäsittelijää', () => {
     },
     querySelectorAll(selector) {
       if (selector === '[data-sort-table][data-sort-field]') {
-        return [sortButton];
+        return [playerSortButton, tournamentSortButton];
       }
       return [];
     },
   };
-  let call = null;
+  const calls = [];
   const handlers = new Proxy(
     {
       toggleColumnSort(table, field) {
-        call = { table, field };
+        calls.push({ table, field });
       },
     },
     {
@@ -960,8 +962,12 @@ test('bindUi kutsuu sarakeotsikon lajittelukäsittelijää', () => {
 
   try {
     bindUi(root, createEmptyState(), createUiState(), handlers);
-    sortButton.listeners.click();
-    assert.deepEqual(call, { table: 'players', field: 'name' });
+    playerSortButton.listeners.click();
+    tournamentSortButton.listeners.click();
+    assert.deepEqual(calls, [
+      { table: 'players', field: 'name' },
+      { table: 'tournaments', field: 'displayOrder' },
+    ]);
   } finally {
     restoreDocument();
   }
