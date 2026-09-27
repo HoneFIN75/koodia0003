@@ -662,6 +662,9 @@ textarea {
 
 .player-name-link:focus-visible {
   color: inherit;
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: 0.2rem;
   text-decoration-thickness: 0.15em;
 }
 
