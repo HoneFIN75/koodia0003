@@ -3,8 +3,13 @@ import { createPlayer, updatePlayer, findPlayer, removePlayer, canRequestPlayerD
 import { createTournament, updateTournament, findTournament, filterAndSortTournaments, TournamentValidationError } from './tournaments.js';
 import { SettingsValidationError, validateSettingsInput } from './pdga.js';
 import {
+  DIVISIONS,
   upsertPointsTableEntry,
   removePointsTableEntry,
+  clearPointsTableDivision,
+  importPointsTableDivision,
+  listPointsTableEntries,
+  parsePointsTableCsv,
 } from './scoring.js';
 import { renderApp, bindUi } from './ui.js';
 import { loadDeploymentMetadata } from './version.js';
@@ -41,6 +46,9 @@ let uiState = {
   tournamentSortDirection: 'asc',
   pendingFocusSelector: '',
   pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
+  pointsImportDialogOpen: false,
+  pointsImportDivision: 'MPO',
+  pointsImportFocusTarget: '',
   confirmationDialog: null,
   feedback: null,
   settingsFormErrors: {},
@@ -54,6 +62,12 @@ function clearPlayerDialogState() {
   uiState.playerFormId = null;
   uiState.playerFormErrors = {};
   uiState.playerFormDraft = null;
+}
+
+function closePointsImportDialogState() {
+  uiState.pointsImportDialogOpen = false;
+  uiState.pointsImportFocusTarget = '';
+  uiState.pendingFocusSelector = `[data-open-points-import="${uiState.pointsImportDivision || 'MPO'}"]`;
 }
 
 function persistAndRender(successMessage = '') {
@@ -214,6 +228,8 @@ const handlers = {
       uiState.pendingFocusSelector = uiState.tournamentFormId
         ? `[data-delete-tournament="${uiState.tournamentFormId}"]`
         : '[data-open-tournament-dialog]';
+    } else if (uiState.confirmationDialog?.type === 'delete-points-division') {
+      uiState.pendingFocusSelector = `[data-request-delete-points="${uiState.confirmationDialog.division}"]`;
     }
     uiState.confirmationDialog = null;
     render();
@@ -402,6 +418,43 @@ const handlers = {
     uiState.pointsForm = { division: 'MPO', place: '', basePoints: '', editingKey: '' };
     render();
   },
+  openPointsImportDialog(division) {
+    uiState.activeView = 'points';
+    uiState.pointsImportDialogOpen = true;
+    uiState.pointsImportDivision = division || 'MPO';
+    uiState.pointsImportFocusTarget = 'file';
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  closePointsImportDialog() {
+    closePointsImportDialogState();
+    render();
+  },
+  async submitPointsImport(formData) {
+    try {
+      const division = String(formData.get('division') || '').trim().toUpperCase();
+      if (!DIVISIONS.includes(division)) {
+        throw new Error('Sarjan pitää olla MPO tai FPO.');
+      }
+
+      const file = formData.get('file');
+      const existingEntries = listPointsTableEntries(dataState.pointsTable, division);
+      if (existingEntries.length) {
+        throw new Error('Tuonti on sallittu vain tyhjään pistetaulukkoon. Poista olemassa olevat pisteet ennen tuontia.');
+      }
+      if (!file || typeof file.text !== 'function' || !file.name) {
+        throw new Error('Valitse tuotava CSV-tiedosto.');
+      }
+      const entries = parsePointsTableCsv(await file.text());
+      dataState.pointsTable = importPointsTableDivision(dataState.pointsTable, division, entries);
+      uiState.pointsImportDivision = division;
+      closePointsImportDialogState();
+      persistAndRender(`Sarjan ${division} pistetaulukko tuotiin onnistuneesti.`);
+    } catch (error) {
+      setError(error);
+    }
+  },
   editPoint(editingKey) {
     const [division, place] = editingKey.split(':');
     const basePoints = dataState.pointsTable[division]?.[place];
@@ -422,6 +475,25 @@ const handlers = {
       uiState.pointsForm = { division: 'MPO', place: '', basePoints: '', editingKey: '' };
     }
     persistAndRender('Pistetaulukon rivi poistettiin.');
+  },
+  requestDeletePointsDivision(division) {
+    uiState.confirmationDialog = { type: 'delete-points-division', division };
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  confirmDeletePointsDivision() {
+    const division = uiState.confirmationDialog?.division;
+    if (!division) {
+      return;
+    }
+
+    dataState.pointsTable = clearPointsTableDivision(dataState.pointsTable, division);
+    if (uiState.pointsForm.division === division) {
+      uiState.pointsForm = { division, place: '', basePoints: '', editingKey: '' };
+    }
+    uiState.confirmationDialog = null;
+    persistAndRender(`Sarjan ${division} kaikki pistetaulukon rivit poistettiin.`);
   },
 };
 
