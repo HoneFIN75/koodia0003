@@ -48,16 +48,18 @@ function formatDeploymentTimestamp(value) {
 }
 
 function renderDeploymentInfo(deploymentInfo) {
-  const buildIdentifier = deploymentInfo?.commit || deploymentInfo?.version;
+  const versionIdentifier = deploymentInfo?.version || '';
+  const buildIdentifier = deploymentInfo?.commit || versionIdentifier;
   if (!buildIdentifier || !deploymentInfo?.deployedAt) {
     return '';
   }
 
   return `
-    <div class="deployment-meta" aria-label="Julkaisun versiotiedot">
-      <span>Build: ${escapeHtml(buildIdentifier)}</span>
-      <span>Last Updated: ${formatDeploymentTimestamp(deploymentInfo.deployedAt)}</span>
-    </div>
+    <dl class="deployment-meta" aria-label="Julkaisun versiotiedot">
+      ${versionIdentifier ? `<div><dt>Versio:</dt><dd>${escapeHtml(versionIdentifier)}</dd></div>` : ''}
+      <div><dt>Koonti:</dt><dd>${escapeHtml(buildIdentifier)}</dd></div>
+      <div><dt>Päivitetty:</dt><dd>${formatDeploymentTimestamp(deploymentInfo.deployedAt)}</dd></div>
+    </dl>
   `;
 }
 

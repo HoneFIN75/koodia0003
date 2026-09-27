@@ -294,6 +294,17 @@ a {
   font-size: 0.875rem;
 }
 
+.deployment-meta div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2xs);
+}
+
+.deployment-meta dt,
+.deployment-meta dd {
+  margin: 0;
+}
+
 .grid,
 .stats-grid,
 .two-column,

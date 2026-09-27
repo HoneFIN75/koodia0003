@@ -300,8 +300,9 @@ test('renderApp näyttää deployment-metatiedot otsikon alla commit-buildillä 
   );
 
   assert.match(root.innerHTML, /SFL Pisteytystyökalu/);
-  assert.match(root.innerHTML, /Build: 84f2c71/);
-  assert.match(root.innerHTML, /Last Updated: 2026-09-27 11:15 UTC/);
+  assert.match(root.innerHTML, /<dt>Versio:<\/dt><dd>1\.0\.15<\/dd>/);
+  assert.match(root.innerHTML, /<dt>Koonti:<\/dt><dd>84f2c71<\/dd>/);
+  assert.match(root.innerHTML, /<dt>Päivitetty:<\/dt><dd>2026-09-27 11:15 UTC<\/dd>/);
 });
 
 test('renderApp näyttää vain olemassa olevat pelaajat TOP 10 -listoilla', () => {
