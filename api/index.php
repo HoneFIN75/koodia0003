@@ -93,6 +93,11 @@ function jsondb_file_path(string $fileName): string
 
 function write_json_atomically(string $filePath, $value): void
 {
+    $encodedValue = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    if ($encodedValue === false) {
+        throw new RuntimeException('FAILED_TO_ENCODE_JSON');
+    }
+
     $directoryPath = dirname($filePath);
     $tempFilePath = $directoryPath . DIRECTORY_SEPARATOR . sprintf(
         '.tmp-%s-%s-%s',
@@ -101,12 +106,8 @@ function write_json_atomically(string $filePath, $value): void
         basename($filePath)
     );
 
-    $encodedValue = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
-    if ($encodedValue === false) {
-        throw new RuntimeException('FAILED_TO_ENCODE_JSON');
-    }
-
-    if (file_put_contents($tempFilePath, $encodedValue . "\n", LOCK_EX) === false) {
+    $payload = $encodedValue . "\n";
+    if (file_put_contents($tempFilePath, $payload, LOCK_EX) === false) {
         throw new RuntimeException('FAILED_TO_WRITE_FILE');
     }
 
@@ -114,6 +115,28 @@ function write_json_atomically(string $filePath, $value): void
         @unlink($tempFilePath);
         throw new RuntimeException('FAILED_TO_RENAME_FILE');
     }
+}
+
+function write_json_atomically_if_changed(string $filePath, $value): void
+{
+    $encodedValue = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+    if ($encodedValue === false) {
+        throw new RuntimeException('FAILED_TO_ENCODE_JSON');
+    }
+
+    $payload = $encodedValue . "\n";
+    if (is_file($filePath)) {
+        $existing = file_get_contents($filePath);
+        if ($existing === false) {
+            throw new RuntimeException('FAILED_TO_READ_FILE');
+        }
+
+        if ($existing === $payload) {
+            return;
+        }
+    }
+
+    write_json_atomically($filePath, $value);
 }
 
 function read_json_file(string $filePath, $fallback)
@@ -160,11 +183,15 @@ function ensure_jsondb_directory(): void
     }
 
     $denyAccessHtaccess = $directoryPath . DIRECTORY_SEPARATOR . '.htaccess';
-    if (file_put_contents(
-        $denyAccessHtaccess,
-        "Deny from all\n<IfModule mod_authz_core.c>\n  Require all denied\n</IfModule>\n",
-        LOCK_EX
-    ) === false) {
+    $denyAccessRules = "Deny from all\n<IfModule mod_authz_core.c>\n  Require all denied\n</IfModule>\n";
+    $currentRules = is_file($denyAccessHtaccess) ? file_get_contents($denyAccessHtaccess) : false;
+    if ($currentRules === false || $currentRules !== $denyAccessRules) {
+        if (file_put_contents($denyAccessHtaccess, $denyAccessRules, LOCK_EX) === false) {
+            throw new RuntimeException('FAILED_TO_WRITE_HTACCESS');
+        }
+    }
+
+    if (!is_file($denyAccessHtaccess)) {
         throw new RuntimeException('FAILED_TO_WRITE_HTACCESS');
     }
 }
@@ -189,24 +216,28 @@ function normalize_state_payload(array $payload): array
         }
     }
 
+    if (!is_array($payload['resultCards']) || !array_is_list($payload['resultCards'])) {
+        throw new InvalidArgumentException('INVALID_STATE_PAYLOAD');
+    }
+
     return $payload;
 }
 
 function sync_state_slices(array $state): void
 {
-    write_json_atomically(jsondb_file_path(STORAGE_FILES['players']), $state['players'] ?? []);
-    write_json_atomically(jsondb_file_path(STORAGE_FILES['tournaments']), $state['tournaments'] ?? []);
+    write_json_atomically_if_changed(jsondb_file_path(STORAGE_FILES['players']), $state['players'] ?? []);
+    write_json_atomically_if_changed(jsondb_file_path(STORAGE_FILES['tournaments']), $state['tournaments'] ?? []);
 
     $resultCards = $state['resultCards'] ?? $state['tournamentResults'] ?? [];
-    write_json_atomically(jsondb_file_path(STORAGE_FILES['resultCards']), $resultCards);
-    write_json_atomically(jsondb_file_path(STORAGE_FILES['tournamentResults']), $resultCards);
+    write_json_atomically_if_changed(jsondb_file_path(STORAGE_FILES['resultCards']), $resultCards);
+    write_json_atomically_if_changed(jsondb_file_path(STORAGE_FILES['tournamentResults']), $resultCards);
 
-    write_json_atomically(
+    write_json_atomically_if_changed(
         jsondb_file_path(STORAGE_FILES['scoreTables']),
         $state['pointsTable'] ?? ['MPO' => new stdClass(), 'FPO' => new stdClass()]
     );
-    write_json_atomically(jsondb_file_path(STORAGE_FILES['multipliers']), $state['multipliers'] ?? []);
-    write_json_atomically(jsondb_file_path(STORAGE_FILES['settings']), $state['settings'] ?? []);
+    write_json_atomically_if_changed(jsondb_file_path(STORAGE_FILES['multipliers']), $state['multipliers'] ?? []);
+    write_json_atomically_if_changed(jsondb_file_path(STORAGE_FILES['settings']), $state['settings'] ?? []);
 }
 
 function load_state(): array
@@ -229,7 +260,7 @@ function load_state(): array
     );
 
     $resultCards = read_json_file_if_exists(jsondb_file_path(STORAGE_FILES['resultCards']));
-    if (!is_array($resultCards)) {
+    if (!is_array($resultCards) || !array_is_list($resultCards)) {
         $resultCards = read_json_file(jsondb_file_path(STORAGE_FILES['tournamentResults']), $stateFromSlices['resultCards']);
     }
     $stateFromSlices['resultCards'] = $resultCards;
@@ -240,7 +271,7 @@ function load_state(): array
     }
 
     $state = normalize_state_payload(array_replace($stateFromSlices, $snapshot));
-    write_json_atomically(jsondb_file_path(STORAGE_FILES['snapshot']), $state);
+    write_json_atomically_if_changed(jsondb_file_path(STORAGE_FILES['snapshot']), $state);
     sync_state_slices($state);
 
     return $state;
@@ -271,7 +302,7 @@ function read_request_json_payload(): array
     }
 
     if (!is_array($decodedBody) || array_is_list($decodedBody)) {
-        throw new InvalidArgumentException('INCOMPLETE_STATE_PAYLOAD');
+        throw new InvalidArgumentException('INVALID_STATE_PAYLOAD');
     }
 
     return $decodedBody;
@@ -325,6 +356,11 @@ try {
 
     if ($error->getMessage() === 'INCOMPLETE_STATE_PAYLOAD') {
         send_json(400, ['message' => 'Tallennettava tila on puutteellinen. Lähetä koko sovelluksen tila yhdessä pyynnössä.']);
+        return;
+    }
+
+    if ($error->getMessage() === 'INVALID_STATE_PAYLOAD') {
+        send_json(400, ['message' => 'Tallennettava tila pitää lähettää JSON-objektina.']);
         return;
     }
 
