@@ -143,15 +143,16 @@ jobs:
 
           APP_VERSION="$(node --input-type=module -e "import { readFileSync } from 'node:fs'; console.log(JSON.parse(readFileSync('package.json', 'utf8')).version);")"
           SHORT_SHA="${GITHUB_SHA::7}"
-          APP_VERSION_JSON="$(node --input-type=module -e "process.stdout.write(JSON.stringify(process.argv[1]));" "$APP_VERSION")"
-          SHORT_SHA_JSON="$(node --input-type=module -e "process.stdout.write(JSON.stringify(process.argv[1]));" "$SHORT_SHA")"
+
+          printf '{\n  "version": "%s",\n  "deployedAt": "%s",\n  "commit": "%s"\n}\n' "$APP_VERSION" "2026-01-01T00:00:00Z" "$SHORT_SHA" | \
+            node --input-type=module -e "let payload = ''; process.stdin.setEncoding('utf8'); process.stdin.on('data', (chunk) => { payload += chunk; }); process.stdin.on('end', () => { const parsed = JSON.parse(payload); if (parsed.version !== process.argv[1] || parsed.commit !== process.argv[2] || parsed.deployedAt !== process.argv[3]) { process.exit(1); } });" "$APP_VERSION" "$SHORT_SHA" "2026-01-01T00:00:00Z"
 
           REMOTE_SCRIPT='set -Eeuo pipefail
           test -f "$DEPLOY_PATH/index.html"
           find "$DEPLOY_PATH" -type f -exec chmod 644 {} +
           DEPLOYED_AT_UTC="$(date -u +'\''%Y-%m-%dT%H:%M:%SZ'\'')"
           VERSION_TMP_PATH="$DEPLOY_PATH/version.json.tmp"
-          printf '\''{\n  "version": %s,\n  "deployedAt": "%s",\n  "commit": %s\n}\n'\'' "$APP_VERSION_JSON" "$DEPLOYED_AT_UTC" "$SHORT_SHA_JSON" > "$VERSION_TMP_PATH"
+          printf '\''{\n  "version": "%s",\n  "deployedAt": "%s",\n  "commit": "%s"\n}\n'\'' "$APP_VERSION" "$DEPLOYED_AT_UTC" "$SHORT_SHA" > "$VERSION_TMP_PATH"
           chmod 644 "$VERSION_TMP_PATH"
           mv "$VERSION_TMP_PATH" "$DEPLOY_PATH/version.json"
           test -f "$DEPLOY_PATH/version.json"'
@@ -163,7 +164,7 @@ jobs:
             -o ConnectTimeout=15 \
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
             "$SSH_USER@$SSH_HOST" \
-            APP_VERSION_JSON="$APP_VERSION_JSON" SHORT_SHA_JSON="$SHORT_SHA_JSON" DEPLOY_PATH="$DEPLOY_PATH" \
+            APP_VERSION="$APP_VERSION" SHORT_SHA="$SHORT_SHA" DEPLOY_PATH="$DEPLOY_PATH" \
             'bash -s'
 
           echo "Deployment completed successfully."
