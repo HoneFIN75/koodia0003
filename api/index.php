@@ -119,7 +119,6 @@ function write_json_atomically(string $filePath, $value): void
 function read_json_file(string $filePath, $fallback)
 {
     if (!is_file($filePath)) {
-        write_json_atomically($filePath, $fallback);
         return $fallback;
     }
 
@@ -239,7 +238,7 @@ function load_state(): array
         $snapshot = [];
     }
 
-    $state = normalize_state_payload(array_replace($stateFromSlices, $snapshot));
+    $state = normalize_state_payload(array_replace($snapshot, $stateFromSlices));
     write_json_atomically(jsondb_file_path(STORAGE_FILES['snapshot']), $state);
     sync_state_slices($state);
 

@@ -85,7 +85,7 @@ Palvelin kuuntelee oletuksena vain paikallista rajapintaa (`127.0.0.1`). Julkise
 
 `.github/workflows/deploy.yml` rakentaa julkaistavan `dist`-hakemiston ja julkaisee sen SSH/rsync-mallilla. Workflow suojaa palvelimen `jsondb/`-hakemiston rsync-poistoilta, jotta data säilyy deployjen yli. Workflow saa käynnistyä automaattisesti vain `main`-haaran pushista.
 
-### Apache/PHP-webhotelli (rikman.fi)
+### Apache/PHP-ympäristö
 
 - Lataa webhotelliin `dist/`-hakemiston sisältö kokonaisuudessaan (ml. `api/` ja juuren `.htaccess`).
 - Varmista, että `jsondb/` on kirjoitettavissa PHP-prosessille (hakemisto luodaan automaattisesti tarvittaessa).
