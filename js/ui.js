@@ -345,7 +345,10 @@ function renderTopTenCard(title, ranking, division, dataState) {
                   return `
                     <div class="chart-row">
                       <div class="chart-meta chart-meta-dashboard">
-                        <span><strong>${index + 1}.</strong> ${renderPlayerName(entry, dataState.settings)}</span>
+                        <span class="chart-player-meta">
+                          <strong>${index + 1}.</strong>
+                          <span>${renderPlayerName(entry, dataState.settings)}</span>
+                        </span>
                         <span>${formatNumber(entry.totalPoints)} p</span>
                       </div>
                       <div class="chart-bar-track">
