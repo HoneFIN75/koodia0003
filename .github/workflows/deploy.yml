@@ -62,11 +62,13 @@ jobs:
           set -Eeuo pipefail
 
           test -f dist/index.html
+          test -f dist/.htaccess
           test -f dist/version.json
           test -d dist/css
           test -d dist/js
           test -d dist/assets
           test -d dist/server
+          test -d dist/api
 
       - name: Prepare SSH
         shell: bash

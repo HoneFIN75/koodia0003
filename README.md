@@ -9,7 +9,7 @@ Ratkaisu on tarkoituksella kevyt ja jatkokehitettävä:
 - semanttinen HTML5-sivupohja
 - erillinen CSS-tiedosto design tokeneilla
 - modulaarinen vanilla JavaScript
-- minimaalinen Node.js-palvelin ja REST API
+- minimaalinen Node.js-palvelin paikalliskehitykseen ja vaihtoehtoinen PHP-API Apache-ympäristöön
 - palvelimen `jsondb/`-hakemistoon tallennettavat JSON-tiedostot
 - Node.js-pohjainen testaus (`node --test`)
 - yksinkertainen build-skripti julkaistavan `dist`-hakemiston luontiin
@@ -56,6 +56,7 @@ Tämä MVP-versio tallentaa kaiken datan palvelimen `jsondb/`-hakemistoon JSON-t
 - palvelin luo puuttuvat JSON-tiedostot automaattisesti
 - palvelin ylläpitää lisäksi sisäistä atomista `state.json`-snapshotia, jotta kirjoitus pysyy eheänä
 - `jsondb/`-hakemisto pitää säilyttää deployjen yli
+- API-endpointit ovat `GET /api/state`, `PUT /api/state` ja `GET /api/health`
 - tietokantapohjainen backend on myöhempi kehitysvaihe
 - importia ja exportia ei ole vielä toteutettu
 - JSON-tiedostojen varmuuskopiointi kuuluu palvelinympäristölle
@@ -83,6 +84,13 @@ Palvelin kuuntelee oletuksena vain paikallista rajapintaa (`127.0.0.1`). Julkise
 ## Julkaisu
 
 `.github/workflows/deploy.yml` rakentaa julkaistavan `dist`-hakemiston ja julkaisee sen SSH/rsync-mallilla. Workflow suojaa palvelimen `jsondb/`-hakemiston rsync-poistoilta, jotta data säilyy deployjen yli. Workflow saa käynnistyä automaattisesti vain `main`-haaran pushista.
+
+### Apache/PHP-ympäristö
+
+- Lataa webhotelliin `dist/`-hakemiston sisältö kokonaisuudessaan (ml. `api/` ja juuren `.htaccess`).
+- Varmista, että `jsondb/` on kirjoitettavissa PHP-prosessille (hakemisto luodaan automaattisesti tarvittaessa).
+- Suositus: aseta ympäristömuuttuja `SFL_JSONDB_PATH` osoittamaan web-juuren ulkopuoliseen hakemistoon.
+- Tarkista toimivuus avaamalla `https://oma-domain.fi/api/health` — vastauksen tulee olla JSON, jossa `status` on `ok`.
 
 ## Brändi ja logo
 
