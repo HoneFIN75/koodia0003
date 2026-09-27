@@ -4,7 +4,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -51,8 +51,26 @@ async function waitForServer(url, timeoutMs = 5000) {
 
 test('PHP API supports state save/load and compatibility payloads', { skip: !hasPhp }, async () => {
   const jsondbDir = await mkdtemp(path.join(os.tmpdir(), 'sfl-php-jsondb-'));
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'sfl-php-router-'));
+  const routerPath = path.join(tempDir, 'router.php');
+  const apiIndexPath = path.join(rootDir, 'api', 'index.php').replaceAll('\\', '\\\\');
+  await writeFile(routerPath, `<?php
+$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+if ($path === '/api/state') {
+    $_GET['endpoint'] = 'state';
+    require '${apiIndexPath}';
+    return true;
+}
+if ($path === '/api/health') {
+    $_GET['endpoint'] = 'health';
+    require '${apiIndexPath}';
+    return true;
+}
+return false;
+`, 'utf8');
+
   const port = await getFreePort();
-  const serverProcess = spawn('php', ['-S', `127.0.0.1:${port}`], {
+  const serverProcess = spawn('php', ['-S', `127.0.0.1:${port}`, routerPath], {
     cwd: rootDir,
     env: {
       ...process.env,
@@ -62,7 +80,7 @@ test('PHP API supports state save/load and compatibility payloads', { skip: !has
   });
 
   try {
-    await waitForServer(`http://127.0.0.1:${port}/api/index.php?endpoint=health`);
+    await waitForServer(`http://127.0.0.1:${port}/api/health`);
 
     const fullStatePayload = {
       players: [],
@@ -73,7 +91,7 @@ test('PHP API supports state save/load and compatibility payloads', { skip: !has
       multipliers: [],
     };
 
-    const saveResponse = await fetch(`http://127.0.0.1:${port}/api/index.php?endpoint=state`, {
+    const saveResponse = await fetch(`http://127.0.0.1:${port}/api/state`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -82,7 +100,7 @@ test('PHP API supports state save/load and compatibility payloads', { skip: !has
     });
     assert.equal(saveResponse.status, 200);
 
-    const invalidJsonResponse = await fetch(`http://127.0.0.1:${port}/api/index.php?endpoint=state`, {
+    const invalidJsonResponse = await fetch(`http://127.0.0.1:${port}/api/state`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -92,7 +110,7 @@ test('PHP API supports state save/load and compatibility payloads', { skip: !has
     assert.equal(invalidJsonResponse.status, 400);
     assert.match(await invalidJsonResponse.text(), /Pyynnön JSON-data on virheellinen\./);
 
-    const incompleteResponse = await fetch(`http://127.0.0.1:${port}/api/index.php?endpoint=state`, {
+    const incompleteResponse = await fetch(`http://127.0.0.1:${port}/api/state`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -102,7 +120,7 @@ test('PHP API supports state save/load and compatibility payloads', { skip: !has
     assert.equal(incompleteResponse.status, 400);
     assert.match(await incompleteResponse.text(), /Tallennettava tila on puutteellinen\./);
 
-    const compatibilityResponse = await fetch(`http://127.0.0.1:${port}/api/index.php?endpoint=state`, {
+    const compatibilityResponse = await fetch(`http://127.0.0.1:${port}/api/state`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -129,5 +147,6 @@ test('PHP API supports state save/load and compatibility payloads', { skip: !has
   } finally {
     serverProcess.kill('SIGTERM');
     await rm(jsondbDir, { recursive: true, force: true });
+    await rm(tempDir, { recursive: true, force: true });
   }
 });

@@ -294,6 +294,9 @@ function load_state(): array
     $resultCards = read_json_file_if_exists(jsondb_file_path(STORAGE_FILES['resultCards']));
     if (!is_array($resultCards) || !array_is_list($resultCards)) {
         $resultCards = read_json_file(jsondb_file_path(STORAGE_FILES['tournamentResults']), $stateFromSlices['resultCards']);
+        if (!is_array($resultCards) || !array_is_list($resultCards)) {
+            $resultCards = $stateFromSlices['resultCards'];
+        }
     }
     $stateFromSlices['resultCards'] = $resultCards;
 
