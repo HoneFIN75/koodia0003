@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
 import path from 'node:path';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createJsonFileStorage } from '../server/json-file-storage.mjs';
 import { createServer } from '../server/app.mjs';
 
@@ -130,6 +130,71 @@ test('API rejects unsupported methods for /api/state', async () => {
 
     assert.equal(response.status, 405);
     assert.match(await response.text(), /Metodia ei tueta\./);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    await rm(publicDir, { recursive: true, force: true });
+    await rm(jsondbDir, { recursive: true, force: true });
+  }
+});
+
+test('API rejects unauthorized writes and accepts authorized proxy writes', async () => {
+  const publicDir = await createTempDir();
+  const jsondbDir = await createTempDir();
+  const storage = createJsonFileStorage({ directoryPath: jsondbDir });
+  const authorizeWriteRequest = (request) =>
+    request.headers['x-sfl-proxy-authenticated'] === 'true'
+    && request.headers['x-sfl-write-token'] === 'proxy-token';
+  const server = createServer({ publicDir, storage, authorizeWriteRequest });
+
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    const baseUrl = `http://127.0.0.1:${address.port}/api/state`;
+
+    const forbiddenResponse = await fetch(baseUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ players: [] }),
+    });
+    assert.equal(forbiddenResponse.status, 403);
+    assert.match(await forbiddenResponse.text(), /Tallennus on sallittu vain paikallisen palvelimen kautta tai suojatulla välityspalvelimella\./);
+
+    const authorizedResponse = await fetch(baseUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-SFL-Proxy-Authenticated': 'true',
+        'X-SFL-Write-Token': 'proxy-token',
+      },
+      body: JSON.stringify({ players: [] }),
+    });
+    assert.equal(authorizedResponse.status, 200);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    await rm(publicDir, { recursive: true, force: true });
+    await rm(jsondbDir, { recursive: true, force: true });
+  }
+});
+
+test('static HEAD request returns headers without body', async () => {
+  const publicDir = await createTempDir();
+  const jsondbDir = await createTempDir();
+  await writeFile(path.join(publicDir, 'index.html'), '<!doctype html><title>SFL</title>', 'utf8');
+  const storage = createJsonFileStorage({ directoryPath: jsondbDir });
+  const server = createServer({ publicDir, storage });
+
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    const response = await fetch(`http://127.0.0.1:${address.port}/index.html`, {
+      method: 'HEAD',
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-length'), String('<!doctype html><title>SFL</title>'.length));
+    assert.equal(await response.text(), '');
   } finally {
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     await rm(publicDir, { recursive: true, force: true });

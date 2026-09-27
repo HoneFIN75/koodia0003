@@ -1,5 +1,6 @@
 import http from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
 const MIME_TYPES = {
@@ -50,15 +51,20 @@ function isLoopbackAddress(remoteAddress = '') {
     || remoteAddress === '::ffff:127.0.0.1';
 }
 
-function isAuthorizedWriteRequest(request) {
+function defaultAuthorizeWriteRequest(request) {
   const configuredToken = String(process.env.SFL_API_WRITE_TOKEN || '').trim();
   const headerToken = String(request.headers['x-sfl-write-token'] || '').trim();
+  const proxyAuthorized = String(request.headers['x-sfl-proxy-authenticated'] || '').trim() === 'true';
 
-  if (configuredToken && headerToken === configuredToken) {
+  if (isLoopbackAddress(request.socket?.remoteAddress)) {
     return true;
   }
 
-  return isLoopbackAddress(request.socket?.remoteAddress);
+  if (configuredToken && proxyAuthorized && headerToken === configuredToken) {
+    return true;
+  }
+
+  return false;
 }
 
 function resolvePublicPath(publicDir, pathname) {
@@ -74,7 +80,7 @@ function resolvePublicPath(publicDir, pathname) {
   return absolutePath;
 }
 
-async function serveStaticFile(response, publicDir, pathname) {
+async function serveStaticFile(request, response, publicDir, pathname) {
   const filePath = resolvePublicPath(publicDir, pathname);
   if (!filePath) {
     sendText(response, 403, 'Pääsy estetty.');
@@ -88,13 +94,25 @@ async function serveStaticFile(response, publicDir, pathname) {
       return;
     }
 
-    const body = await readFile(filePath);
-    response.writeHead(200, {
+    const headers = {
       'Content-Type': MIME_TYPES[path.extname(filePath)] || 'application/octet-stream',
-      'Content-Length': body.length,
+      'Content-Length': fileStats.size,
       'Cache-Control': path.basename(filePath) === 'version.json' ? 'no-store' : 'public, max-age=0',
+    };
+    response.writeHead(200, headers);
+
+    if (request.method === 'HEAD') {
+      response.end();
+      return;
+    }
+
+    await new Promise((resolve, reject) => {
+      const stream = createReadStream(filePath);
+      stream.on('error', reject);
+      response.on('close', resolve);
+      response.on('finish', resolve);
+      stream.pipe(response);
     });
-    response.end(body);
   } catch (error) {
     if (error?.code === 'ENOENT') {
       sendText(response, 404, 'Tiedostoa ei löytynyt.');
@@ -105,7 +123,7 @@ async function serveStaticFile(response, publicDir, pathname) {
   }
 }
 
-export function createRequestHandler({ storage, publicDir }) {
+export function createRequestHandler({ storage, publicDir, authorizeWriteRequest = defaultAuthorizeWriteRequest }) {
   return async function requestHandler(request, response) {
     try {
       const url = new URL(request.url || '/', 'http://127.0.0.1');
@@ -122,7 +140,7 @@ export function createRequestHandler({ storage, publicDir }) {
         }
 
         if (request.method === 'PUT') {
-          if (!isAuthorizedWriteRequest(request)) {
+          if (!authorizeWriteRequest(request)) {
             sendJson(response, 403, {
               message: 'Tallennus on sallittu vain paikallisen palvelimen kautta tai suojatulla välityspalvelimella.',
             });
@@ -143,7 +161,7 @@ export function createRequestHandler({ storage, publicDir }) {
         return;
       }
 
-      await serveStaticFile(response, publicDir, url.pathname);
+      await serveStaticFile(request, response, publicDir, url.pathname);
     } catch (error) {
       if (error instanceof SyntaxError) {
         sendJson(response, 400, { message: 'Pyynnön JSON-data on virheellinen.' });

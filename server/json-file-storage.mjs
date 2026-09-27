@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createEmptyState, sanitizeState } from '../js/storage.js';
@@ -12,7 +13,7 @@ const STORAGE_FILES = {
 };
 
 async function writeJsonAtomically(filePath, value) {
-  const tempPath = `${filePath}.tmp`;
+  const tempPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(tempPath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
   await rename(tempPath, filePath);
 }

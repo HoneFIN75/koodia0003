@@ -77,7 +77,7 @@ npm start
 
 Avaa tämän jälkeen sovellus osoitteesta `http://localhost:3000`.
 
-Palvelin kuuntelee oletuksena vain paikallista rajapintaa (`127.0.0.1`). Julkisessa ympäristössä Node-palvelin kannattaa sijoittaa autentikoidun tai muuten suojatun reverse proxyn taakse. Vaihtoehtoisesti write-pyyntöjä voi suojata välityspalvelimen lisäämällä `X-SFL-Write-Token`-otsakkeella, kun `SFL_API_WRITE_TOKEN` on asetettu.
+Palvelin kuuntelee oletuksena vain paikallista rajapintaa (`127.0.0.1`). Julkisessa ympäristössä Node-palvelin kannattaa sijoittaa autentikoidun tai muuten suojatun reverse proxyn taakse. Jos proxy ei yhdistä Node-palvelimeen loopback-osoitteesta, write-pyyntöjen pitää välittää sekä `X-SFL-Proxy-Authenticated: true` että `X-SFL-Write-Token`, kun `SFL_API_WRITE_TOKEN` on asetettu Node-palvelimelle.
 
 ## Julkaisu
 
