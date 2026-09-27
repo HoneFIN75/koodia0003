@@ -342,10 +342,19 @@ a {
 .badge-row,
 .filter-row,
 .inline-actions,
-.form-actions {
+.form-actions,
+.section-actions,
+.segmented-control {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-sm);
+}
+
+.segmented-control label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-weight: 500;
 }
 
 .badge,
