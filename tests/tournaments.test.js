@@ -4,6 +4,7 @@ import {
   createTournament,
   DEFAULT_TOURNAMENT_DISPLAY_ORDER,
   filterAndSortTournaments,
+  importTournamentsFromCsv,
   sortTournaments,
   TournamentValidationError,
 } from '../js/tournaments.js';
@@ -143,4 +144,56 @@ test('filters tournaments by search and sorts by configured field', () => {
   }).map((tournament) => tournament.id);
 
   assert.deepEqual(filteredIds, ['tournament-3', 'tournament-1']);
+});
+
+test('imports tournaments from CSV and skips duplicates by PDGA Event ID', () => {
+  const existingTournament = {
+    id: 'tournament-existing',
+    name: 'Olemassa oleva',
+    pdgaEventId: 123456,
+  };
+  const csv =
+    'PDGA Event ID;Turnauksen nimi\n123456;Duplicate Event\n123457;European Open 2027\n123457;Toinen samalla tunnuksella\n';
+
+  const { importedTournaments, summary } = importTournamentsFromCsv([existingTournament], csv);
+
+  assert.equal(importedTournaments.length, 1);
+  assert.equal(importedTournaments[0].name, 'European Open 2027');
+  assert.equal(importedTournaments[0].pdgaEventId, 123457);
+  assert.equal(importedTournaments[0].displayOrder, DEFAULT_TOURNAMENT_DISPLAY_ORDER);
+  assert.equal(summary.totalRows, 3);
+  assert.equal(summary.importedCount, 1);
+  assert.equal(summary.duplicateCount, 2);
+  assert.equal(summary.validationErrorCount, 0);
+  assert.deepEqual(summary.failures, [
+    { rowNumber: 2, reason: 'PDGA Event ID on jo järjestelmässä (123456)' },
+    { rowNumber: 4, reason: 'PDGA Event ID on jo järjestelmässä (123457)' },
+  ]);
+});
+
+test('imports tournaments CSV reports required and validation errors', () => {
+  const csv = 'PDGA Event ID;Turnauksen nimi\n;Nimi puuttuu tunnukselta\nABC123;Virheellinen tunnus\n200001;\n';
+  const { importedTournaments, summary } = importTournamentsFromCsv([], csv);
+
+  assert.equal(importedTournaments.length, 0);
+  assert.equal(summary.totalRows, 3);
+  assert.equal(summary.importedCount, 0);
+  assert.equal(summary.duplicateCount, 0);
+  assert.equal(summary.validationErrorCount, 3);
+  assert.deepEqual(summary.failures, [
+    { rowNumber: 2, reason: 'PDGA Event ID puuttuu' },
+    { rowNumber: 3, reason: 'Virheellinen PDGA Event ID' },
+    { rowNumber: 4, reason: 'Turnauksen nimi puuttuu' },
+  ]);
+});
+
+test('importTournamentsFromCsv reports empty CSV as validation summary', () => {
+  const headerOnly = importTournamentsFromCsv([], 'PDGA Event ID;Turnauksen nimi\n');
+  const emptyFile = importTournamentsFromCsv([], '\n\n');
+
+  assert.equal(headerOnly.summary.totalRows, 0);
+  assert.equal(headerOnly.summary.importedCount, 0);
+  assert.equal(headerOnly.summary.validationErrorCount, 1);
+  assert.deepEqual(headerOnly.summary.failures, [{ rowNumber: 1, reason: 'CSV-tiedostossa ei ole tuotavia turnausrivejä.' }]);
+  assert.equal(emptyFile.summary.validationErrorCount, 1);
 });
