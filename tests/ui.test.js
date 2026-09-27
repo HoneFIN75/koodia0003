@@ -104,6 +104,7 @@ function createUiState(overrides = {}) {
     pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
     pointsImportDialogOpen: false,
     pointsImportDivision: 'MPO',
+    pointsImportFocusTarget: '',
     confirmationDialog: null,
     feedback: null,
     settingsFormErrors: {},
@@ -730,7 +731,7 @@ test('renderApp shows score table import dialog with division radios and file in
   assert.match(root.innerHTML, /<h2 id="points-import-dialog-title">Tuo pistetaulukko CSV-tiedostosta<\/h2>/);
   assert.match(root.innerHTML, /name="division" value="MPO"/);
   assert.match(root.innerHTML, /name="division" value="FPO" checked/);
-  assert.match(root.innerHTML, /id="points-import-file" name="file" type="file" accept="\.csv,text\/csv" required autofocus/);
+  assert.match(root.innerHTML, /id="points-import-file" name="file" type="file" accept="\.csv,text\/csv" required/);
   assert.match(root.innerHTML, /<button type="submit" class="button">Tuo<\/button>/);
   assert.match(root.innerHTML, /data-cancel-points-import>Peruuta<\/button>/);
 });
@@ -768,6 +769,24 @@ test('bindUi moves focus into the tournament dialog field', () => {
 
   assert.equal(global.document.activeElement, tournamentNameField);
   assert.equal(uiState.tournamentFormFocusTarget, '');
+  restoreDocument();
+});
+
+test('bindUi moves focus into the score table import file field', () => {
+  const restoreDocument = installDocumentStub();
+  const importFileField = createFocusableElement();
+  const root = createInteractiveRoot({
+    '#points-import-file': importFileField,
+  });
+  const uiState = createUiState({
+    pointsImportDialogOpen: true,
+    pointsImportFocusTarget: 'file',
+  });
+
+  bindUi(root, createEmptyState(), uiState, createNoopHandlers());
+
+  assert.equal(global.document.activeElement, importFileField);
+  assert.equal(uiState.pointsImportFocusTarget, '');
   restoreDocument();
 });
 

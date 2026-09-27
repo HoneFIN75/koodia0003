@@ -141,6 +141,10 @@ function getTournamentFieldSelector(fieldName) {
   return fieldSelectors[fieldName] || '#tournament-name';
 }
 
+function getPointsImportFieldSelector(fieldName) {
+  return fieldName === 'file' ? '#points-import-file' : '[data-points-import-dialog-panel]';
+}
+
 function getFocusableElements(container) {
   if (!container) {
     return [];
@@ -1122,7 +1126,7 @@ function renderPointsImportDialog(uiState) {
             </fieldset>
             <div class="form-field full-width">
               <label for="points-import-file">CSV-tiedosto *</label>
-              <input id="points-import-file" name="file" type="file" accept=".csv,text/csv" required autofocus />
+              <input id="points-import-file" name="file" type="file" accept=".csv,text/csv" required />
             </div>
           </div>
           <div class="form-actions">
@@ -1435,12 +1439,14 @@ export function bindUi(root, dataState, uiState, handlers) {
         return;
       }
 
-      if (!uiState.confirmationDialog && !uiState.playerDialogOpen && !uiState.tournamentDialogOpen) {
+      if (!uiState.confirmationDialog && !uiState.playerDialogOpen && !uiState.tournamentDialogOpen && !uiState.pointsImportDialogOpen) {
         return;
       }
 
       const activeDialogPanel = uiState.confirmationDialog
         ? root.querySelector('[data-confirm-dialog-panel]')
+        : uiState.pointsImportDialogOpen
+          ? root.querySelector('[data-points-import-dialog-panel]')
         : uiState.playerDialogOpen
           ? root.querySelector('[data-player-dialog-panel]')
           : root.querySelector('[data-tournament-dialog-panel]');
@@ -1454,6 +1460,11 @@ export function bindUi(root, dataState, uiState, handlers) {
     uiState.tournamentFormFocusTarget = '';
   } else if (uiState.tournamentDialogOpen) {
     root.querySelector('[data-tournament-dialog-panel]')?.focus();
+  } else if (uiState.pointsImportDialogOpen && uiState.pointsImportFocusTarget) {
+    root.querySelector(getPointsImportFieldSelector(uiState.pointsImportFocusTarget))?.focus();
+    uiState.pointsImportFocusTarget = '';
+  } else if (uiState.pointsImportDialogOpen) {
+    root.querySelector('[data-points-import-dialog-panel]')?.focus();
   } else if (uiState.playerDialogOpen && uiState.playerDialogFocusTarget) {
     root.querySelector(getPlayerFieldSelector(uiState.playerDialogFocusTarget))?.focus();
     uiState.playerDialogFocusTarget = '';

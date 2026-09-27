@@ -47,6 +47,7 @@ let uiState = {
   pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
   pointsImportDialogOpen: false,
   pointsImportDivision: 'MPO',
+  pointsImportFocusTarget: '',
   confirmationDialog: null,
   feedback: null,
   settingsFormErrors: {},
@@ -414,12 +415,14 @@ const handlers = {
     uiState.activeView = 'points';
     uiState.pointsImportDialogOpen = true;
     uiState.pointsImportDivision = division || 'MPO';
+    uiState.pointsImportFocusTarget = 'file';
     uiState.pendingFocusSelector = '';
     uiState.feedback = null;
     render();
   },
   closePointsImportDialog() {
     uiState.pointsImportDialogOpen = false;
+    uiState.pointsImportFocusTarget = '';
     uiState.pendingFocusSelector = `[data-open-points-import="${uiState.pointsImportDivision || 'MPO'}"]`;
     render();
   },
@@ -439,6 +442,7 @@ const handlers = {
       dataState.pointsTable = importPointsTableDivision(dataState.pointsTable, division, entries);
       uiState.pointsImportDivision = division;
       uiState.pointsImportDialogOpen = false;
+      uiState.pointsImportFocusTarget = '';
       persistAndRender(`Sarjan ${division} pistetaulukko tuotiin onnistuneesti.`);
     } catch (error) {
       setError(error);
