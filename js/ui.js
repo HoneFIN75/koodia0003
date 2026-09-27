@@ -410,6 +410,14 @@ function renderPlayerSection(dataState, uiState) {
     sortField: uiState.playerSortField,
     sortDirection: uiState.playerSortDirection,
   });
+  const importSummary = uiState.playerImportSummary;
+  const importSummaryType = importSummary
+    ? importSummary.failedCount > 0
+      ? 'warning'
+      : 'success'
+    : '';
+  const importSummaryRole = importSummary?.failedCount > 0 ? 'alert' : 'status';
+  const importSummaryAriaLive = importSummary?.failedCount > 0 ? 'assertive' : 'polite';
 
   return `
     <section class="section" id="section-players" ${uiState.activeView === 'players' ? '' : 'hidden'} aria-labelledby="players-title">
@@ -420,6 +428,81 @@ function renderPlayerSection(dataState, uiState) {
         </div>
         <button type="button" class="button" data-open-player-dialog>Lisää pelaaja</button>
       </div>
+      <article class="panel">
+        <div class="section-heading">
+          <div>
+            <h3>Pelaajien CSV-tuonti</h3>
+            <p class="section-subtitle">Tuo uusia pelaajia massana valittuun divisioonaan.</p>
+          </div>
+        </div>
+        <p>
+          Voit tuoda pelaajia CSV-tiedostosta.<br />
+          Sarake-erottimena tulee käyttää puolipistettä (;).
+        </p>
+        <p>
+          Pakollinen tieto:
+        </p>
+        <ul>
+          <li>PDGA ID</li>
+        </ul>
+        <p>
+          Muut kentät voivat olla tyhjiä.
+        </p>
+        <p>
+          Esimerkki:
+        </p>
+        <pre>Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking
+Matti;Meikäläinen;12345;950;1250
+Maija;Mallikas;54321;890;2450</pre>
+        <form id="players-import-form">
+          <div class="form-grid compact-grid">
+            <div class="form-field">
+              <label for="players-import-division">Importoi divisioonaan *</label>
+              <select id="players-import-division" name="division" required>
+                <option value="">Valitse divisioona</option>
+                ${DIVISIONS.map(
+                  (division) =>
+                    `<option value="${division}" ${uiState.playerImportDivision === division ? 'selected' : ''}>${division}</option>`,
+                ).join('')}
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="players-import-file">CSV-tiedosto *</label>
+              <input id="players-import-file" name="file" type="file" accept=".csv,text/csv" required />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button">Tuo</button>
+          </div>
+        </form>
+        ${
+          importSummary
+            ? `
+              <div class="message ${importSummaryType}" role="${importSummaryRole}" aria-live="${importSummaryAriaLive}">
+                <strong>Importti valmis</strong><br />
+                Yhteensä rivejä: ${formatNumber(importSummary.totalRows)}<br />
+                Onnistuneesti tuotu: ${formatNumber(importSummary.importedCount)}<br />
+                Epäonnistuneet: ${formatNumber(importSummary.failedCount)}
+                ${
+                  importSummary.failures.length
+                    ? `
+                      <p>Epäonnistuneet rivit:</p>
+                      <ul>
+                        ${importSummary.failures
+                          .map(
+                            (failure) =>
+                              `<li>${escapeHtml(failure.pdgaId ? `PDGA ID ${failure.pdgaId}` : `Rivi ${failure.rowNumber}`)} — Syy: ${escapeHtml(failure.reason)}</li>`,
+                          )
+                          .join('')}
+                      </ul>
+                    `
+                    : ''
+                }
+              </div>
+            `
+            : ''
+        }
+      </article>
       <article class="panel">
         <div class="section-heading">
           <div class="status-chip">${formatNumber(visiblePlayers.length)} / ${formatNumber(dataState.players.length)} pelaajaa</div>
@@ -1314,8 +1397,11 @@ export function bindUi(root, dataState, uiState, handlers) {
   });
 
   root.querySelector('[data-open-player-dialog]')?.addEventListener('click', () => handlers.openPlayerDialog());
-
   root.querySelector('[data-retry-players-load]')?.addEventListener('click', () => handlers.retryPlayersLoad());
+  root.querySelector('#players-import-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handlers.submitPlayersImport(new FormData(event.currentTarget));
+  });
 
   root.querySelector('#player-form')?.addEventListener('submit', (event) => {
     event.preventDefault();

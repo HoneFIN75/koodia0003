@@ -87,6 +87,8 @@ function createUiState(overrides = {}) {
     playerFormId: null,
     playerFormErrors: {},
     playerFormDraft: null,
+    playerImportDivision: '',
+    playerImportSummary: null,
     playersStatus: 'ready',
     playersError: '',
     tournamentDialogOpen: false,
@@ -392,6 +394,42 @@ test('renderApp player list uses required column order and add button', () => {
   assert.match(root.innerHTML, /data-open-player-dialog>Lisää pelaaja<\/button>/);
   assert.match(root.innerHTML, /<th>Pelaajan nimi<\/th>\s*<th>PDGA ID<\/th>\s*<th>Sarja<\/th>\s*<th>PDGA-rating<\/th>\s*<th>Maailmanranking<\/th>\s*<th>Muokkaa<\/th>/);
   assert.match(root.innerHTML, /data-edit-player="player-1">Muokkaa<\/button>/);
+});
+
+test('renderApp shows players CSV import instructions, required fields and summary', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'players',
+      playerImportDivision: 'MPO',
+      playerImportSummary: {
+        totalRows: 4,
+        importedCount: 2,
+        failedCount: 2,
+        failures: [
+          { rowNumber: 18, pdgaId: '', reason: 'PDGA ID puuttuu' },
+          { rowNumber: 20, pdgaId: '67890', reason: 'Virheellinen PDGA-rating' },
+        ],
+      },
+    }),
+  );
+
+  assert.match(root.innerHTML, /Pelaajien CSV-tuonti/);
+  assert.match(root.innerHTML, /Sarake-erottimena tulee käyttää puolipistettä \(\;\)/);
+  assert.match(root.innerHTML, /<li>PDGA ID<\/li>/);
+  assert.match(root.innerHTML, /Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking/);
+  assert.match(root.innerHTML, /id="players-import-division" name="division" required/);
+  assert.match(root.innerHTML, /id="players-import-file" name="file" type="file" accept="\.csv,text\/csv" required/);
+  assert.match(root.innerHTML, /<button type="submit" class="button">Tuo<\/button>/);
+  assert.match(root.innerHTML, /Importti valmis/);
+  assert.match(root.innerHTML, /class="message warning" role="alert" aria-live="assertive"/);
+  assert.match(root.innerHTML, /Yhteensä rivejä: 4/);
+  assert.match(root.innerHTML, /PDGA ID 67890 — Syy: Virheellinen PDGA-rating/);
+  assert.match(root.innerHTML, /Rivi 18 — Syy: PDGA ID puuttuu/);
 });
 
 test('renderApp shows shared add/edit player modal and delete action only in edit mode', () => {
