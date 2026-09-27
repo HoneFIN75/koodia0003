@@ -576,6 +576,7 @@ test('renderApp shows tournament import dialog and summary', () => {
 
   assert.match(root.innerHTML, /<h2 id="tournament-import-dialog-title">Tuo turnaukset<\/h2>/);
   assert.match(root.innerHTML, /id="tournament-import-file" name="file" type="file" accept="\.csv,text\/csv" required/);
+  assert.match(root.innerHTML, /id="tournament-import-file-hint"/);
   assert.match(root.innerHTML, /Turnausten tuonti valmis/);
   assert.match(root.innerHTML, /<dt>Tuotu<\/dt><dd>3<\/dd>/);
   assert.match(root.innerHTML, /<dt>Ohitetut duplikaatit<\/dt><dd>1<\/dd>/);
@@ -597,7 +598,10 @@ test('renderApp shows disabled import button before file selection', () => {
     }),
   );
 
-  assert.match(root.innerHTML, /data-submit-tournament-import disabled>Tuo<\/button>/);
+  assert.match(
+    root.innerHTML,
+    /data-submit-tournament-import disabled aria-describedby="tournament-import-file-hint">Tuo<\/button>/,
+  );
 });
 
 test('renderApp shows delete all tournaments confirmation dialog copy', () => {
@@ -616,7 +620,7 @@ test('renderApp shows delete all tournaments confirmation dialog copy', () => {
   );
 
   assert.match(root.innerHTML, /<h2 id="confirm-dialog-title">VAROITUS<\/h2>/);
-  assert.match(root.innerHTML, /⚠ Tämä toiminto on pysyvä\./);
+  assert.match(root.innerHTML, /Tämä toiminto on pysyvä\./);
   assert.match(root.innerHTML, /Olet poistamassa kaikki turnaukset \(2 kpl\) ja turnaustulokset \(1 kpl\)\./);
   assert.match(root.innerHTML, /Toimintoa ei voi peruuttaa\./);
   assert.match(root.innerHTML, /data-confirm-delete-all-tournaments>Poista kaikki turnaukset<\/button>/);

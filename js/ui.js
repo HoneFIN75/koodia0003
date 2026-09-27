@@ -900,11 +900,16 @@ function renderTournamentImportDialog(uiState) {
             <div class="form-field full-width">
               <label for="tournament-import-file">CSV-tiedosto *</label>
               <input id="tournament-import-file" name="file" type="file" accept=".csv,text/csv" required />
+              <p id="tournament-import-file-hint" class="form-help">Valitse tiedosto, niin Tuo-painike aktivoituu.</p>
             </div>
           </div>
           <div class="form-actions">
             <button type="button" class="secondary-button" data-cancel-tournament-import>${importSummary ? 'Sulje' : 'Peruuta'}</button>
-            ${importSummary ? '' : '<button type="submit" class="button" data-submit-tournament-import disabled>Tuo</button>'}
+            ${
+              importSummary
+                ? ''
+                : '<button type="submit" class="button" data-submit-tournament-import disabled aria-describedby="tournament-import-file-hint">Tuo</button>'
+            }
           </div>
         </form>
         ${
@@ -1400,7 +1405,7 @@ function renderConfirmationDialog(dataState, uiState) {
           <div class="section-heading">
             <div>
               <h2 id="confirm-dialog-title">VAROITUS</h2>
-              <p class="warning-text">⚠ Tämä toiminto on pysyvä.</p>
+              <p class="warning-text"><span aria-hidden="true">⚠</span> Tämä toiminto on pysyvä.</p>
               <p id="confirm-dialog-description" class="section-subtitle">
                 Olet poistamassa kaikki turnaukset (${formatNumber(tournamentCount)} kpl) ja turnaustulokset (${formatNumber(resultCount)} kpl).<br />
                 Toimintoa ei voi peruuttaa.
