@@ -33,6 +33,7 @@ export class JsonFileStorage {
   constructor({ directoryPath }) {
     this.directoryPath = directoryPath;
     this.ensurePromise = null;
+    this.pendingSave = Promise.resolve();
   }
 
   async ensureInitialized() {
@@ -90,16 +91,22 @@ export class JsonFileStorage {
     await this.ensureInitialized();
     const sanitized = sanitizeState(state);
 
-    await Promise.all([
-      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.players), sanitized.players),
-      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.tournaments), sanitized.tournaments),
-      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.tournamentResults), sanitized.tournamentResults),
-      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.scoreTables), sanitized.pointsTable),
-      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.multipliers), sanitized.multipliers),
-      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.settings), sanitized.settings),
-    ]);
+    const persistState = async () => {
+      await Promise.all([
+        writeJsonAtomically(this.#resolvePath(STORAGE_FILES.players), sanitized.players),
+        writeJsonAtomically(this.#resolvePath(STORAGE_FILES.tournaments), sanitized.tournaments),
+        writeJsonAtomically(this.#resolvePath(STORAGE_FILES.tournamentResults), sanitized.tournamentResults),
+        writeJsonAtomically(this.#resolvePath(STORAGE_FILES.scoreTables), sanitized.pointsTable),
+        writeJsonAtomically(this.#resolvePath(STORAGE_FILES.multipliers), sanitized.multipliers),
+        writeJsonAtomically(this.#resolvePath(STORAGE_FILES.settings), sanitized.settings),
+      ]);
 
-    return sanitized;
+      return sanitized;
+    };
+
+    const savePromise = this.pendingSave.then(persistState, persistState);
+    this.pendingSave = savePromise.catch(() => {});
+    return savePromise;
   }
 
   #resolvePath(fileName) {

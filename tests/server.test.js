@@ -88,3 +88,51 @@ test('API loads and saves shared state through JSON storage', async () => {
     await rm(jsondbDir, { recursive: true, force: true });
   }
 });
+
+test('API rejects malformed JSON bodies with Finnish error message', async () => {
+  const publicDir = await createTempDir();
+  const jsondbDir = await createTempDir();
+  const storage = createJsonFileStorage({ directoryPath: jsondbDir });
+  const server = createServer({ publicDir, storage });
+
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/state`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: '{"players":',
+    });
+
+    assert.equal(response.status, 400);
+    assert.match(await response.text(), /Pyynnön JSON-data on virheellinen\./);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    await rm(publicDir, { recursive: true, force: true });
+    await rm(jsondbDir, { recursive: true, force: true });
+  }
+});
+
+test('API rejects unsupported methods for /api/state', async () => {
+  const publicDir = await createTempDir();
+  const jsondbDir = await createTempDir();
+  const storage = createJsonFileStorage({ directoryPath: jsondbDir });
+  const server = createServer({ publicDir, storage });
+
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    const response = await fetch(`http://127.0.0.1:${address.port}/api/state`, {
+      method: 'POST',
+    });
+
+    assert.equal(response.status, 405);
+    assert.match(await response.text(), /Metodia ei tueta\./);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    await rm(publicDir, { recursive: true, force: true });
+    await rm(jsondbDir, { recursive: true, force: true });
+  }
+});

@@ -77,6 +77,8 @@ npm start
 
 Avaa tämän jälkeen sovellus osoitteesta `http://localhost:3000`.
 
+Palvelin kuuntelee oletuksena vain paikallista rajapintaa (`127.0.0.1`). Julkisessa ympäristössä Node-palvelin kannattaa sijoittaa autentikoidun tai muuten suojatun reverse proxyn taakse. Vaihtoehtoisesti write-pyyntöjä voi suojata välityspalvelimen lisäämällä `X-SFL-Write-Token`-otsakkeella, kun `SFL_API_WRITE_TOKEN` on asetettu.
+
 ## Julkaisu
 
 `.github/workflows/deploy.yml` rakentaa julkaistavan `dist`-hakemiston ja julkaisee sen SSH/rsync-mallilla. Workflow suojaa palvelimen `jsondb/`-hakemiston rsync-poistoilta, jotta data säilyy deployjen yli. Workflow saa käynnistyä automaattisesti vain `main`-haaran pushista.

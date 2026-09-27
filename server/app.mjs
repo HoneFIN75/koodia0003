@@ -44,6 +44,23 @@ async function readRequestJson(request) {
   return JSON.parse(body);
 }
 
+function isLoopbackAddress(remoteAddress = '') {
+  return remoteAddress === '127.0.0.1'
+    || remoteAddress === '::1'
+    || remoteAddress === '::ffff:127.0.0.1';
+}
+
+function isAuthorizedWriteRequest(request) {
+  const configuredToken = String(process.env.SFL_API_WRITE_TOKEN || '').trim();
+  const headerToken = String(request.headers['x-sfl-write-token'] || '').trim();
+
+  if (configuredToken && headerToken === configuredToken) {
+    return true;
+  }
+
+  return isLoopbackAddress(request.socket?.remoteAddress);
+}
+
 function resolvePublicPath(publicDir, pathname) {
   const normalizedPath = pathname === '/' ? '/index.html' : pathname;
   const decodedPath = decodeURIComponent(normalizedPath);
@@ -105,6 +122,13 @@ export function createRequestHandler({ storage, publicDir }) {
         }
 
         if (request.method === 'PUT') {
+          if (!isAuthorizedWriteRequest(request)) {
+            sendJson(response, 403, {
+              message: 'Tallennus on sallittu vain paikallisen palvelimen kautta tai suojatulla välityspalvelimella.',
+            });
+            return;
+          }
+
           const payload = await readRequestJson(request);
           sendJson(response, 200, await storage.saveState(payload));
           return;

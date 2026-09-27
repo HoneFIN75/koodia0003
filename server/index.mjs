@@ -21,7 +21,7 @@ export function createApplication({
 
 if (process.argv[1] === __filename) {
   const port = Number(process.env.PORT) || 3000;
-  const host = process.env.HOST || '0.0.0.0';
+  const host = process.env.HOST || '127.0.0.1';
   const server = createApplication();
 
   server.listen(port, host, () => {
