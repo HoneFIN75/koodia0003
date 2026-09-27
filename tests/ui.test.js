@@ -185,35 +185,162 @@ test('renderApp builds PDGA links from centralized settings', () => {
   assert.match(root.innerHTML, /rel="noopener noreferrer"/);
 });
 
-test('renderApp hides deployment metadata when it is not available', () => {
+test('renderApp näyttää yhteenvetosivulla vain dashboardin avainluvut ja TOP 10 -listat', () => {
   const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [
+    {
+      id: 'player-1',
+      firstName: 'Matti',
+      lastName: 'Meikäläinen',
+      name: 'Matti Meikäläinen',
+      division: 'MPO',
+      pdgaNumber: 11111,
+      pdgaRating: '',
+      worldRank: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+    {
+      id: 'player-2',
+      firstName: 'Maija',
+      lastName: 'Meikäläinen',
+      name: 'Maija Meikäläinen',
+      division: 'FPO',
+      pdgaNumber: 22222,
+      pdgaRating: '',
+      worldRank: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Testi Open',
+      pdgaEventId: '',
+      startDate: '2026-07-03',
+      endDate: '',
+      displayOrder: 1,
+      location: '',
+      venue: '',
+      status: '',
+      multiplierKey: 'fpt',
+      multiplier: 1,
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournamentResults = [
+    {
+      id: 'result-1',
+      tournamentId: 'tournament-1',
+      playerId: 'player-1',
+      place: 1,
+      basePointsSnapshot: 100,
+      multiplierSnapshot: 1,
+      calculatedPoints: 100,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+    {
+      id: 'result-2',
+      tournamentId: 'tournament-1',
+      playerId: 'player-2',
+      place: 1,
+      basePointsSnapshot: 90,
+      multiplierSnapshot: 1,
+      calculatedPoints: 90,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.pointsTable = {
+    MPO: { '1': 100 },
+    FPO: { '1': 90 },
+  };
 
-  renderApp(root, createEmptyState(), createUiState({ activeView: 'summary' }));
+  renderApp(root, dataState, createUiState({ activeView: 'summary' }));
 
-  assert.match(root.innerHTML, /<h1 id="summary-title">SFL Pisteytystyökalu<\/h1>/);
-  assert.doesNotMatch(root.innerHTML, /deployment-meta/);
+  assert.match(root.innerHTML, /<h1 id="summary-title">Yhteenveto<\/h1>/);
+  assert.match(root.innerHTML, /TOP 10 MPO/);
+  assert.match(root.innerHTML, /TOP 10 FPO/);
+  assert.match(root.innerHTML, /Matti Meikäläinen/);
+  assert.match(root.innerHTML, /Maija Meikäläinen/);
+  assert.match(root.innerHTML, /Pelaajat/);
+  assert.match(root.innerHTML, /Turnaukset/);
+  assert.match(root.innerHTML, /Pistetaulukot/);
+  assert.doesNotMatch(root.innerHTML, /Tulokset<\/span>/);
+  assert.doesNotMatch(root.innerHTML, /Pelaajan perustiedot/);
+  assert.doesNotMatch(root.innerHTML, /Valitun pelaajan turnaustulokset/);
+  assert.doesNotMatch(root.innerHTML, /data-summary-filter=/);
+  assert.doesNotMatch(root.innerHTML, /data-summary-player/);
+  assert.doesNotMatch(root.innerHTML, /Syötetyt tulokset/);
 });
 
-test('renderApp shows deployment metadata below home page title in Helsinki time', () => {
+test('renderApp näyttää vain olemassa olevat pelaajat TOP 10 -listoilla', () => {
   const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [
+    {
+      id: 'player-1',
+      firstName: 'Ari',
+      lastName: 'Aalto',
+      name: 'Ari Aalto',
+      division: 'MPO',
+      pdgaNumber: 12345,
+      pdgaRating: '',
+      worldRank: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Testi Open',
+      pdgaEventId: '',
+      startDate: '2026-07-03',
+      endDate: '',
+      displayOrder: 1,
+      location: '',
+      venue: '',
+      status: '',
+      multiplierKey: 'fpt',
+      multiplier: 1,
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournamentResults = [
+    {
+      id: 'result-1',
+      tournamentId: 'tournament-1',
+      playerId: 'player-1',
+      place: 1,
+      basePointsSnapshot: 100,
+      multiplierSnapshot: 1,
+      calculatedPoints: 100,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
 
-  renderApp(
-    root,
-    createEmptyState(),
-    createUiState({
-      activeView: 'summary',
-      deploymentInfo: {
-        version: '1.0.15',
-        deployedAt: '2026-09-26T20:14:00Z',
-        commit: '84f2c71',
-      },
-    }),
-  );
+  renderApp(root, dataState, createUiState({ activeView: 'summary' }));
 
-  assert.match(root.innerHTML, /<h1 id="summary-title">SFL Pisteytystyökalu<\/h1>\s*<div class="deployment-meta"/);
-  assert.match(root.innerHTML, /Versio: 1\.0\.15/);
-  assert.match(root.innerHTML, /Päivitetty: 2026-09-26 23:14/);
-  assert.doesNotMatch(root.innerHTML, /UTC/);
+  assert.match(root.innerHTML, /Ari Aalto/);
+  assert.match(root.innerHTML, /Sijoitus 1 • Sarja MPO/);
+  assert.doesNotMatch(root.innerHTML, /Sijoitus 2 • Sarja MPO/);
+  assert.match(root.innerHTML, /Sarjassa FPO ei ole vielä pisteellisiä pelaajia\./);
 });
 
 test('renderApp player list uses required column order and add button', () => {
