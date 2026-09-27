@@ -72,6 +72,8 @@ test('loadState drops unknown legacy fields from players and tournaments', () =>
     assert.equal(state.tournaments[0].pdgaEventId, 98765);
     assert.equal(state.tournaments[0].venue, 'Keskuspuisto');
     assert.equal(state.tournaments[0].displayOrder, 999);
+    assert.ok(state.tournaments[0].multiplierId);
+    assert.ok(state.multipliers.length > 0);
     assert.deepEqual(state.settings, {
       playerBaseUrl: 'https://www.pdga.com/player/',
       eventBaseUrl: 'https://www.pdga.com/tour/event/',
@@ -127,12 +129,13 @@ test('saveState strips unknown legacy fields before persisting', () => {
     assert.equal(state.tournaments[0].pdgaEventId, 321);
     assert.equal(state.tournaments[0].displayOrder, 4);
     assert.equal(state.tournaments[0].venue, 'Keskuspuisto');
+    assert.equal(state.tournaments[0].multiplierId, '');
     assert.deepEqual(state.settings, {
       playerBaseUrl: 'https://www.pdga.com/player/',
       eventBaseUrl: 'https://www.pdga.com/tour/event/',
     });
 
-    const persisted = JSON.parse(localStorage.getItem('sfl-pisteytystyokalu:v2'));
+    const persisted = JSON.parse(localStorage.getItem('sfl-pisteytystyokalu:v3'));
     assert.ok(!Object.hasOwn(persisted.players[0], 'legacyField'));
     assert.ok(!Object.hasOwn(persisted.tournaments[0], 'legacyField'));
     assert.ok(!Object.hasOwn(persisted.players[0], removedTournamentField));
@@ -143,6 +146,7 @@ test('saveState strips unknown legacy fields before persisting', () => {
     assert.equal(persisted.tournaments[0].pdgaEventId, 321);
     assert.equal(persisted.tournaments[0].displayOrder, 4);
     assert.equal(persisted.tournaments[0].venue, 'Keskuspuisto');
+    assert.equal(persisted.tournaments[0].multiplierId, '');
     assert.deepEqual(persisted.settings, {
       playerBaseUrl: 'https://www.pdga.com/player/',
       eventBaseUrl: 'https://www.pdga.com/tour/event/',
@@ -174,9 +178,9 @@ test('loadState prefers legacy data over empty v2 state during migration', () =>
       }),
     );
     localStorage.setItem(
-      'sfl-pisteytystyokalu:v2',
+      'sfl-pisteytystyokalu:v3',
       JSON.stringify({
-        version: 2,
+        version: 3,
         players: [],
         tournaments: [],
         tournamentResults: [],
@@ -185,6 +189,7 @@ test('loadState prefers legacy data over empty v2 state during migration', () =>
           eventBaseUrl: 'https://www.pdga.com/tour/event/',
         },
         pointsTable: { MPO: {}, FPO: {} },
+        multipliers: [],
       }),
     );
 

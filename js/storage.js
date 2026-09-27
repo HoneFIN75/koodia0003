@@ -1,9 +1,10 @@
 import { DEFAULT_TOURNAMENT_DISPLAY_ORDER } from './tournaments.js';
 import { DEFAULT_PDGA_SETTINGS, extractPdgaEventId, extractPdgaPlayerId, sanitizePdgaSettings } from './pdga.js';
+import { createDefaultMultipliers, ensureLegacyMultiplier, sanitizeMultipliers } from './multipliers.js';
 
-const STORAGE_KEY = 'sfl-pisteytystyokalu:v2';
-const LEGACY_STORAGE_KEYS = ['sfl-pisteytystyokalu:v1'];
-const STORAGE_VERSION = 2;
+const STORAGE_KEY = 'sfl-pisteytystyokalu:v3';
+const LEGACY_STORAGE_KEYS = ['sfl-pisteytystyokalu:v2', 'sfl-pisteytystyokalu:v1'];
+const STORAGE_VERSION = 3;
 
 export function createEmptyState() {
   return {
@@ -16,6 +17,7 @@ export function createEmptyState() {
       MPO: {},
       FPO: {},
     },
+    multipliers: createDefaultMultipliers(),
   };
 }
 
@@ -75,33 +77,71 @@ function sanitizeTournament(tournament = {}) {
       : DEFAULT_TOURNAMENT_DISPLAY_ORDER,
     location: tournament.location,
     venue: tournament.venue,
-    status: tournament.status,
-    multiplierKey: tournament.multiplierKey,
-    multiplier: tournament.multiplier,
+    multiplierId: tournament.multiplierId,
     division: tournament.division,
     externalUrl: tournament.externalUrl,
     notes: tournament.notes,
     createdAt: tournament.createdAt,
     updatedAt: tournament.updatedAt,
+    legacyStatus: tournament.status,
+    legacyMultiplierKey: tournament.multiplierKey,
+    legacyMultiplier: tournament.multiplier,
   };
 }
 
 function sanitizeState(candidate = {}) {
   const empty = createEmptyState();
+  const sanitizedTournaments = Array.isArray(candidate.tournaments)
+    ? candidate.tournaments.map(sanitizeTournament)
+    : empty.tournaments;
+  let sanitizedMultipliers = sanitizeMultipliers(candidate.multipliers);
+
+  const migratedTournaments = sanitizedTournaments.map((tournament) => {
+    let multiplierId = String(tournament.multiplierId || '').trim();
+    if (!multiplierId || !sanitizedMultipliers.some((entry) => entry.id === multiplierId)) {
+      const migration = ensureLegacyMultiplier(sanitizedMultipliers, {
+        status: tournament.legacyStatus,
+        multiplierKey: tournament.legacyMultiplierKey,
+        multiplier: tournament.legacyMultiplier,
+      });
+      sanitizedMultipliers = migration.multipliers;
+      multiplierId = migration.multiplierId;
+    }
+
+    return {
+      id: tournament.id,
+      name: tournament.name,
+      pdgaEventId: tournament.pdgaEventId,
+      startDate: tournament.startDate,
+      endDate: tournament.endDate,
+      displayOrder: tournament.displayOrder,
+      location: tournament.location,
+      venue: tournament.venue,
+      multiplierId,
+      division: tournament.division,
+      externalUrl: tournament.externalUrl,
+      notes: tournament.notes,
+      createdAt: tournament.createdAt,
+      updatedAt: tournament.updatedAt,
+    };
+  });
 
   return {
     version: STORAGE_VERSION,
     players: Array.isArray(candidate.players) ? candidate.players.map(sanitizePlayer) : empty.players,
-    tournaments: Array.isArray(candidate.tournaments) ? candidate.tournaments.map(sanitizeTournament) : empty.tournaments,
+    tournaments: migratedTournaments,
     tournamentResults: Array.isArray(candidate.tournamentResults)
       ? candidate.tournamentResults
       : empty.tournamentResults,
     settings: sanitizePdgaSettings(candidate.settings),
     pointsTable: sanitizePointsTable(candidate.pointsTable),
+    multipliers: sanitizedMultipliers,
   };
 }
 
 function hasStateData(state) {
+  const defaultState = createEmptyState();
+
   return (
     state.players.length > 0 ||
     state.tournaments.length > 0 ||
@@ -109,7 +149,8 @@ function hasStateData(state) {
     Object.keys(state.pointsTable.MPO).length > 0 ||
     Object.keys(state.pointsTable.FPO).length > 0 ||
     state.settings.playerBaseUrl !== DEFAULT_PDGA_SETTINGS.playerBaseUrl ||
-    state.settings.eventBaseUrl !== DEFAULT_PDGA_SETTINGS.eventBaseUrl
+    state.settings.eventBaseUrl !== DEFAULT_PDGA_SETTINGS.eventBaseUrl ||
+    JSON.stringify(state.multipliers) !== JSON.stringify(defaultState.multipliers)
   );
 }
 

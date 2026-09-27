@@ -1,18 +1,6 @@
-export const MULTIPLIER_OPTIONS = [
-  { key: 'fpt-status', label: 'Finnish Pro Tour Status', value: 0.5 },
-  { key: 'fpt', label: 'Finnish Pro Tour', value: 1 },
-  { key: 'dgpt', label: 'DGPT', value: 3 },
-  { key: 'finnish-championship', label: 'Finnish Championship', value: 4 },
-  { key: 'dgpt-plus', label: 'DGPT+', value: 4 },
-  { key: 'dgpt-playoffs', label: 'DGPT Playoffs', value: 5 },
-  { key: 'european-championship', label: 'European Championship', value: 5 },
-  { key: 'pdga-major', label: 'PDGA Major', value: 6 },
-];
-
 export const DEFAULT_TOURNAMENT_DISPLAY_ORDER = 999;
 
 const ALLOWED_DIVISIONS = ['', 'MPO', 'FPO'];
-const ALLOWED_MULTIPLIERS = new Map(MULTIPLIER_OPTIONS.map((option) => [option.key, option.value]));
 
 export class TournamentValidationError extends Error {
   constructor(fieldErrors) {
@@ -202,22 +190,6 @@ function normalizeOptionalPositiveInteger(value, label, fieldName, fieldErrors) 
   return parsed;
 }
 
-function normalizeMultiplier(multiplierKey) {
-  const normalizedKey = normalizeText(multiplierKey);
-  if (!normalizedKey) {
-    throw new Error('Kerroin on pakollinen ja se pitää valita määritetyistä vaihtoehdoista.');
-  }
-
-  if (!ALLOWED_MULTIPLIERS.has(normalizedKey)) {
-    throw new Error('Kerroin pitää valita määritetyistä vaihtoehdoista.');
-  }
-
-  return {
-    multiplierKey: normalizedKey,
-    multiplier: ALLOWED_MULTIPLIERS.get(normalizedKey),
-  };
-}
-
 function normalizeDisplayOrder(value, fieldErrors) {
   const normalized = normalizeText(value);
   if (!normalized) {
@@ -239,13 +211,39 @@ function normalizeDisplayOrder(value, fieldErrors) {
   return parsed;
 }
 
-export function validateTournamentInput(input) {
+function normalizeMultiplierId(value, multipliers, fieldErrors) {
+  const multiplierId = normalizeText(value);
+  if (!multiplierId) {
+    addFieldError(fieldErrors, 'multiplierId', 'Tila on pakollinen.');
+    return '';
+  }
+
+  const exists = multipliers.some((multiplier) => multiplier.id === multiplierId);
+  if (!exists) {
+    addFieldError(fieldErrors, 'multiplierId', 'Valittu tila ei ole enää käytettävissä.');
+  }
+
+  return multiplierId;
+}
+
+function ensureDisplayOrderIsUnique(tournaments, displayOrder, currentTournamentId, fieldErrors) {
+  const duplicate = tournaments.find(
+    (tournament) => tournament.id !== currentTournamentId && Number(tournament.displayOrder) === Number(displayOrder),
+  );
+
+  if (duplicate) {
+    addFieldError(fieldErrors, 'displayOrder', `Järjestysnumero ${displayOrder} on jo käytössä.`);
+  }
+}
+
+export function validateTournamentInput(tournaments, multipliers, input, currentTournamentId = null) {
   const fieldErrors = {};
   const name = normalizeText(input.name);
   const startDate = normalizeText(input.startDate);
   const endDate = normalizeText(input.endDate);
   const division = normalizeText(input.division).toUpperCase();
   const displayOrder = normalizeDisplayOrder(input.displayOrder, fieldErrors);
+  const multiplierId = normalizeMultiplierId(input.multiplierId, multipliers, fieldErrors);
 
   if (!name) {
     addFieldError(fieldErrors, 'name', 'Turnauksen nimi on pakollinen.');
@@ -263,16 +261,7 @@ export function validateTournamentInput(input) {
     addFieldError(fieldErrors, 'division', 'Turnauksen sarjarajaus voi olla vain MPO, FPO tai tyhjä.');
   }
 
-  let multiplierData = { multiplierKey: '', multiplier: 0 };
-  try {
-    multiplierData = normalizeMultiplier(input.multiplierKey);
-  } catch (error) {
-    addFieldError(
-      fieldErrors,
-      'multiplierKey',
-      error instanceof Error ? error.message : 'Kerroin pitää valita määritetyistä vaihtoehdoista.',
-    );
-  }
+  ensureDisplayOrderIsUnique(tournaments, displayOrder, currentTournamentId, fieldErrors);
 
   const externalUrl = normalizeOptionalUrl(input.externalUrl, 'Linkki kilpailusivulle', 'externalUrl', fieldErrors);
   const pdgaEventId = normalizeOptionalPositiveInteger(input.pdgaEventId, 'PDGA-kilpailutunnus', 'pdgaEventId', fieldErrors);
@@ -289,19 +278,18 @@ export function validateTournamentInput(input) {
     displayOrder,
     location: normalizeText(input.location),
     venue: normalizeText(input.venue),
-    status: normalizeText(input.status),
-    ...multiplierData,
+    multiplierId,
     division,
     externalUrl,
     notes: normalizeText(input.notes),
   };
 }
 
-export function createTournament(input) {
+export function createTournament(tournaments, multipliers, input) {
   const now = new Date().toISOString();
 
   return {
-    ...validateTournamentInput(input),
+    ...validateTournamentInput(tournaments, multipliers, input),
     id: createId(),
     createdAt: now,
     updatedAt: now,
@@ -319,8 +307,7 @@ function buildImportedTournament({ name, pdgaEventId, displayOrder }) {
     displayOrder,
     location: '',
     venue: '',
-    status: '',
-    multiplierKey: '',
+    multiplierId: '',
     division: '',
     externalUrl: '',
     notes: '',
@@ -461,7 +448,7 @@ export function importTournamentsFromCsv(tournaments, csvText) {
   };
 }
 
-export function updateTournament(tournaments, tournamentId, input) {
+export function updateTournament(tournaments, multipliers, tournamentId, input) {
   const existingTournament = tournaments.find((tournament) => tournament.id === tournamentId);
   if (!existingTournament) {
     throw new Error('Muokattavaa turnausta ei löytynyt.');
@@ -469,7 +456,7 @@ export function updateTournament(tournaments, tournamentId, input) {
 
   return {
     ...existingTournament,
-    ...validateTournamentInput(input),
+    ...validateTournamentInput(tournaments, multipliers, input, tournamentId),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -536,18 +523,17 @@ export function filterAndSortTournaments(
   const baseOrderById = new Map(baseOrder.map((tournament, index) => [tournament.id, index]));
   const normalizedSearch = normalizeFilterValue(search);
   const normalizedStatus = normalizeFilterValue(status);
-  const normalizedSortField = ['displayOrder', 'name', 'status', 'startDate', 'endDate', 'location'].includes(sortField)
+  const normalizedSortField = ['displayOrder', 'name', 'multiplierId', 'startDate', 'endDate', 'location'].includes(sortField)
     ? sortField
     : 'displayOrder';
   const normalizedSortDirection = sortDirection === 'desc' ? 'desc' : 'asc';
 
   return baseOrder
     .filter((tournament) => {
-      const matchesStatus =
-        normalizedStatus === 'all' || normalizeFilterValue(tournament.status) === normalizedStatus;
+      const matchesStatus = normalizedStatus === 'all' || normalizeFilterValue(tournament.multiplierId) === normalizedStatus;
       const matchesSearch =
         !normalizedSearch ||
-        [tournament.name, tournament.status, tournament.location, tournament.venue].some((value) =>
+        [tournament.name, tournament.location, tournament.venue].some((value) =>
           normalizeFilterValue(value).includes(normalizedSearch),
         );
 

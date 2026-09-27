@@ -1,8 +1,9 @@
 import { DIVISIONS, getVisiblePlayers } from './players.js';
-import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, MULTIPLIER_OPTIONS, sortTournaments, filterAndSortTournaments } from './tournaments.js';
+import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, sortTournaments, filterAndSortTournaments } from './tournaments.js';
 import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS } from './pdga.js';
 import { listPointsTableEntries } from './scoring.js';
 import { buildRanking, getTopRanking } from './ranking.js';
+import { findMultiplier, formatMultiplier, sortMultipliers } from './multipliers.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -130,15 +131,25 @@ function getTournamentFieldSelector(fieldName) {
     displayOrder: '#tournament-display-order',
     location: '#tournament-location',
     venue: '#tournament-venue',
-    multiplierKey: '#tournament-multiplier',
+    multiplierId: '#tournament-multiplier-id',
     division: '#tournament-division',
     externalUrl: '#tournament-external-url',
     pdgaEventId: '#tournament-pdga-event-id',
-    status: '#tournament-status',
     notes: '#tournament-notes',
   };
 
   return fieldSelectors[fieldName] || '#tournament-name';
+}
+
+function getMultiplierFieldSelector(fieldName) {
+  const selectors = {
+    orderNumber: '#multiplier-order-number',
+    name: '#multiplier-name',
+    abbreviation: '#multiplier-abbreviation',
+    multiplier: '#multiplier-value',
+  };
+
+  return selectors[fieldName] || '#multiplier-order-number';
 }
 
 function getPointsImportFieldSelector(fieldName) {
@@ -212,11 +223,23 @@ function renderPlayerDetailCard(player, settings) {
   `;
 }
 
-function renderMultiplierOptions(selectedValue) {
-  return MULTIPLIER_OPTIONS.map(
-    (option) =>
-      `<option value="${option.key}" ${selectedValue === option.key ? 'selected' : ''}>${escapeHtml(option.label)} (${formatNumber(option.value)}x)</option>`,
-  ).join('');
+function renderTournamentMultiplierOptions(multipliers, selectedValue) {
+  return multipliers
+    .map(
+      (multiplier) =>
+        `<option value="${escapeHtml(multiplier.id)}" ${selectedValue === multiplier.id ? 'selected' : ''}>${escapeHtml(multiplier.name)} (${escapeHtml(multiplier.abbreviation)} · ${formatMultiplier(multiplier.multiplier)})</option>`,
+    )
+    .join('');
+}
+
+function getMultiplierLabel(tournament, multipliers) {
+  const multiplier = findMultiplier(multipliers, tournament.multiplierId);
+  return multiplier?.name || '';
+}
+
+function getMultiplierAbbreviation(tournament, multipliers) {
+  const multiplier = findMultiplier(multipliers, tournament.multiplierId);
+  return multiplier?.abbreviation || '';
 }
 
 function renderNav(activeView) {
@@ -226,6 +249,7 @@ function renderNav(activeView) {
     { id: 'players', label: 'Pelaajat' },
     { id: 'tournaments', label: 'Turnaukset' },
     { id: 'points', label: 'Pistetaulukot' },
+    { id: 'multipliers', label: 'Kertoimet' },
     { id: 'settings', label: 'Asetukset' },
   ];
 
@@ -704,16 +728,19 @@ function renderPlayerDialog(dataState, uiState) {
 }
 
 function renderTournamentSection(dataState, uiState) {
-  const orderedTournaments = sortTournaments(dataState.tournaments);
-  const visibleTournaments = filterAndSortTournaments(dataState.tournaments, {
+  const orderedMultipliers = sortMultipliers(dataState.multipliers || []);
+  const visibleTournamentsWithMultipliers = filterAndSortTournaments(dataState.tournaments, {
     search: uiState.tournamentSearch,
     status: uiState.tournamentStatusFilter,
     sortField: uiState.tournamentSortField,
     sortDirection: uiState.tournamentSortDirection,
-  });
-  const availableStatuses = [...new Set(dataState.tournaments.map((tournament) => tournament.status).filter(Boolean))].sort((left, right) =>
-    left.localeCompare(right, 'fi', { sensitivity: 'base' }),
-  );
+  }).map((tournament) => ({
+    ...tournament,
+    multiplierName: getMultiplierLabel(tournament, orderedMultipliers),
+    multiplierAbbreviation: getMultiplierAbbreviation(tournament, orderedMultipliers),
+  }));
+  const orderedTournaments = sortTournaments(dataState.tournaments);
+  const availableStatuses = orderedMultipliers;
 
   return `
     <section class="section" id="section-tournaments" ${uiState.activeView === 'tournaments' ? '' : 'hidden'} aria-labelledby="tournaments-title">
@@ -756,7 +783,7 @@ function renderTournamentSection(dataState, uiState) {
         <div class="section-heading">
           <div>
             <h3>Turnauslista</h3>
-            <p class="section-subtitle">Listaa voi suodattaa nimen, statuksen, paikkakunnan ja radan perusteella.</p>
+            <p class="section-subtitle">Listaa voi suodattaa nimen, tilan, paikkakunnan ja radan perusteella.</p>
           </div>
         </div>
         <div class="form-grid compact-grid">
@@ -766,7 +793,7 @@ function renderTournamentSection(dataState, uiState) {
               id="tournament-search"
               data-tournament-search
               value="${escapeHtml(uiState.tournamentSearch || '')}"
-              placeholder="Hae nimellä, statuksella, paikkakunnalla tai radalla"
+              placeholder="Hae nimellä, paikkakunnalla tai radalla"
             />
           </div>
           <div class="form-field">
@@ -776,7 +803,7 @@ function renderTournamentSection(dataState, uiState) {
               ${availableStatuses
                 .map(
                   (status) =>
-                    `<option value="${escapeHtml(status)}" ${uiState.tournamentStatusFilter === status ? 'selected' : ''}>${escapeHtml(status)}</option>`,
+                   `<option value="${escapeHtml(status.id)}" ${uiState.tournamentStatusFilter === status.id ? 'selected' : ''}>${escapeHtml(status.name)} (${escapeHtml(status.abbreviation)})</option>`,
                 )
                 .join('')}
             </select>
@@ -786,7 +813,7 @@ function renderTournamentSection(dataState, uiState) {
             <select id="tournament-sort-field" data-tournament-sort-field>
               <option value="displayOrder" ${uiState.tournamentSortField === 'displayOrder' ? 'selected' : ''}>Järjestysnumero</option>
               <option value="name" ${uiState.tournamentSortField === 'name' ? 'selected' : ''}>Turnauksen nimi</option>
-              <option value="status" ${uiState.tournamentSortField === 'status' ? 'selected' : ''}>Tila</option>
+              <option value="multiplierId" ${uiState.tournamentSortField === 'multiplierId' ? 'selected' : ''}>Tila</option>
               <option value="startDate" ${uiState.tournamentSortField === 'startDate' ? 'selected' : ''}>Alkamispäivä</option>
               <option value="endDate" ${uiState.tournamentSortField === 'endDate' ? 'selected' : ''}>Päättymispäivä</option>
               <option value="location" ${uiState.tournamentSortField === 'location' ? 'selected' : ''}>Paikkakunta</option>
@@ -802,16 +829,15 @@ function renderTournamentSection(dataState, uiState) {
         </div>
         ${
           orderedTournaments.length
-            ? visibleTournaments.length
-              ? `
-                <div class="table-wrap">
-                  <table class="table tournaments-table">
-                    <thead>
-                      <tr>
-                        <th>Turnauksen nimi</th>
-                        <th>Tila</th>
-                        <th>Kerroin</th>
-                        <th>PDGA Event ID</th>
+            ? visibleTournamentsWithMultipliers.length
+             ? `
+               <div class="table-wrap">
+                 <table class="table tournaments-table">
+                   <thead>
+                     <tr>
+                       <th>Turnauksen nimi</th>
+                       <th>Tila</th>
+                       <th>PDGA Event ID</th>
                         <th>Alkamispäivä</th>
                         <th>Päättymispäivä</th>
                         <th>Paikkakunta</th>
@@ -820,7 +846,7 @@ function renderTournamentSection(dataState, uiState) {
                       </tr>
                     </thead>
                     <tbody>
-                      ${visibleTournaments
+                      ${visibleTournamentsWithMultipliers
                         .map((tournament) => {
                           const pdgaEventUrl = buildPdgaEventUrl(dataState.settings, tournament);
                           return `
@@ -832,8 +858,7 @@ function renderTournamentSection(dataState, uiState) {
                                     : `<span class="tournament-name-text">${escapeHtml(tournament.name)}</span>`
                                 }
                               </td>
-                              <td data-label="Tila">${escapeHtml(renderValueOrDash(tournament.status))}</td>
-                              <td data-label="Kerroin">${formatNumber(tournament.multiplier)}x</td>
+                              <td data-label="Tila">${escapeHtml(renderValueOrDash(tournament.multiplierAbbreviation))}</td>
                               <td data-label="PDGA Event ID">${escapeHtml(renderValueOrDash(tournament.pdgaEventId))}</td>
                               <td data-label="Alkamispäivä">${formatDate(tournament.startDate)}</td>
                               <td data-label="Päättymispäivä">${formatDate(tournament.endDate)}</td>
@@ -951,6 +976,7 @@ function renderTournamentDialog(dataState, uiState) {
   const editingTournament = dataState.tournaments.find((tournament) => tournament.id === uiState.tournamentFormId) || null;
   const formValues = uiState.tournamentFormDraft || {};
   const fieldErrors = uiState.tournamentFormErrors || {};
+  const orderedMultipliers = sortMultipliers(dataState.multipliers || []);
 
   return `
     <div class="dialog-backdrop" data-tournament-dialog-backdrop>
@@ -1013,12 +1039,16 @@ function renderTournamentDialog(dataState, uiState) {
               ${renderFieldError(fieldErrors, 'displayOrder')}
             </div>
             <div class="form-field">
-              <label for="tournament-multiplier">Kerroin *</label>
-              <select id="tournament-multiplier" name="multiplierKey" required ${getFieldAttributes(fieldErrors, 'multiplierKey')}>
-                <option value="">Valitse kerroin</option>
-                ${renderMultiplierOptions(getTournamentFormValue(formValues, editingTournament, 'multiplierKey'))}
+              <label for="tournament-multiplier-id">Tila *</label>
+              <select id="tournament-multiplier-id" name="multiplierId" required ${getFieldAttributes(fieldErrors, 'multiplierId')}>
+                <option value="">Valitse tila</option>
+                ${renderTournamentMultiplierOptions(
+                  orderedMultipliers,
+                  getTournamentFormValue(formValues, editingTournament, 'multiplierId'),
+                )}
               </select>
-              ${renderFieldError(fieldErrors, 'multiplierKey')}
+              ${renderFieldError(fieldErrors, 'multiplierId')}
+              ${orderedMultipliers.length ? '' : '<span class="help-text">Lisää ensin vähintään yksi tila Kertoimet-välilehdellä.</span>'}
             </div>
             <div class="form-field">
               <label for="tournament-location">Paikkakunta</label>
@@ -1073,10 +1103,6 @@ function renderTournamentDialog(dataState, uiState) {
               <span class="help-text">Syötä vain tunnus. PDGA-linkki muodostetaan keskitetysti asetuksista.</span>
               ${renderFieldError(fieldErrors, 'pdgaEventId')}
             </div>
-            <div class="form-field">
-              <label for="tournament-status">Tila</label>
-              <input id="tournament-status" name="status" value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'status'))}" />
-            </div>
             <div class="form-field full-width">
               <label for="tournament-notes">Kuvaus</label>
               <textarea id="tournament-notes" name="notes">${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'notes'))}</textarea>
@@ -1096,6 +1122,168 @@ function renderTournamentDialog(dataState, uiState) {
                     <p class="section-subtitle">Poisto poistaa myös kaikki turnaukselle tallennetut tulokset. Toimintoa ei voi peruuttaa.</p>
                   </div>
                   <button type="button" class="danger-button" data-delete-tournament="${escapeHtml(editingTournament.id)}">Poista turnaus</button>
+                </div>
+              `
+              : ''
+          }
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+function renderMultipliersSection(dataState, uiState) {
+  const multipliers = sortMultipliers(dataState.multipliers || []);
+
+  return `
+    <section class="section" id="section-multipliers" ${uiState.activeView === 'multipliers' ? '' : 'hidden'} aria-labelledby="multipliers-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="multipliers-title">Kertoimet</h2>
+          <p class="section-subtitle">Hallinnoi turnausten tilat ja pistekertoimet keskitetysti yhdestä paikasta.</p>
+        </div>
+        <button type="button" class="button" data-open-multiplier-dialog>Lisää</button>
+      </div>
+      <article class="panel">
+        ${
+          multipliers.length
+            ? `
+              <div class="table-wrap">
+                <table class="table tournaments-table">
+                  <thead>
+                    <tr>
+                      <th>Järjestysnumero</th>
+                      <th>Nimi</th>
+                      <th>Lyhenne</th>
+                      <th>Kerroin</th>
+                      <th>Muokkaa</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${multipliers
+                      .map(
+                        (multiplier) => `
+                          <tr>
+                            <td data-label="Järjestysnumero">${formatNumber(multiplier.orderNumber)}</td>
+                            <td data-label="Nimi">${escapeHtml(multiplier.name)}</td>
+                            <td data-label="Lyhenne">${escapeHtml(multiplier.abbreviation)}</td>
+                            <td data-label="Kerroin">${formatMultiplier(multiplier.multiplier)}</td>
+                            <td data-label="Muokkaa">
+                              <button type="button" class="secondary-button" data-edit-multiplier="${escapeHtml(multiplier.id)}">Muokkaa</button>
+                            </td>
+                          </tr>
+                        `,
+                      )
+                      .join('')}
+                  </tbody>
+                </table>
+              </div>
+            `
+            : renderEmptyState('Kertoimia ei ole vielä lisätty.')
+        }
+      </article>
+    </section>
+  `;
+}
+
+function getMultiplierFormValue(formValues, editingMultiplier, fieldName, fallback = '') {
+  if (Object.hasOwn(formValues, fieldName)) {
+    return formValues[fieldName];
+  }
+
+  return editingMultiplier?.[fieldName] ?? fallback;
+}
+
+function renderMultiplierDialog(dataState, uiState) {
+  if (!uiState.multiplierDialogOpen) {
+    return '';
+  }
+
+  const editingMultiplier = dataState.multipliers.find((multiplier) => multiplier.id === uiState.multiplierFormId) || null;
+  const formValues = uiState.multiplierFormDraft || {};
+  const fieldErrors = uiState.multiplierFormErrors || {};
+
+  return `
+    <div class="dialog-backdrop" data-multiplier-dialog-backdrop>
+      <div
+        class="dialog-panel"
+        data-multiplier-dialog-panel
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+        aria-labelledby="multiplier-dialog-title"
+      >
+        <div class="section-heading">
+          <div>
+            <h2 id="multiplier-dialog-title">${editingMultiplier ? 'Muokkaa kerrointa' : 'Lisää kerroin'}</h2>
+          </div>
+        </div>
+        <form id="multiplier-form">
+          <input type="hidden" name="id" value="${escapeHtml(editingMultiplier?.id || '')}" />
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="multiplier-order-number">Järjestysnumero *</label>
+              <input
+                id="multiplier-order-number"
+                name="orderNumber"
+                required
+                inputmode="numeric"
+                min="1"
+                step="1"
+                ${getFieldAttributes(fieldErrors, 'orderNumber')}
+                value="${escapeHtml(String(getMultiplierFormValue(formValues, editingMultiplier, 'orderNumber')))}"
+              />
+              ${renderFieldError(fieldErrors, 'orderNumber')}
+            </div>
+            <div class="form-field">
+              <label for="multiplier-name">Nimi *</label>
+              <input
+                id="multiplier-name"
+                name="name"
+                required
+                ${getFieldAttributes(fieldErrors, 'name')}
+                value="${escapeHtml(getMultiplierFormValue(formValues, editingMultiplier, 'name'))}"
+              />
+              ${renderFieldError(fieldErrors, 'name')}
+            </div>
+            <div class="form-field">
+              <label for="multiplier-abbreviation">Lyhenne *</label>
+              <input
+                id="multiplier-abbreviation"
+                name="abbreviation"
+                required
+                ${getFieldAttributes(fieldErrors, 'abbreviation')}
+                value="${escapeHtml(getMultiplierFormValue(formValues, editingMultiplier, 'abbreviation'))}"
+              />
+              ${renderFieldError(fieldErrors, 'abbreviation')}
+            </div>
+            <div class="form-field">
+              <label for="multiplier-value">Kerroin *</label>
+              <input
+                id="multiplier-value"
+                name="multiplier"
+                required
+                inputmode="decimal"
+                ${getFieldAttributes(fieldErrors, 'multiplier')}
+                value="${escapeHtml(String(getMultiplierFormValue(formValues, editingMultiplier, 'multiplier'))).replace('.', ',')}"
+              />
+              ${renderFieldError(fieldErrors, 'multiplier')}
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button">${editingMultiplier ? 'Tallenna muutokset' : 'Lisää kerroin'}</button>
+            <button type="button" class="secondary-button" data-reset-multiplier-form>Tyhjennä lomake</button>
+            <button type="button" class="ghost-button" data-dismiss-multiplier-dialog>Peruuta</button>
+          </div>
+          ${
+            editingMultiplier
+              ? `
+                <div class="danger-zone" aria-labelledby="multiplier-delete-title">
+                  <div>
+                    <h3 id="multiplier-delete-title">Poista kerroin</h3>
+                    <p class="section-subtitle">Poistaminen vaatii aina erillisen vahvistuksen.</p>
+                  </div>
+                  <button type="button" class="danger-button" data-delete-multiplier="${escapeHtml(editingMultiplier.id)}">Poista</button>
                 </div>
               `
               : ''
@@ -1421,6 +1609,35 @@ function renderConfirmationDialog(dataState, uiState) {
     `;
   }
 
+  if (uiState.confirmationDialog.type === 'delete-multiplier') {
+    const multiplier = dataState.multipliers.find((entry) => entry.id === uiState.confirmationDialog.multiplierId);
+    if (!multiplier) {
+      return '';
+    }
+
+    return `
+      <div class="dialog-backdrop" data-close-confirm-dialog>
+        <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
+          <div class="section-heading">
+            <div>
+              <h2 id="confirm-dialog-title">Varoitus: poista kerroin</h2>
+              <div id="confirm-dialog-description" class="section-subtitle">
+                <p>Tämä on pysyvä poistotoiminto.</p>
+                <p>Olet poistamassa kertoimen.</p>
+                <p>Tätä toimintoa ei voi perua.</p>
+                <p>Haluatko varmasti jatkaa?</p>
+              </div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="danger-button" data-confirm-delete-multiplier="${escapeHtml(multiplier.id)}">Poista</button>
+            <button type="button" class="secondary-button" data-cancel-confirm-dialog>Peruuta</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   if (uiState.confirmationDialog.type !== 'delete-tournament') {
     return '';
   }
@@ -1476,6 +1693,7 @@ export function renderApp(root, dataState, uiState) {
         ${renderPlayerSection(dataState, uiState)}
         ${renderTournamentSection(dataState, uiState)}
         ${renderPointsSection(dataState, uiState)}
+        ${renderMultipliersSection(dataState, uiState)}
         ${renderSettingsSection(dataState, uiState)}
       </main>
       <footer class="site-footer">
@@ -1486,6 +1704,7 @@ export function renderApp(root, dataState, uiState) {
       </footer>
       ${renderPlayerDialog(dataState, uiState)}
       ${renderTournamentDialog(dataState, uiState)}
+      ${renderMultiplierDialog(dataState, uiState)}
       ${renderTournamentImportDialog(uiState)}
       ${renderPointsImportDialog(uiState)}
       ${renderConfirmationDialog(dataState, uiState)}
@@ -1618,6 +1837,23 @@ export function bindUi(root, dataState, uiState, handlers) {
     button.addEventListener('click', () => handlers.requestDeleteTournament(button.dataset.deleteTournament));
   });
 
+  root.querySelector('#multiplier-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handlers.submitMultiplier(new FormData(event.currentTarget));
+  });
+
+  root.querySelector('[data-open-multiplier-dialog]')?.addEventListener('click', () => handlers.openMultiplierDialog());
+  root.querySelector('[data-reset-multiplier-form]')?.addEventListener('click', () => handlers.resetMultiplierForm());
+  root.querySelector('[data-dismiss-multiplier-dialog]')?.addEventListener('click', () => handlers.closeMultiplierDialog());
+  root.querySelector('[data-multiplier-dialog-backdrop]')?.addEventListener('click', () => handlers.closeMultiplierDialog());
+  root.querySelector('[data-multiplier-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
+  root.querySelectorAll('[data-edit-multiplier]').forEach((button) => {
+    button.addEventListener('click', () => handlers.editMultiplier(button.dataset.editMultiplier));
+  });
+  root.querySelectorAll('[data-delete-multiplier]').forEach((button) => {
+    button.addEventListener('click', () => handlers.requestDeleteMultiplier(button.dataset.deleteMultiplier));
+  });
+
   root.querySelector('#points-form')?.addEventListener('submit', (event) => {
     event.preventDefault();
     handlers.submitPoints(new FormData(event.currentTarget));
@@ -1662,6 +1898,7 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-confirm-delete-player]')?.addEventListener('click', () => handlers.confirmDeletePlayer());
   root.querySelector('[data-confirm-delete-tournament]')?.addEventListener('click', () => handlers.confirmDeleteTournament());
   root.querySelector('[data-confirm-delete-all-tournaments]')?.addEventListener('click', () => handlers.confirmDeleteAllTournaments());
+  root.querySelector('[data-confirm-delete-multiplier]')?.addEventListener('click', () => handlers.confirmDeleteMultiplier());
   root.querySelector('[data-confirm-delete-points-division]')?.addEventListener('click', () => handlers.confirmDeletePointsDivision());
 
   if (root.__dialogKeydownHandler) {
@@ -1671,6 +1908,7 @@ export function bindUi(root, dataState, uiState, handlers) {
 
   if (
     uiState.tournamentDialogOpen ||
+    uiState.multiplierDialogOpen ||
     uiState.playerDialogOpen ||
     uiState.tournamentImportDialogOpen ||
     uiState.pointsImportDialogOpen ||
@@ -1695,6 +1933,10 @@ export function bindUi(root, dataState, uiState, handlers) {
           handlers.closePlayerDialog();
           return;
         }
+        if (uiState.multiplierDialogOpen) {
+          handlers.closeMultiplierDialog();
+          return;
+        }
         handlers.closeTournamentDialog();
         return;
       }
@@ -1703,6 +1945,7 @@ export function bindUi(root, dataState, uiState, handlers) {
         !uiState.confirmationDialog &&
         !uiState.playerDialogOpen &&
         !uiState.tournamentDialogOpen &&
+        !uiState.multiplierDialogOpen &&
         !uiState.tournamentImportDialogOpen &&
         !uiState.pointsImportDialogOpen
       ) {
@@ -1715,6 +1958,8 @@ export function bindUi(root, dataState, uiState, handlers) {
           ? root.querySelector('[data-tournament-import-dialog-panel]')
         : uiState.pointsImportDialogOpen
           ? root.querySelector('[data-points-import-dialog-panel]')
+        : uiState.multiplierDialogOpen
+          ? root.querySelector('[data-multiplier-dialog-panel]')
         : uiState.playerDialogOpen
           ? root.querySelector('[data-player-dialog-panel]')
           : root.querySelector('[data-tournament-dialog-panel]');
@@ -1728,6 +1973,11 @@ export function bindUi(root, dataState, uiState, handlers) {
     uiState.tournamentFormFocusTarget = '';
   } else if (uiState.tournamentDialogOpen) {
     root.querySelector('[data-tournament-dialog-panel]')?.focus();
+  } else if (uiState.multiplierDialogOpen && uiState.multiplierFormFocusTarget) {
+    root.querySelector(getMultiplierFieldSelector(uiState.multiplierFormFocusTarget))?.focus();
+    uiState.multiplierFormFocusTarget = '';
+  } else if (uiState.multiplierDialogOpen) {
+    root.querySelector('[data-multiplier-dialog-panel]')?.focus();
   } else if (uiState.tournamentImportDialogOpen && uiState.tournamentImportFocusTarget) {
     root.querySelector(getTournamentImportFieldSelector(uiState.tournamentImportFocusTarget))?.focus();
     uiState.tournamentImportFocusTarget = '';
