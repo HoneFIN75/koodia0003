@@ -1826,6 +1826,48 @@ function renderHelpSection(uiState) {
   `;
 }
 
+function renderSecuritySettingsPanel(uiState) {
+  const fieldErrors = uiState.sitePasswordFormError ? { sitePassword: uiState.sitePasswordFormError } : {};
+
+  return `
+      <div class="two-column security-settings">
+        <form id="site-password-form" class="panel" aria-labelledby="security-settings-title" novalidate>
+          <h3 id="security-settings-title">Turvallisuus</h3>
+          <div class="form-grid">
+            <div class="form-field full-width">
+              <label for="settings-site-password">Sivuston salasana *</label>
+              <input
+                id="settings-site-password"
+                name="sitePassword"
+                type="password"
+                autocomplete="new-password"
+                minlength="8"
+                maxlength="200"
+                required
+                ${fieldErrors.sitePassword ? 'aria-invalid="true"' : ''}
+                aria-describedby="settings-site-password-help${fieldErrors.sitePassword ? ' sitePassword-error' : ''}"
+              />
+              <span class="help-text" id="settings-site-password-help">Syötä uusi jaettu salasana (vähintään 8 merkkiä). Nykyistä salasanaa ei näytetä.</span>
+              ${renderFieldError(fieldErrors, 'sitePassword')}
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button">Tallenna salasana</button>
+          </div>
+        </form>
+        <article class="panel">
+          <h3>Miten salasanasuojaus toimii?</h3>
+          <ul>
+            <li>Sovellukseen kirjaudutaan yhteisellä sivuston salasanalla.</li>
+            <li>Salasana tarkistetaan palvelimella, eikä sitä tallenneta selaimeen.</li>
+            <li>Uusi salasana otetaan käyttöön heti seuraavissa kirjautumisissa. Jo kirjautuneet käyttäjät pysyvät kirjautuneina.</li>
+            <li>Kirjaudu ulos -painike poistaa kirjautumisen tästä selaimesta.</li>
+          </ul>
+        </article>
+      </div>
+  `;
+}
+
 function renderSettingsSection(dataState, uiState) {
   const formValues = {
     ...DEFAULT_PDGA_SETTINGS,
@@ -1908,6 +1950,7 @@ function renderSettingsSection(dataState, uiState) {
           </ul>
         </article>
       </div>
+      ${renderSecuritySettingsPanel(uiState)}
     </section>
   `;
 }
@@ -2405,6 +2448,7 @@ export function renderApp(root, dataState, uiState) {
           </div>
           <button class="nav-toggle" type="button" data-toggle-nav aria-expanded="${uiState.navOpen}" aria-controls="main-nav">Valikko</button>
           ${renderNav(uiState.activeView)}
+          <button class="secondary-button logout-button" type="button" data-logout>Kirjaudu ulos</button>
         </div>
       </header>
       <main id="main-content" class="main-inner" tabindex="-1">
@@ -2463,6 +2507,13 @@ export function bindUi(root, dataState, uiState, handlers) {
   });
 
   root.querySelector('[data-reset-settings-form]')?.addEventListener('click', () => handlers.resetSettingsForm());
+
+  root.querySelector('#site-password-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handlers.submitSitePassword(new FormData(event.currentTarget));
+  });
+
+  root.querySelector('[data-logout]')?.addEventListener('click', () => handlers.logout());
 
   root.querySelectorAll('[data-ranking-filter]').forEach((button) => {
     button.addEventListener('click', () => handlers.setRankingFilter(button.dataset.rankingFilter));

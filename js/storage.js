@@ -1,5 +1,6 @@
 import { DEFAULT_TOURNAMENT_DISPLAY_ORDER } from './tournaments.js';
 import { DEFAULT_PDGA_SETTINGS, extractPdgaEventId, extractPdgaPlayerId, sanitizePdgaSettings } from './pdga.js';
+import { AuthRequiredError, getAuthHeaders } from './auth.js';
 import { createDefaultMultipliers, ensureLegacyMultiplier, sanitizeMultipliers } from './multipliers.js';
 
 export const STORAGE_VERSION = 3;
@@ -250,11 +251,16 @@ export async function loadState({
     response = await fetchImpl(getStateApiUrl(moduleUrl), {
       headers: {
         Accept: 'application/json',
+        ...getAuthHeaders(),
       },
       cache: 'no-store',
     });
   } catch {
     throw new Error('Tietojen lataaminen epäonnistui palvelimelta. Yritä uudelleen hetken kuluttua.');
+  }
+
+  if (response.status === 401) {
+    throw new AuthRequiredError();
   }
 
   if (!response.ok) {
@@ -288,11 +294,16 @@ export async function saveState(
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
+        ...getAuthHeaders(),
       },
       body: JSON.stringify(sanitized),
     });
   } catch {
     throw new Error('Tallentaminen epäonnistui palvelimelle. Yritä uudelleen hetken kuluttua.');
+  }
+
+  if (response.status === 401) {
+    throw new AuthRequiredError();
   }
 
   if (!response.ok) {

@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from './app.mjs';
 import { createJsonFileStorage } from './json-file-storage.mjs';
+import { createSiteAuth } from './site-auth.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,7 +17,8 @@ export function createApplication({
   jsondbDir = resolveFromRoot(process.env.JSONDB_DIR, 'jsondb'),
 } = {}) {
   const storage = createJsonFileStorage({ directoryPath: jsondbDir });
-  return createServer({ publicDir, storage });
+  const siteAuth = createSiteAuth({ directoryPath: jsondbDir });
+  return createServer({ publicDir, storage, siteAuth });
 }
 
 if (process.argv[1] === __filename) {

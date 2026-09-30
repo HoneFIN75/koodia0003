@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createEmptyState, sanitizeState } from '../js/storage.js';
+import { pickSiteAuthSettings, readSettingsFile, withSettingsFileLock } from './site-auth.mjs';
 
 const STORAGE_FILES = {
   snapshot: 'state.json',
@@ -92,7 +93,10 @@ export class JsonFileStorage {
       writeJsonAtomically(this.#resolvePath(STORAGE_FILES.resultCards), state.resultCards),
       writeJsonAtomically(this.#resolvePath(STORAGE_FILES.scoreTables), state.pointsTable),
       writeJsonAtomically(this.#resolvePath(STORAGE_FILES.multipliers), state.multipliers),
-      writeJsonAtomically(this.#resolvePath(STORAGE_FILES.settings), state.settings),
+      withSettingsFileLock(this.directoryPath, async () => {
+        const siteAuthSettings = pickSiteAuthSettings(await readSettingsFile(this.directoryPath));
+        await writeJsonAtomically(this.#resolvePath(STORAGE_FILES.settings), { ...state.settings, ...siteAuthSettings });
+      }),
     ]);
   }
 }
