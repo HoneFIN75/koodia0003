@@ -1723,3 +1723,18 @@ test('renderApp pyöristää näytettävät pisteet asetuksen mukaan suomalaises
 
   assert.equal(dataState.resultCards[0].results[0].calculatedPoints, 123.45678);
 });
+
+test('renderApp näyttää uloskirjautumisen ja Turvallisuus-osion sivuston salasanalle', () => {
+  const root = createRootStub();
+  renderApp(root, createEmptyState(), createUiState({ activeView: 'settings' }));
+
+  assert.match(root.innerHTML, /data-logout>Kirjaudu ulos<\/button>/);
+  assert.match(root.innerHTML, /<h3 id="security-settings-title">Turvallisuus<\/h3>/);
+  assert.match(root.innerHTML, /<label for="settings-site-password">Sivuston salasana \*<\/label>/);
+  assert.match(root.innerHTML, /id="settings-site-password"[^>]*type="password"/s);
+  assert.match(root.innerHTML, /Tallenna salasana/);
+
+  renderApp(root, createEmptyState(), createUiState({ activeView: 'settings', sitePasswordFormError: 'Liian lyhyt.' }));
+  assert.match(root.innerHTML, /id="sitePassword-error" role="alert">Liian lyhyt\.</);
+  assert.match(root.innerHTML, /aria-describedby="settings-site-password-help sitePassword-error"/);
+});

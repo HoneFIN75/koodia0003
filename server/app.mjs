@@ -2,6 +2,11 @@ import http from 'node:http';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  SITE_PASSWORD_MAX_LENGTH,
+  SITE_PASSWORD_MIN_LENGTH,
+  validateSitePasswordLength,
+} from './site-auth.mjs';
 
 const MIME_TYPES = {
   '.css': 'text/css; charset=utf-8',
@@ -68,6 +73,67 @@ function defaultAuthorizeWriteRequest(request) {
   }
 
   return false;
+}
+
+async function isAuthenticatedRequest(request, siteAuth) {
+  if (!siteAuth) {
+    return true;
+  }
+
+  return siteAuth.isValidToken(String(request.headers['x-sfl-auth-token'] || '').trim());
+}
+
+function sendAuthRequired(response) {
+  sendJson(response, 401, { message: 'Kirjautuminen vaaditaan. Kirjaudu sisään uudelleen.' });
+}
+
+function readPasswordFromPayload(payload) {
+  return payload && typeof payload === 'object' && typeof payload.password === 'string' ? payload.password : '';
+}
+
+async function handleLoginRequest(request, response, siteAuth) {
+  if (request.method !== 'POST') {
+    sendJson(response, 405, { message: 'Metodia ei tueta.' }, { Allow: 'POST' });
+    return;
+  }
+
+  const password = readPasswordFromPayload(await readRequestJson(request));
+  if (!password || !(await siteAuth.verifyPassword(password))) {
+    sendJson(response, 401, { message: 'Väärä salasana. Yritä uudelleen.' });
+    return;
+  }
+
+  sendJson(response, 200, { token: await siteAuth.createToken() });
+}
+
+async function handleSitePasswordRequest(request, response, siteAuth, authorizeWriteRequest) {
+  if (request.method !== 'PUT') {
+    sendJson(response, 405, { message: 'Metodia ei tueta.' }, { Allow: 'PUT' });
+    return;
+  }
+
+  if (!(await isAuthenticatedRequest(request, siteAuth))) {
+    sendAuthRequired(response);
+    return;
+  }
+
+  if (!authorizeWriteRequest(request)) {
+    sendJson(response, 403, {
+      message: 'Tallennus on sallittu vain paikallisen palvelimen kautta tai suojatulla välityspalvelimella.',
+    });
+    return;
+  }
+
+  const password = readPasswordFromPayload(await readRequestJson(request));
+  if (!validateSitePasswordLength(password)) {
+    sendJson(response, 400, {
+      message: `Salasanan pituuden pitää olla ${SITE_PASSWORD_MIN_LENGTH}–${SITE_PASSWORD_MAX_LENGTH} merkkiä.`,
+    });
+    return;
+  }
+
+  await siteAuth.setPassword(password);
+  sendJson(response, 200, { message: 'Sivuston salasana tallennettiin.' });
 }
 
 function validateStatePayload(payload) {
@@ -152,7 +218,12 @@ async function serveStaticFile(request, response, publicDir, pathname) {
   }
 }
 
-export function createRequestHandler({ storage, publicDir, authorizeWriteRequest = defaultAuthorizeWriteRequest }) {
+export function createRequestHandler({
+  storage,
+  publicDir,
+  authorizeWriteRequest = defaultAuthorizeWriteRequest,
+  siteAuth = null,
+}) {
   return async function requestHandler(request, response) {
     try {
       const url = new URL(request.url || '/', 'http://127.0.0.1');
@@ -162,7 +233,22 @@ export function createRequestHandler({ storage, publicDir, authorizeWriteRequest
         return;
       }
 
+      if (siteAuth && url.pathname === '/api/login') {
+        await handleLoginRequest(request, response, siteAuth);
+        return;
+      }
+
+      if (siteAuth && url.pathname === '/api/site-password') {
+        await handleSitePasswordRequest(request, response, siteAuth, authorizeWriteRequest);
+        return;
+      }
+
       if (url.pathname === '/api/state') {
+        if ((request.method === 'GET' || request.method === 'PUT') && !(await isAuthenticatedRequest(request, siteAuth))) {
+          sendAuthRequired(response);
+          return;
+        }
+
         if (request.method === 'GET') {
           sendJson(response, 200, await storage.loadState());
           return;

@@ -36,6 +36,15 @@ import {
   parsePointsTableCsv,
 } from './scoring.js';
 import { renderApp, bindUi } from './ui.js';
+import {
+  AuthRequiredError,
+  changeSitePassword,
+  isAuthenticated,
+  login,
+  logout,
+  validateSitePasswordInput,
+} from './auth.js';
+import { renderLoginView, bindLoginView } from './login.js';
 import { loadDeploymentMetadata } from './version.js';
 
 const root = document.querySelector('#app');
@@ -100,8 +109,24 @@ let uiState = {
   feedback: null,
   settingsFormErrors: {},
   settingsFormDraft: null,
+  sitePasswordFormError: '',
   deploymentInfo: null,
 };
+const INITIAL_UI_STATE = JSON.parse(JSON.stringify(uiState));
+let authState = {
+  authenticated: isAuthenticated(),
+  pending: false,
+  errorMessage: '',
+  infoMessage: '',
+};
+
+function showLoginView(infoMessage = '') {
+  logout();
+  dataState = createEmptyState();
+  uiState = { ...JSON.parse(JSON.stringify(INITIAL_UI_STATE)), deploymentInfo: uiState.deploymentInfo };
+  authState = { authenticated: false, pending: false, errorMessage: '', infoMessage };
+  render();
+}
 
 function clearPlayerDialogState() {
   uiState.playerDialogOpen = false;
@@ -146,6 +171,11 @@ async function persistAndRender(successMessage = '') {
 }
 
 function setError(error) {
+  if (error instanceof AuthRequiredError) {
+    showLoginView('Kirjautumisesi on vanhentunut. Kirjaudu sisään uudelleen.');
+    return;
+  }
+
   uiState.feedback = { type: 'error', text: error instanceof Error ? error.message : 'Tuntematon virhe.' };
   render();
 }
@@ -215,11 +245,70 @@ function closeResultCardPlayersDialogState() {
 }
 
 function render() {
+  if (!authState.authenticated) {
+    renderLoginView(root, authState);
+    bindLoginView(root, { onSubmit: (password) => handlers.submitLogin(password) });
+    return;
+  }
+
   renderApp(root, dataState, uiState);
   bindUi(root, dataState, uiState, handlers);
 }
 
 const handlers = {
+  async submitLogin(password) {
+    if (authState.pending) {
+      return;
+    }
+
+    authState = { ...authState, pending: true, errorMessage: '', infoMessage: '' };
+    render();
+
+    try {
+      await login(password);
+      authState = { authenticated: true, pending: false, errorMessage: '', infoMessage: '' };
+      initializeDataState();
+    } catch (error) {
+      authState = {
+        ...authState,
+        pending: false,
+        errorMessage: error instanceof Error ? error.message : 'Kirjautuminen epäonnistui.',
+      };
+      render();
+    }
+  },
+  logout() {
+    showLoginView();
+  },
+  async submitSitePassword(formData) {
+    const password = String(formData.get('sitePassword') || '');
+    const validationError = validateSitePasswordInput(password);
+    if (validationError) {
+      uiState.sitePasswordFormError = validationError;
+      uiState.feedback = { type: 'error', text: 'Korjaa salasanan tiedot ja yritä uudelleen.' };
+      render();
+      return;
+    }
+
+    try {
+      await changeSitePassword(password);
+      uiState.sitePasswordFormError = '';
+      uiState.feedback = {
+        type: 'success',
+        text: 'Sivuston salasana tallennettiin. Uusi salasana on käytössä seuraavissa kirjautumisissa.',
+      };
+      render();
+    } catch (error) {
+      if (error instanceof AuthRequiredError) {
+        setError(error);
+        return;
+      }
+
+      uiState.sitePasswordFormError = error instanceof Error ? error.message : 'Salasanan tallentaminen epäonnistui.';
+      uiState.feedback = { type: 'error', text: uiState.sitePasswordFormError };
+      render();
+    }
+  },
   toggleNav() {
     uiState.navOpen = !uiState.navOpen;
     render();
@@ -1227,6 +1316,11 @@ function initializeDataState() {
       dataState = await loadState();
       uiState.playersStatus = 'ready';
     } catch (error) {
+      if (error instanceof AuthRequiredError) {
+        setError(error);
+        return;
+      }
+
       dataState = createEmptyState();
       uiState.playersStatus = 'error';
       uiState.playersError = error instanceof Error ? error.message : 'Pelaajien lataaminen epäonnistui.';
@@ -1236,13 +1330,16 @@ function initializeDataState() {
 }
 
 window.addEventListener('resize', () => {
-  if (window.innerWidth > 780 && !uiState.navOpen) {
+  if (authState.authenticated && window.innerWidth > 780 && !uiState.navOpen) {
     render();
   }
 });
 
-render();
-initializeDataState();
+if (authState.authenticated) {
+  initializeDataState();
+} else {
+  render();
+}
 
 loadDeploymentMetadata().then((deploymentInfo) => {
   if (!deploymentInfo) {
@@ -1250,5 +1347,7 @@ loadDeploymentMetadata().then((deploymentInfo) => {
   }
 
   uiState.deploymentInfo = deploymentInfo;
-  render();
+  if (authState.authenticated) {
+    render();
+  }
 });

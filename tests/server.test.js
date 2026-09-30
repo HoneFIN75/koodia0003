@@ -5,6 +5,7 @@ import path from 'node:path';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createJsonFileStorage } from '../server/json-file-storage.mjs';
 import { createServer } from '../server/app.mjs';
+import { createSiteAuth, DEFAULT_SITE_PASSWORD } from '../server/site-auth.mjs';
 
 async function createTempDir() {
   return mkdtemp(path.join(os.tmpdir(), 'sfl-jsondb-'));
@@ -255,6 +256,76 @@ test('server exposes only published frontend assets and rejects invalid URL enco
     });
     assert.equal(methodResponse.status, 405);
     assert.equal(methodResponse.headers.get('allow'), 'GET, HEAD');
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    await rm(publicDir, { recursive: true, force: true });
+    await rm(jsondbDir, { recursive: true, force: true });
+  }
+});
+
+test('API protects state with the shared site password when site auth is enabled', async () => {
+  const publicDir = await createTempDir();
+  const jsondbDir = await createTempDir();
+  const storage = createJsonFileStorage({ directoryPath: jsondbDir });
+  const siteAuth = createSiteAuth({ directoryPath: jsondbDir });
+  const server = createServer({ publicDir, storage, siteAuth });
+
+  async function login(baseUrl, password) {
+    return fetch(`${baseUrl}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+  }
+
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+    assert.equal((await fetch(`${baseUrl}/api/state`)).status, 401);
+
+    const wrongResponse = await login(baseUrl, 'väärä-salasana');
+    assert.equal(wrongResponse.status, 401);
+    assert.match(await wrongResponse.text(), /Väärä salasana\. Yritä uudelleen\./);
+
+    const loginResponse = await login(baseUrl, DEFAULT_SITE_PASSWORD);
+    assert.equal(loginResponse.status, 200);
+    const { token } = await loginResponse.json();
+
+    const stateResponse = await fetch(`${baseUrl}/api/state`, { headers: { 'X-SFL-Auth-Token': token } });
+    assert.equal(stateResponse.status, 200);
+    const state = await stateResponse.json();
+    assert.equal(Object.hasOwn(state.settings, 'sitePasswordHash'), false);
+
+    const saveResponse = await fetch(`${baseUrl}/api/state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-SFL-Auth-Token': token },
+      body: JSON.stringify(state),
+    });
+    assert.equal(saveResponse.status, 200);
+
+    const settingsFile = JSON.parse(await readFile(path.join(jsondbDir, 'settings.json'), 'utf8'));
+    assert.match(settingsFile.sitePasswordHash, /^scrypt\$/);
+    assert.ok(settingsFile.authSecret);
+    assert.equal(settingsFile.pointDecimals, 2);
+
+    const shortResponse = await fetch(`${baseUrl}/api/site-password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-SFL-Auth-Token': token },
+      body: JSON.stringify({ password: 'lyhyt' }),
+    });
+    assert.equal(shortResponse.status, 400);
+
+    const changeResponse = await fetch(`${baseUrl}/api/site-password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-SFL-Auth-Token': token },
+      body: JSON.stringify({ password: 'uusi-salasana-123' }),
+    });
+    assert.equal(changeResponse.status, 200);
+
+    assert.equal((await login(baseUrl, DEFAULT_SITE_PASSWORD)).status, 401);
+    assert.equal((await login(baseUrl, 'uusi-salasana-123')).status, 200);
+    assert.equal((await fetch(`${baseUrl}/api/state`, { headers: { 'X-SFL-Auth-Token': token } })).status, 200);
   } finally {
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     await rm(publicDir, { recursive: true, force: true });
