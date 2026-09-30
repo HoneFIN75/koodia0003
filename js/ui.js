@@ -5,6 +5,7 @@ import { listPointsTableEntries, parsePlacement } from './scoring.js';
 import { buildRanking, getTopRanking } from './ranking.js';
 import { findMultiplier, formatMultiplier, sortMultipliers } from './multipliers.js';
 import { sortTableRows } from './table-sorting.js';
+import { HELP_SECTIONS } from './helpData.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -294,6 +295,7 @@ function renderNav(activeView) {
     { id: 'tournaments', label: 'Turnaukset' },
     { id: 'points', label: 'Pistetaulukot' },
     { id: 'multipliers', label: 'Kertoimet' },
+    { id: 'help', label: 'Ohjeet' },
     { id: 'settings', label: 'Asetukset' },
   ];
 
@@ -313,6 +315,15 @@ function renderNav(activeView) {
           .join('')}
       </ul>
     </nav>
+  `;
+}
+
+function renderHelpHint(sectionTitle, { showLink = true } = {}) {
+  return `
+    <p class="help-hint">
+      <span>Tarkemmat ohjeet löytyvät Ohjeet-osion kohdasta ${escapeHtml(sectionTitle)}.</span>
+      ${showLink ? '<button type="button" class="secondary-button" data-view-target="help">Avaa Ohjeet</button>' : ''}
+    </p>
   `;
 }
 
@@ -707,25 +718,7 @@ function renderPlayerSection(dataState, uiState) {
             <p class="section-subtitle">Tuo uusia pelaajia massana valittuun divisioonaan.</p>
           </div>
         </div>
-        <p>
-          Voit tuoda pelaajia CSV-tiedostosta.<br />
-          Sarake-erottimena tulee käyttää puolipistettä (;).
-        </p>
-        <p>
-          Pakollinen tieto:
-        </p>
-        <ul>
-          <li>PDGA ID</li>
-        </ul>
-        <p>
-          Muut kentät voivat olla tyhjiä.
-        </p>
-        <p>
-          Esimerkki:
-        </p>
-        <pre>Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking
-Matti;Meikäläinen;12345;950;1250
-Maija;Mallikas;54321;890;2450</pre>
+        ${renderHelpHint('Pelaajat')}
         <form id="players-import-form">
           <div class="form-grid compact-grid">
             <div class="form-field">
@@ -1038,22 +1031,7 @@ function renderTournamentSection(dataState, uiState) {
           <button type="button" class="button" data-open-tournament-dialog>Lisää turnaus</button>
         </div>
       </div>
-      <article class="panel">
-        <h3>CSV-tuonnin ohje</h3>
-        <p>
-          Muoto:
-        </p>
-        <pre>Järjestysnumero;PDGA Event ID;Turnauksen nimi
-
-1;123456;European Open 2027
-2;123457;Finnish Nationals 2027</pre>
-        <ul>
-          <li>Erotin on puolipiste (;).</li>
-          <li>UTF-8-koodaus on suositeltu (å, ä, ö).</li>
-          <li>Otsikkorivi on sallittu.</li>
-          <li>Pakolliset kentät: Järjestysnumero, PDGA Event ID ja Turnauksen nimi.</li>
-        </ul>
-      </article>
+      ${renderHelpHint('Turnaukset')}
       <article class="panel danger-zone" aria-labelledby="delete-all-tournaments-title">
         <div>
           <h3 id="delete-all-tournaments-title">Vaaravyöhyke: poista kaikki turnaukset</h3>
@@ -1247,15 +1225,7 @@ function renderTournamentImportDialog(uiState) {
           <article class="panel import-instructions" aria-label="CSV-tuonnin ohjeet">
             <h3>Tuonnin tuettu muoto</h3>
             <p><code>Järjestysnumero;PDGA Event ID;Turnauksen nimi</code></p>
-            <pre>1;123456;European Open 2027
-2;123457;Finnish Nationals 2027
-3;123458;Tyyni 2027</pre>
-            <ul>
-              <li>Erotin on puolipiste (;).</li>
-              <li>Otsikkorivi on sallittu.</li>
-              <li>UTF-8-koodaus on suositeltu (å, ä, ö).</li>
-              <li>Pakolliset kentät: Järjestysnumero, PDGA Event ID ja Turnauksen nimi.</li>
-            </ul>
+            ${renderHelpHint('Turnaukset', { showLink: false })}
           </article>
           <div class="form-grid">
             <div class="form-field full-width">
@@ -1662,6 +1632,61 @@ function renderMultiplierDialog(dataState, uiState) {
   `;
 }
 
+function renderHelpTopicCount(topicCount) {
+  return `${formatNumber(topicCount)} ${topicCount === 1 ? 'ohje' : 'ohjetta'}`;
+}
+
+function renderHelpTopic(sectionId, topic, topicIndex) {
+  const topicId = `help-topic-${escapeHtml(sectionId)}-${topicIndex + 1}`;
+
+  return `
+    <details class="help-topic">
+      <summary class="help-topic-summary">
+        <span class="help-marker" aria-hidden="true"></span>
+        <span class="help-topic-title">${escapeHtml(topic.title)}</span>
+      </summary>
+      <div class="help-topic-content" id="${topicId}">${escapeHtml(topic.content)}</div>
+    </details>
+  `;
+}
+
+function renderHelpSection(uiState) {
+  return `
+    <section class="section" id="section-help" ${uiState.activeView === 'help' ? '' : 'hidden'} aria-labelledby="help-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="help-title">Ohjeet</h2>
+          <p class="section-subtitle">Kaikki sovelluksen ohjeet on koottu tähän osioon. Avaa ensin osio ja sitten haluamasi ohje.</p>
+        </div>
+      </div>
+      ${
+        HELP_SECTIONS.length
+          ? `<div class="help-sections">
+              ${HELP_SECTIONS.map(
+                (section) => `
+                  <details class="help-section" data-help-section="${escapeHtml(section.id)}">
+                    <summary class="help-section-summary">
+                      <span class="help-marker" aria-hidden="true"></span>
+                      <span class="help-section-title">${escapeHtml(section.title)}</span>
+                      <span class="help-topic-count">${renderHelpTopicCount(section.topics.length)}</span>
+                    </summary>
+                    ${
+                      section.topics.length
+                        ? `<div class="help-topics">
+                            ${section.topics.map((topic, topicIndex) => renderHelpTopic(section.id, topic, topicIndex)).join('')}
+                          </div>`
+                        : renderEmptyState('Tälle osiolle ei ole vielä lisätty ohjeita.')
+                    }
+                  </details>
+                `,
+              ).join('')}
+            </div>`
+          : renderEmptyState('Ohjeita ei ole vielä lisätty.')
+      }
+    </section>
+  `;
+}
+
 function renderSettingsSection(dataState, uiState) {
   const formValues = {
     ...DEFAULT_PDGA_SETTINGS,
@@ -1753,56 +1778,33 @@ function renderPointsSection(dataState, uiState) {
           <p class="section-subtitle">Pisteet tallennetaan keskitettyyn pointsTable-rakenteeseen sarjan ja sijoituksen perusteella.</p>
         </div>
       </div>
-      <article class="panel">
-        <h3>CSV-tuonnin ohje</h3>
-        <ul>
-          <li>Muoto: <code>Sijoitus;Pisteet</code></li>
-          <li>Esimerkit: <code>1;100</code>, <code>2;85</code>, <code>3;75</code>, <code>4;10,5</code></li>
-          <li>Erotin on puolipiste (;).</li>
-          <li>Otsikkorivi on sallittu.</li>
-          <li>UTF-8-koodaus on suositeltu.</li>
-          <li>Sijoitusten tulee alkaa 1:stä ja edetä peräkkäin ilman aukkoja.</li>
-        </ul>
-      </article>
-      <article class="message warning">
-        Pistetaulukot on alustettu tyhjiksi. Pisteitä ei oleteta eikä kovakoodata käyttöliittymään.
-      </article>
-      <div class="two-column">
-        <form id="points-form" class="panel">
-          <h3>${editingPoint.editingKey ? 'Muokkaa pistetaulukon riviä' : 'Lisää pistetaulukon rivi'}</h3>
-          <input type="hidden" name="editingKey" value="${escapeHtml(editingPoint.editingKey || '')}" />
-          <div class="form-grid">
-            <div class="form-field">
-              <label for="points-division">Sarja *</label>
-              <select id="points-division" name="division" required>
-                ${DIVISIONS.map(
-                  (division) => `<option value="${division}" ${editingPoint.division === division ? 'selected' : ''}>${division}</option>`,
-                ).join('')}
-              </select>
-            </div>
-            <div class="form-field">
-              <label for="points-place">Sijoitus *</label>
-              <input id="points-place" name="place" required inputmode="numeric" min="1" value="${escapeHtml(editingPoint.place || '')}" />
-            </div>
-            <div class="form-field full-width">
-              <label for="points-base-points">1x-peruspisteet *</label>
-              <input id="points-base-points" name="basePoints" required inputmode="decimal" min="0" step="0.1" value="${escapeHtml(editingPoint.basePoints || '')}" />
-            </div>
+      ${renderHelpHint('Pistetaulukot')}
+      <form id="points-form" class="panel">
+        <h3>${editingPoint.editingKey ? 'Muokkaa pistetaulukon riviä' : 'Lisää pistetaulukon rivi'}</h3>
+        <input type="hidden" name="editingKey" value="${escapeHtml(editingPoint.editingKey || '')}" />
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="points-division">Sarja *</label>
+            <select id="points-division" name="division" required>
+              ${DIVISIONS.map(
+                (division) => `<option value="${division}" ${editingPoint.division === division ? 'selected' : ''}>${division}</option>`,
+              ).join('')}
+            </select>
           </div>
-          <div class="form-actions">
-            <button type="submit" class="button">${editingPoint.editingKey ? 'Tallenna rivi' : 'Lisää rivi'}</button>
-            <button type="button" class="secondary-button" data-reset-points-form>Tyhjennä lomake</button>
+          <div class="form-field">
+            <label for="points-place">Sijoitus *</label>
+            <input id="points-place" name="place" required inputmode="numeric" min="1" value="${escapeHtml(editingPoint.place || '')}" />
           </div>
-        </form>
-        <div class="panel">
-          <h3>Miksi keskitetty pistetaulukko?</h3>
-          <ul>
-            <li>UI-komponentit eivät sisällä kovakoodattuja pistearvoja.</li>
-            <li>Tulokselle tallennetaan käytetyt snapshotit, jotta historiallinen laskenta säilyy.</li>
-            <li>Pistetaulukon voi myöhemmin korvata API- tai tietokantaratkaisulla.</li>
-          </ul>
+          <div class="form-field full-width">
+            <label for="points-base-points">1x-peruspisteet *</label>
+            <input id="points-base-points" name="basePoints" required inputmode="decimal" min="0" step="0.1" value="${escapeHtml(editingPoint.basePoints || '')}" />
+          </div>
         </div>
-      </div>
+        <div class="form-actions">
+          <button type="submit" class="button">${editingPoint.editingKey ? 'Tallenna rivi' : 'Lisää rivi'}</button>
+          <button type="button" class="secondary-button" data-reset-points-form>Tyhjennä lomake</button>
+        </div>
+      </form>
       <div class="two-column">
         ${['MPO', 'FPO']
           .map((division) => {
@@ -2269,6 +2271,7 @@ export function renderApp(root, dataState, uiState) {
         ${renderTournamentSection(dataState, uiState)}
         ${renderPointsSection(dataState, uiState)}
         ${renderMultipliersSection(dataState, uiState)}
+        ${renderHelpSection(uiState)}
         ${renderSettingsSection(dataState, uiState)}
       </main>
       <footer class="site-footer">
