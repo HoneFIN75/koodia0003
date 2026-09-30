@@ -1,7 +1,7 @@
 import { DIVISIONS, getVisiblePlayers } from './players.js';
 import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, sortTournaments, filterAndSortTournaments } from './tournaments.js';
 import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS, POINT_DECIMALS_OPTIONS, sanitizePointDecimals } from './pdga.js';
-import { listPointsTableEntries, parsePlacement } from './scoring.js';
+import { calculateResultCardPoints, getResultCardMultiplierId, listPointsTableEntries, parsePlacement } from './scoring.js';
 import { buildRanking, getTopRanking } from './ranking.js';
 import { findMultiplier, formatMultiplier, sortMultipliers } from './multipliers.js';
 import { sortTableRows } from './table-sorting.js';
@@ -506,8 +506,8 @@ function renderTopTenCard(title, ranking, division, dataState) {
 }
 
 function renderSummarySection(dataState, uiState) {
-  const mpoRanking = buildRanking(dataState.players, dataState.resultCards, 'MPO');
-  const fpoRanking = buildRanking(dataState.players, dataState.resultCards, 'FPO');
+  const mpoRanking = buildRanking(dataState, 'MPO');
+  const fpoRanking = buildRanking(dataState, 'FPO');
 
   return `
     <section class="section" id="section-summary" ${uiState.activeView === 'summary' ? '' : 'hidden'} aria-labelledby="summary-title">
@@ -523,7 +523,7 @@ function renderSummarySection(dataState, uiState) {
 
 function renderRankingSection(dataState, uiState) {
   const ranking = sortTableRows(
-    buildRanking(dataState.players, dataState.resultCards, uiState.rankingFilter).map((entry, index) => ({
+    buildRanking(dataState, uiState.rankingFilter).map((entry, index) => ({
       ...entry,
       rankPosition: index + 1,
     })),
@@ -666,7 +666,14 @@ function getResultCardSortState(uiState, cardId) {
 
 function getResultCardRows(dataState, card, uiState) {
   const playerById = new Map(dataState.players.map((player) => [player.id, player]));
-  const rows = (card.results || []).map((result) => {
+  const liveResults = calculateResultCardPoints({
+    card,
+    players: dataState.players,
+    pointsTable: dataState.pointsTable,
+    multipliers: dataState.multipliers || [],
+    tournaments: dataState.tournaments || [],
+  });
+  const rows = liveResults.map((result) => {
     const player = playerById.get(result.playerId);
     return {
       ...result,
@@ -711,6 +718,10 @@ function renderResultsSection(dataState, uiState) {
             .map((card) => {
               const rows = getResultCardRows(dataState, card, uiState);
               const cardSortState = getResultCardSortState(uiState, card.id);
+              const cardMultiplier = findMultiplier(
+                dataState.multipliers || [],
+                getResultCardMultiplierId({ card, tournaments: dataState.tournaments || [] }),
+              );
               return `
                 <article class="panel" aria-labelledby="result-card-${escapeHtml(card.id)}-title">
                   <div class="section-heading">
@@ -719,8 +730,8 @@ function renderResultsSection(dataState, uiState) {
                       <p>${escapeHtml(card.location || '—')}</p>
                       <p>Alkamispäivä: ${escapeHtml(card.startDate || '—')}</p>
                       <p>Päättymispäivä: ${escapeHtml(card.endDate || '—')}</p>
-                      <p>Tila: ${escapeHtml(card.status || '—')}</p>
-                      <p>Kerroin: ${formatMultiplier(card.multiplier)}</p>
+                      <p>Tila: ${escapeHtml(cardMultiplier?.abbreviation || '—')}</p>
+                      <p>Kerroin: ${cardMultiplier ? formatMultiplier(cardMultiplier.multiplier) : '—'}</p>
                     </div>
                     <div class="section-actions">
                       <button type="button" class="secondary-button" data-open-result-card-players-dialog="${escapeHtml(card.id)}">Lisää pelaajia</button>

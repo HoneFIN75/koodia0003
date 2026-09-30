@@ -85,18 +85,10 @@ function sanitizeTournament(tournament = {}) {
 }
 
 function sanitizeResultCardResult(result = {}) {
-  const parsedCalculatedPoints = Number(result.calculatedPoints);
-
   return {
     playerId: result.playerId,
     division: result.division,
     placement: String(result.placement ?? '').trim().toUpperCase(),
-    calculatedPoints:
-      result.calculatedPoints === null || result.calculatedPoints === undefined || result.calculatedPoints === ''
-        ? null
-        : Number.isFinite(parsedCalculatedPoints)
-          ? parsedCalculatedPoints
-          : null,
   };
 }
 
@@ -109,7 +101,6 @@ function sanitizeResultCard(card = {}) {
     startDate: card.startDate,
     endDate: card.endDate,
     status: card.status,
-    multiplier: Number(card.multiplier) || 0,
     multiplierId: card.multiplierId,
     createdAt: card.createdAt,
     updatedAt: card.updatedAt,
@@ -144,7 +135,6 @@ function migrateTournamentResultsToCards(tournamentResults, tournaments, players
         startDate: tournament.startDate || '',
         endDate: tournament.endDate || '',
         status: tournamentMultiplier?.abbreviation || '',
-        multiplier: Number(result.multiplierSnapshot) || 0,
         multiplierId: tournament.multiplierId || '',
         createdAt: result.createdAt || new Date().toISOString(),
         updatedAt: result.updatedAt || new Date().toISOString(),
@@ -153,17 +143,10 @@ function migrateTournamentResultsToCards(tournamentResults, tournaments, players
     }
 
     const player = playerById.get(result.playerId);
-    const parsedCalculatedPoints = Number(result.calculatedPoints);
     cardByTournament.get(tournamentId).results.push({
       playerId: result.playerId,
       division: player?.division || '',
       placement: String(result.place ?? '').trim(),
-      calculatedPoints:
-        result.calculatedPoints === null || result.calculatedPoints === undefined || result.calculatedPoints === ''
-          ? null
-          : Number.isFinite(parsedCalculatedPoints)
-            ? parsedCalculatedPoints
-            : null,
     });
   });
 

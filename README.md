@@ -23,7 +23,7 @@ Ratkaisu säilyy kevyenä, mutta data kulkee nyt selaimesta REST API:n kautta pa
 - turnausten CRUD-hallinta ennalta määritetyillä multiplier-vaihtoehdoilla
 - asetussivu yhteisille PDGA-linkkiasetuksille
 - keskitetty MPO/FPO-pistetaulukkonäkymä ja ylläpito
-- turnaustulosten lisäys, muokkaus ja poisto snapshot-pisteillä
+- tuloskortit ovat ainoa pistelähde: turnaus- ja kokonaispisteet lasketaan aina dynaamisesti sijoituksista, pistetaulukoista ja kertoimista
 - ranking kaikille, MPO:lle ja FPO:lle
 - yhteenvetonäkymä tilastokorteilla, top 10 -pylväillä ja pelaajakohtaisella tulostaulukolla
 - Ohjeet-näkymä, johon kaikki käyttöohjeet on koottu

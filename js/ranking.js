@@ -1,24 +1,25 @@
-function flattenResultCards(resultCards = []) {
-  return resultCards.flatMap((card) =>
-    (card.results || [])
-      .filter((result) => result.placement && Number.isFinite(Number(result.calculatedPoints)))
-      .map((result) => ({
-        ...result,
-        calculatedPoints: Number(result.calculatedPoints),
-        tournamentId: card.tournamentId,
-      })),
-  );
+import { calculateAllResultPoints } from './scoring.js';
+
+function getLiveResults(dataState) {
+  return calculateAllResultPoints({
+    resultCards: dataState.resultCards || [],
+    players: dataState.players || [],
+    pointsTable: dataState.pointsTable,
+    multipliers: dataState.multipliers || [],
+    tournaments: dataState.tournaments || [],
+  });
 }
 
-export function buildRanking(players, resultCards, filter = 'ALL') {
-  const totals = flattenResultCards(resultCards).reduce((accumulator, result) => {
+export function buildRanking(dataState, filter = 'ALL') {
+  const players = dataState.players || [];
+  const totals = getLiveResults(dataState).reduce((accumulator, result) => {
     const current = accumulator.get(result.playerId) || {
       tournamentCount: 0,
       totalPoints: 0,
     };
 
     current.tournamentCount += 1;
-    current.totalPoints += Number(result.calculatedPoints) || 0;
+    current.totalPoints += result.calculatedPoints;
     accumulator.set(result.playerId, current);
     return accumulator;
   }, new Map());
@@ -46,8 +47,9 @@ export function getTopRanking(ranking, limit = 10) {
   return ranking.slice(0, limit);
 }
 
-export function getPlayerResults({ playerId, resultCards, tournaments }) {
-  return flattenResultCards(resultCards)
+export function getPlayerResults(dataState, playerId) {
+  const tournaments = dataState.tournaments || [];
+  return getLiveResults(dataState)
     .filter((result) => result.playerId === playerId)
     .map((result) => ({
       ...result,

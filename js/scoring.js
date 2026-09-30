@@ -1,10 +1,6 @@
 export const DIVISIONS = ['MPO', 'FPO'];
 import { findMultiplier } from './multipliers.js';
 
-function createId(prefix = 'result') {
-  return `${prefix}-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
-}
-
 function normalizeDivision(division) {
   const normalized = String(division ?? '').trim().toUpperCase();
   if (!DIVISIONS.includes(normalized)) {
@@ -408,24 +404,47 @@ export function calculatePlacementPoints({
   });
 }
 
+function resolveMultiplierById(multiplierId, multipliers = []) {
+  if (!multiplierId) {
+    throw new Error('Turnauksen kerrointa ei löytynyt. Valitse turnaukselle tila ennen tuloksen tallennusta.');
+  }
+
+  const referencedMultiplier = findMultiplier(multipliers, multiplierId);
+  if (!referencedMultiplier) {
+    throw new Error('Turnauksen kerroinviite ei ole enää käytettävissä. Päivitä turnauksen tila.');
+  }
+
+  const referencedValue = Number(referencedMultiplier.multiplier);
+  if (!Number.isFinite(referencedValue) || referencedValue <= 0) {
+    throw new Error('Valitun tilan kerroin ei ole kelvollinen.');
+  }
+
+  return referencedValue;
+}
+
+export function getResultCardMultiplierId({ card, tournaments = [] }) {
+  const tournament = tournaments.find((entry) => entry.id === card?.tournamentId);
+  return String(tournament?.multiplierId || card?.multiplierId || '').trim();
+}
+
+export function resolveResultCardMultiplier({ card, tournaments = [], multipliers = [] }) {
+  return resolveMultiplierById(getResultCardMultiplierId({ card, tournaments }), multipliers);
+}
+
+function resolveResultDivision(result, playerById) {
+  return normalizeDivision(result.division || playerById.get(result.playerId)?.division);
+}
+
 export function recalculateResultCard({
   card,
   results = card?.results || [],
   players = [],
   pointsTable,
   multipliers = [],
+  tournaments = [],
 }) {
   const playerById = new Map(players.map((player) => [player.id, player]));
-  const resolvedMultiplier = resolveTournamentMultiplier({
-    multiplier: card?.multiplier,
-    tournament: card?.tournamentId
-      ? {
-          id: card.tournamentId,
-          multiplierId: card.multiplierId,
-        }
-      : null,
-    multipliers,
-  });
+  const resolvedMultiplier = resolveResultCardMultiplier({ card, tournaments, multipliers });
 
   const normalizedResults = results.map((result) => {
     const parsedPlacement = parsePlacement(result.placement);
@@ -438,8 +457,7 @@ export function recalculateResultCard({
   validateResultCardPlacements(normalizedResults);
 
   return normalizedResults.map((result) => {
-    const player = playerById.get(result.playerId);
-    const safeDivision = normalizeDivision(result.division || player?.division);
+    const safeDivision = resolveResultDivision(result, playerById);
     const calculatedPoints = calculatePlacementPoints({
       placement: result.placement,
       division: safeDivision,
@@ -455,124 +473,62 @@ export function recalculateResultCard({
   });
 }
 
-function resolveTournamentMultiplier({ multiplier, tournament = null, multipliers = [] }) {
-  const directMultiplier = Number(multiplier);
-  if (Number.isFinite(directMultiplier) && directMultiplier > 0) {
-    return directMultiplier;
+// Tulokset ovat ainoa pistelähde: pisteet lasketaan aina nykyisestä sijoituksesta,
+// sarjan pistetaulukosta ja turnauksen nykyisestä kertoimesta. Arvoja ei tallenneta.
+export function calculateResultCardPoints({
+  card,
+  players = [],
+  pointsTable,
+  multipliers = [],
+  tournaments = [],
+}) {
+  const playerById = new Map(players.map((player) => [player.id, player]));
+  let multiplier = null;
+  try {
+    multiplier = resolveResultCardMultiplier({ card, tournaments, multipliers });
+  } catch {
+    multiplier = null;
   }
 
-  if (!tournament?.multiplierId) {
-    throw new Error('Turnauksen kerrointa ei löytynyt. Valitse turnaukselle tila ennen tuloksen tallennusta.');
-  }
+  return (card?.results || []).map((result) => {
+    let division = null;
+    let calculatedPoints = null;
+    try {
+      division = resolveResultDivision(result, playerById);
+      if (multiplier !== null) {
+        calculatedPoints = calculatePlacementPoints({
+          placement: result.placement,
+          division,
+          pointsTable,
+          multiplier,
+        });
+      }
+    } catch {
+      calculatedPoints = null;
+    }
 
-  const referencedMultiplier = findMultiplier(multipliers, tournament.multiplierId);
-  if (!referencedMultiplier) {
-    throw new Error('Turnauksen kerroinviite ei ole enää käytettävissä. Päivitä turnauksen tila.');
-  }
-
-  const referencedValue = Number(referencedMultiplier?.multiplier);
-  if (Number.isFinite(referencedValue) && referencedValue > 0) {
-    return referencedValue;
-  }
-
-  throw new Error('Valitun tilan kerroin ei ole kelvollinen.');
+    return {
+      ...result,
+      division: division || result.division,
+      calculatedPoints,
+    };
+  });
 }
 
-export function createTournamentResult({
-  tournamentId,
-  playerId,
-  place,
-  division,
+export function calculateAllResultPoints({
+  resultCards = [],
+  players = [],
   pointsTable,
-  multiplier,
-  tournament = null,
   multipliers = [],
-  existingResults = [],
+  tournaments = [],
 }) {
-  const safePlace = normalizePositiveInteger(place, 'Sijoituksen');
-  const safeDivision = normalizeDivision(division);
-
-  if (!tournamentId) {
-    throw new Error('Turnaus pitää valita ennen tuloksen tallentamista.');
-  }
-
-  if (!playerId) {
-    throw new Error('Pelaaja pitää valita ennen tuloksen tallentamista.');
-  }
-
-  const duplicateResult = existingResults.find(
-    (result) => result.tournamentId === tournamentId && result.playerId === playerId,
+  return resultCards.flatMap((card) =>
+    calculateResultCardPoints({ card, players, pointsTable, multipliers, tournaments })
+      .filter((result) => typeof result.calculatedPoints === 'number' && Number.isFinite(result.calculatedPoints))
+      .map((result) => ({
+        ...result,
+        cardId: card.id,
+        tournamentId: card.tournamentId,
+      })),
   );
-
-  if (duplicateResult) {
-    throw new Error('Sama pelaaja voi esiintyä samassa turnauksessa vain kerran.');
-  }
-
-  const basePoints = getBasePoints(pointsTable, safeDivision, safePlace);
-  if (basePoints === null) {
-    throw new Error(`Pisteitä ei ole määritetty sarjalle ${safeDivision} sijoitukselle ${safePlace}.`);
-  }
-
-  const now = new Date().toISOString();
-  const resolvedMultiplier = resolveTournamentMultiplier({ multiplier, tournament, multipliers });
-
-  return {
-    id: createId(),
-    tournamentId,
-    playerId,
-    place: safePlace,
-    basePointsSnapshot: basePoints,
-    multiplierSnapshot: resolvedMultiplier,
-    calculatedPoints: calculatePoints({ basePoints, multiplier: resolvedMultiplier }),
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-export function updateTournamentResult({
-  results,
-  resultId,
-  tournamentId,
-  playerId,
-  place,
-  division,
-  pointsTable,
-  multiplier,
-  tournament = null,
-  multipliers = [],
-}) {
-  const existingResult = results.find((result) => result.id === resultId);
-  if (!existingResult) {
-    throw new Error('Muokattavaa turnaustulosta ei löytynyt.');
-  }
-
-  const safePlace = normalizePositiveInteger(place, 'Sijoituksen');
-  const safeDivision = normalizeDivision(division);
-
-  const duplicateResult = results.find(
-    (result) =>
-      result.id !== resultId && result.tournamentId === tournamentId && result.playerId === playerId,
-  );
-
-  if (duplicateResult) {
-    throw new Error('Sama pelaaja voi esiintyä samassa turnauksessa vain kerran.');
-  }
-
-  const basePoints = getBasePoints(pointsTable, safeDivision, safePlace);
-  if (basePoints === null) {
-    throw new Error(`Pisteitä ei ole määritetty sarjalle ${safeDivision} sijoitukselle ${safePlace}.`);
-  }
-
-  const resolvedMultiplier = resolveTournamentMultiplier({ multiplier, tournament, multipliers });
-
-  return {
-    ...existingResult,
-    tournamentId,
-    playerId,
-    place: safePlace,
-    basePointsSnapshot: basePoints,
-    multiplierSnapshot: resolvedMultiplier,
-    calculatedPoints: calculatePoints({ basePoints, multiplier: resolvedMultiplier }),
-    updatedAt: new Date().toISOString(),
-  };
 }
