@@ -359,18 +359,46 @@ a {
   font-weight: 500;
 }
 
-.result-player-list {
-  width: 100%;
-  max-height: 18rem;
-  overflow: auto;
-  padding: var(--spacing-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-sm);
+.placement-input {
+  width: 7.5rem;
+  max-width: 100%;
+  padding: 0.5rem 0.65rem;
+  font-variant-numeric: tabular-nums;
 }
 
-.result-player-list label {
-  width: 100%;
-  justify-content: flex-start;
+.placement-input:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-color: var(--color-primary);
+}
+
+.player-result-card-table .field-error {
+  display: block;
+  margin-top: var(--spacing-2xs);
+  max-width: 18rem;
+}
+
+.result-card-save-status {
+  min-height: 1.5em;
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.result-card-save-status[data-status-type="success"] {
+  color: var(--color-success);
+}
+
+.result-card-save-status[data-status-type="success"]::before {
+  content: "✓ ";
+}
+
+.result-card-save-status[data-status-type="error"] {
+  color: var(--color-error);
+}
+
+.result-card-save-status[data-status-type="error"]::before {
+  content: "⚠ ";
 }
 
 .badge,
@@ -762,7 +790,9 @@ textarea {
 }
 
 .players-table td[data-label]::before,
-.tournaments-table td[data-label]::before {
+.tournaments-table td[data-label]::before,
+.results-overview-table td[data-label]::before,
+.player-result-card-table td[data-label]::before {
   content: attr(data-label);
   display: none;
   font-size: 0.8125rem;
@@ -1339,7 +1369,9 @@ details[open] > summary > .help-marker::before {
   }
 
   .players-table thead,
-  .tournaments-table thead {
+  .tournaments-table thead,
+  .results-overview-table thead,
+  .player-result-card-table thead {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -1353,18 +1385,28 @@ details[open] > summary > .help-marker::before {
 
   .players-table,
   .tournaments-table,
+  .results-overview-table,
+  .player-result-card-table,
   .players-table tbody,
   .tournaments-table tbody,
+  .results-overview-table tbody,
+  .player-result-card-table tbody,
   .players-table tr,
   .tournaments-table tr,
+  .results-overview-table tr,
+  .player-result-card-table tr,
   .players-table td,
-  .tournaments-table td {
+  .tournaments-table td,
+  .results-overview-table td,
+  .player-result-card-table td {
     display: block;
     width: 100%;
   }
 
   .players-table tr,
-  .tournaments-table tr {
+  .tournaments-table tr,
+  .results-overview-table tr,
+  .player-result-card-table tr {
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
     padding: var(--spacing-sm);
@@ -1373,13 +1415,17 @@ details[open] > summary > .help-marker::before {
   }
 
   .players-table td,
-  .tournaments-table td {
+  .tournaments-table td,
+  .results-overview-table td,
+  .player-result-card-table td {
     border-bottom: none;
     padding: var(--spacing-xs) 0;
   }
 
   .players-table td[data-label]::before,
-  .tournaments-table td[data-label]::before {
+  .tournaments-table td[data-label]::before,
+  .results-overview-table td[data-label]::before,
+  .player-result-card-table td[data-label]::before {
     display: block;
   }
 }

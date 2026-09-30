@@ -3,7 +3,7 @@ import { DEFAULT_PDGA_SETTINGS, extractPdgaEventId, extractPdgaPlayerId, sanitiz
 import { AuthRequiredError, getAuthHeaders } from './auth.js';
 import { createDefaultMultipliers, ensureLegacyMultiplier, sanitizeMultipliers } from './multipliers.js';
 
-export const STORAGE_VERSION = 3;
+export const STORAGE_VERSION = 4;
 
 function createDefaultPointsTable() {
   return {
@@ -84,73 +84,77 @@ function sanitizeTournament(tournament = {}) {
   };
 }
 
-function sanitizeResultCardResult(result = {}) {
-  return {
-    playerId: result.playerId,
-    division: result.division,
-    placement: String(result.placement ?? '').trim().toUpperCase(),
-  };
+function normalizeId(value) {
+  return String(value ?? '').trim();
 }
 
-function sanitizeResultCard(card = {}) {
-  return {
-    id: card.id,
-    tournamentId: card.tournamentId,
-    tournamentName: card.tournamentName,
-    location: card.location,
-    startDate: card.startDate,
-    endDate: card.endDate,
-    status: card.status,
-    multiplierId: card.multiplierId,
-    createdAt: card.createdAt,
-    updatedAt: card.updatedAt,
-    results: Array.isArray(card.results) ? card.results.map(sanitizeResultCardResult) : [],
-  };
-}
+// Tuloskortit ovat pelaajakohtaisia ja sisältävät vain sijoitukset turnauksittain.
+// Vanhat turnauskohtaiset tuloskortit ja tournamentResults-rivit migroidaan tähän malliin.
+// Mahdolliset tallennetut pisteet, kertoimet tai muut snapshot-arvot jätetään pois.
+function sanitizeResultCards(resultCards, legacyTournamentResults) {
+  const cardByPlayerId = new Map();
 
-function migrateTournamentResultsToCards(tournamentResults, tournaments, players, multipliers) {
-  if (!Array.isArray(tournamentResults) || !tournamentResults.length) {
-    return [];
-  }
-
-  const playerById = new Map(players.map((player) => [player.id, player]));
-  const tournamentById = new Map(tournaments.map((tournament) => [tournament.id, tournament]));
-  const multiplierById = new Map(multipliers.map((multiplier) => [multiplier.id, multiplier]));
-  const cardByTournament = new Map();
-
-  tournamentResults.forEach((result) => {
-    const tournamentId = result.tournamentId;
-    if (!tournamentId) {
+  const addEntry = (playerId, tournamentId, placement, meta = {}) => {
+    const safePlayerId = normalizeId(playerId);
+    const safeTournamentId = normalizeId(tournamentId);
+    const safePlacement = String(placement ?? '').trim().toUpperCase();
+    if (!safePlayerId || !safeTournamentId || !safePlacement) {
       return;
     }
 
-    if (!cardByTournament.has(tournamentId)) {
-      const tournament = tournamentById.get(tournamentId) || {};
-      const tournamentMultiplier = multiplierById.get(tournament.multiplierId);
-      cardByTournament.set(tournamentId, {
-        id: `result-card-${tournamentId}`,
-        tournamentId,
-        tournamentName: tournament.name || 'Tuntematon turnaus',
-        location: tournament.location || '',
-        startDate: tournament.startDate || '',
-        endDate: tournament.endDate || '',
-        status: tournamentMultiplier?.abbreviation || '',
-        multiplierId: tournament.multiplierId || '',
-        createdAt: result.createdAt || new Date().toISOString(),
-        updatedAt: result.updatedAt || new Date().toISOString(),
+    let card = cardByPlayerId.get(safePlayerId);
+    if (!card) {
+      card = {
+        id: normalizeId(meta.id) || `result-card-${safePlayerId}`,
+        playerId: safePlayerId,
+        createdAt: meta.createdAt,
+        updatedAt: meta.updatedAt,
         results: [],
-      });
+      };
+      cardByPlayerId.set(safePlayerId, card);
     }
 
-    const player = playerById.get(result.playerId);
-    cardByTournament.get(tournamentId).results.push({
-      playerId: result.playerId,
-      division: player?.division || '',
-      placement: String(result.place ?? '').trim(),
-    });
-  });
+    if (card.results.some((entry) => entry.tournamentId === safeTournamentId)) {
+      return;
+    }
 
-  return [...cardByTournament.values()].map(sanitizeResultCard);
+    card.results.push({ tournamentId: safeTournamentId, placement: safePlacement });
+  };
+
+  if (Array.isArray(resultCards)) {
+    resultCards.forEach((card = {}) => {
+      if (!Array.isArray(card?.results)) {
+        // Vanha litteä tournamentResults-rivi (esim. PHP-API:n varapolusta).
+        addEntry(card?.playerId, card?.tournamentId, card?.placement ?? card?.place, {
+          createdAt: card?.createdAt,
+          updatedAt: card?.updatedAt,
+        });
+        return;
+      }
+
+      const results = card.results;
+      if (card?.playerId) {
+        results.forEach((result) => addEntry(card.playerId, result?.tournamentId, result?.placement, card));
+        return;
+      }
+
+      results.forEach((result) =>
+        addEntry(result?.playerId, card?.tournamentId, result?.placement, {
+          createdAt: card?.createdAt,
+          updatedAt: card?.updatedAt,
+        }),
+      );
+    });
+  } else if (Array.isArray(legacyTournamentResults)) {
+    legacyTournamentResults.forEach((result = {}) =>
+      addEntry(result?.playerId, result?.tournamentId, result?.placement ?? result?.place, {
+        createdAt: result?.createdAt,
+        updatedAt: result?.updatedAt,
+      }),
+    );
+  }
+
+  return [...cardByPlayerId.values()];
 }
 
 export function sanitizeState(candidate = {}) {
@@ -195,9 +199,7 @@ export function sanitizeState(candidate = {}) {
     version: STORAGE_VERSION,
     players: sanitizedPlayers,
     tournaments: migratedTournaments,
-    resultCards: Array.isArray(candidate.resultCards)
-      ? candidate.resultCards.map(sanitizeResultCard)
-      : migrateTournamentResultsToCards(candidate.tournamentResults, migratedTournaments, sanitizedPlayers, sanitizedMultipliers),
+    resultCards: sanitizeResultCards(candidate.resultCards, candidate.tournamentResults),
     settings: sanitizePdgaSettings(candidate.settings),
     pointsTable: sanitizePointsTable(candidate.pointsTable),
     multipliers: sanitizedMultipliers,
