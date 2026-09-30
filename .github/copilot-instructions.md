@@ -23,7 +23,7 @@ SFL Pisteytystyökalu on Suomen frisbeegolfliiton selainpohjainen MVP, jolla hal
 
 - pelaajat, turnaukset, pistetaulukot ja turnaustulokset tallennetaan keskitetysti
 - pistetaulukko on erotettu käyttöliittymäkomponenteista
-- snapshot-pisteet tallennetaan jokaiselle turnaustulokselle
+- tulokset (tuloskortit) ovat ainoa pistelähde: turnaus- ja kokonaispisteitä ei tallenneta, vaan ne lasketaan aina nykyisistä sijoituksista, pistetaulukoista ja kertoimista
 - localStorage voidaan myöhemmin korvata API:lla tai tietokannalla
 
 ## Pistelaskenta

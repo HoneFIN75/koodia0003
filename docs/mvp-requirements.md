@@ -67,9 +67,6 @@ Sovellus on Suomen frisbeegolfliiton selainkäyttöinen MVP-työkalu MPO- ja FPO
 - `tournamentId`
 - `playerId`
 - `place`
-- `basePointsSnapshot`
-- `multiplierSnapshot`
-- `calculatedPoints`
 - `createdAt`
 - `updatedAt`
 
@@ -85,7 +82,7 @@ Sovellus on Suomen frisbeegolfliiton selainkäyttöinen MVP-työkalu MPO- ja FPO
 - laskenta on keskitetty `js/scoring.js`-moduuliin
 - pistetaulukon arvoja ei kovakoodata UI-komponentteihin
 - jos sarjalle tai sijoitukselle ei ole pisteitä, tulosta ei voi tallentaa
-- tuloksen snapshot-arvot säilytetään myöhempiä muutoksia varten
+- tulokset ovat ainoa pistelähde: turnauspisteitä, kokonaispisteitä tai snapshot-arvoja ei tallenneta, vaan ne lasketaan aina nykyisistä sijoituksista, pistetaulukoista ja kertoimista
 
 ## Validoinnit
 

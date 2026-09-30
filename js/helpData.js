@@ -273,7 +273,7 @@ Kun tuloskortilla käytetään tasatulosmerkintää (esim. 3T4), jokainen tasatu
         title: 'Miksi keskitetty pistetaulukko?',
         content: `Keskitetty pistetaulukko pitää laskennan yhtenäisenä:
 - Käyttöliittymäkomponentit eivät sisällä kovakoodattuja pistearvoja.
-- Tulokselle tallennetaan käytetyt snapshotit, jotta historiallinen laskenta säilyy.
+- Pisteet lasketaan aina tuloskorttien sijoituksista nykyisellä pistetaulukolla, joten Ranking ja Yhteenveto päivittyvät automaattisesti.
 - Pistetaulukon voi myöhemmin korvata API- tai tietokantaratkaisulla.`,
       },
     ],
@@ -305,9 +305,9 @@ Turnaukselle valitaan kerroin tästä listasta, joten lisää vähintään yksi 
       },
       {
         title: 'Kertoimen muuttaminen jälkikäteen',
-        content: `Kertoimen muuttaminen vaikuttaa vain uusiin laskentoihin.
+        content: `Kertoimen muuttaminen vaikuttaa heti kaikkiin kyseistä kerrointa käyttävien turnausten pisteisiin.
 
-Jo tallennetuille tuloskorteille on tallennettu käytetty kerroin snapshotina, joten aiemmat pisteet eivät muutu takautuvasti.`,
+Tuloskorteille ei tallenneta kerrointa tai pisteitä, vaan Tulokset, Ranking ja Yhteenveto lasketaan aina turnauksen nykyisellä kertoimella.`,
       },
     ],
   },
