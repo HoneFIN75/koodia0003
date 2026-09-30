@@ -58,6 +58,20 @@ Pisteet haetaan keskitetysti `js/scoring.js`-moduulista. Pistearvoja ei kovakood
 - Käyttöliittymä muodostaa PDGA-linkit automaattisesti muodossa `perusosoite + tunnus`.
 - Vanhoista täydellisistä PDGA-osoitteista poimitaan tunnus automaattisesti tallennusdatan normalisoinnissa aina kun se on mahdollista.
 
+## Väliaikainen salasanasuojaus
+
+Kehitysvaiheessa sovellus on suojattu yhteisellä sivuston salasanalla. Kyseessä ei ole tuotantotason käyttäjähallinta, vaan kevyt portti satunnaisen käytön estämiseksi.
+
+- Sovellus näyttää ensin kirjautumisnäkymän (`js/login.js`). Salasana tarkistetaan palvelimella (`POST /api/login`), ja onnistuneesta kirjautumisesta tallennetaan selaimen localStorageen allekirjoitettu tunniste.
+- Tunniste säilyy sivun päivitysten ja selaimen uudelleenkäynnistysten yli, kunnes käyttäjä valitsee **Kirjaudu ulos** tai selaimen tallennustila tyhjennetään.
+- `GET /api/state` ja `PUT /api/state` vaativat voimassa olevan tunnisteen (`X-SFL-Auth-Token`-otsake).
+- Salasanaa vaihdetaan kohdassa **Asetukset → Turvallisuus → Sivuston salasana** (`PUT /api/site-password`, vähintään 8 merkkiä). Uusi salasana koskee tulevia kirjautumisia; jo kirjautuneet käyttäjät pysyvät kirjautuneina.
+- Salasana säilytetään vain palvelimella tiedostossa `jsondb/settings.json` tiivisteenä (`sitePasswordHash`, PHP:ssä `password_hash`). Samassa tiedostossa on tunnisteiden allekirjoitusavain `authSecret`. Näitä kenttiä ei koskaan palauteta selaimelle.
+- **Oletussalasana on `sfl-pisteet-2026`.** Palvelin kirjoittaa sen tiivisteen `settings.json`-tiedostoon ensimmäisellä kirjautumiskerralla, jos salasanaa ei ole asetettu. Vaihda salasana heti käyttöönoton jälkeen.
+- Salasanan voi asettaa myös käsin lisäämällä `settings.json`-tiedostoon kentän `"sitePassword": "..."` ja poistamalla `sitePasswordHash`-kentän. Selväkielinen arvo muutetaan tiivisteeksi ensimmäisellä onnistuneella kirjautumisella.
+- Kaikkien istuntojen mitätöimiseksi poista `authSecret` tiedostosta `settings.json`; palvelin luo uuden avaimen automaattisesti.
+- Tunnistautuminen on eristetty moduuleihin `js/auth.js` ja `js/login.js`, jotta se voidaan myöhemmin korvata varsinaisella kirjautumisella (esim. Microsoft/Google ja roolipohjainen käyttöoikeus) ilman laajoja muutoksia muuhun sovellukseen.
+
 ## Tallennus
 
 Tämä MVP-versio tallentaa kaiken datan palvelimen `jsondb/`-hakemistoon JSON-tiedostoina REST API:n kautta.
@@ -66,7 +80,7 @@ Tämä MVP-versio tallentaa kaiken datan palvelimen `jsondb/`-hakemistoon JSON-t
 - palvelin luo puuttuvat JSON-tiedostot automaattisesti
 - palvelin ylläpitää lisäksi sisäistä atomista `state.json`-snapshotia, jotta kirjoitus pysyy eheänä
 - `jsondb/`-hakemisto pitää säilyttää deployjen yli
-- API-endpointit ovat `GET /api/state`, `PUT /api/state` ja `GET /api/health`
+- API-endpointit ovat `GET /api/state`, `PUT /api/state`, `GET /api/health`, `POST /api/login` ja `PUT /api/site-password`
 - tietokantapohjainen backend on myöhempi kehitysvaihe
 - importia ja exportia ei ole vielä toteutettu
 - JSON-tiedostojen varmuuskopiointi kuuluu palvelinympäristölle

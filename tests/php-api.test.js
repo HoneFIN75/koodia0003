@@ -49,20 +49,15 @@ async function waitForServer(url, timeoutMs = 5000) {
   throw lastError || new Error('PHP server did not become ready in time');
 }
 
-test('PHP API supports state save/load and compatibility payloads', { skip: !hasPhp }, async () => {
+async function startPhpServer() {
   const jsondbDir = await mkdtemp(path.join(os.tmpdir(), 'sfl-php-jsondb-'));
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'sfl-php-router-'));
   const routerPath = path.join(tempDir, 'router.php');
   const apiIndexPath = path.join(rootDir, 'api', 'index.php').replaceAll('\\', '\\\\');
   await writeFile(routerPath, `<?php
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-if ($path === '/api/state') {
-    $_GET['endpoint'] = 'state';
-    require '${apiIndexPath}';
-    return true;
-}
-if ($path === '/api/health') {
-    $_GET['endpoint'] = 'health';
+if (preg_match('#^/api/(state|health|login|site-password)$#', $path, $matches)) {
+    $_GET['endpoint'] = $matches[1];
     require '${apiIndexPath}';
     return true;
 }
@@ -79,8 +74,39 @@ return false;
     stdio: ['ignore', 'ignore', 'ignore'],
   });
 
+  const baseUrl = `http://127.0.0.1:${port}`;
+  await waitForServer(`${baseUrl}/api/health`);
+
+  return {
+    baseUrl,
+    jsondbDir,
+    async stop() {
+      serverProcess.kill('SIGTERM');
+      await rm(jsondbDir, { recursive: true, force: true });
+      await rm(tempDir, { recursive: true, force: true });
+    },
+  };
+}
+
+async function loginToPhp(baseUrl, password = 'sfl-pisteet-2026') {
+  const response = await fetch(`${baseUrl}/api/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  assert.equal(response.status, 200);
+  const { token } = await response.json();
+  assert.match(token, /^[a-f0-9]{32}\.[a-f0-9]{64}$/);
+  return token;
+}
+
+test('PHP API supports state save/load and compatibility payloads', { skip: !hasPhp }, async () => {
+  const server = await startPhpServer();
+  const port = new URL(server.baseUrl).port;
+  const { jsondbDir } = server;
+
   try {
-    await waitForServer(`http://127.0.0.1:${port}/api/health`);
+    const token = await loginToPhp(server.baseUrl);
 
     const fullStatePayload = {
       players: [],
@@ -95,6 +121,7 @@ return false;
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'X-SFL-Auth-Token': token,
       },
       body: JSON.stringify(fullStatePayload),
     });
@@ -104,6 +131,7 @@ return false;
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'X-SFL-Auth-Token': token,
       },
       body: '{"players":',
     });
@@ -114,6 +142,7 @@ return false;
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'X-SFL-Auth-Token': token,
       },
       body: JSON.stringify({ players: [] }),
     });
@@ -124,6 +153,7 @@ return false;
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
+        'X-SFL-Auth-Token': token,
       },
       body: JSON.stringify({
         players: [],
@@ -145,8 +175,106 @@ return false;
     assert.equal(Array.isArray(tournamentResultsSlice), true);
     assert.equal(tournamentResultsSlice.length, 1);
   } finally {
-    serverProcess.kill('SIGTERM');
-    await rm(jsondbDir, { recursive: true, force: true });
-    await rm(tempDir, { recursive: true, force: true });
+    await server.stop();
+  }
+});
+
+test('PHP API protects state with the shared site password', { skip: !hasPhp }, async () => {
+  const server = await startPhpServer();
+  const { baseUrl, jsondbDir } = server;
+
+  try {
+    const anonymousResponse = await fetch(`${baseUrl}/api/state`);
+    assert.equal(anonymousResponse.status, 401);
+    assert.match(await anonymousResponse.text(), /Kirjautuminen vaaditaan/);
+
+    const forgedResponse = await fetch(`${baseUrl}/api/state`, {
+      headers: { 'X-SFL-Auth-Token': `${'a'.repeat(32)}.${'b'.repeat(64)}` },
+    });
+    assert.equal(forgedResponse.status, 401);
+
+    const wrongPasswordResponse = await fetch(`${baseUrl}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: 'väärä-salasana' }),
+    });
+    assert.equal(wrongPasswordResponse.status, 401);
+    const wrongPasswordPayload = await wrongPasswordResponse.json();
+    assert.equal(wrongPasswordPayload.message, 'Väärä salasana. Yritä uudelleen.');
+    assert.equal(Object.hasOwn(wrongPasswordPayload, 'token'), false);
+
+    const token = await loginToPhp(baseUrl);
+    const stateResponse = await fetch(`${baseUrl}/api/state`, { headers: { 'X-SFL-Auth-Token': token } });
+    assert.equal(stateResponse.status, 200);
+    const state = await stateResponse.json();
+    assert.equal(Object.hasOwn(state.settings, 'sitePasswordHash'), false);
+    assert.equal(Object.hasOwn(state.settings, 'authSecret'), false);
+
+    const settingsFile = JSON.parse(await readFile(path.join(jsondbDir, 'settings.json'), 'utf8'));
+    assert.match(settingsFile.sitePasswordHash, /^\$/);
+    assert.equal(Object.hasOwn(settingsFile, 'sitePassword'), false);
+
+    const unauthorizedChange = await fetch(`${baseUrl}/api/site-password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: 'uusi-salasana-123' }),
+    });
+    assert.equal(unauthorizedChange.status, 401);
+
+    const tooShortChange = await fetch(`${baseUrl}/api/site-password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-SFL-Auth-Token': token },
+      body: JSON.stringify({ password: 'lyhyt' }),
+    });
+    assert.equal(tooShortChange.status, 400);
+
+    const changeResponse = await fetch(`${baseUrl}/api/site-password`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-SFL-Auth-Token': token },
+      body: JSON.stringify({ password: 'uusi-salasana-123' }),
+    });
+    assert.equal(changeResponse.status, 200);
+
+    const oldPasswordResponse = await fetch(`${baseUrl}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: 'sfl-pisteet-2026' }),
+    });
+    assert.equal(oldPasswordResponse.status, 401);
+    await loginToPhp(baseUrl, 'uusi-salasana-123');
+
+    const existingSessionResponse = await fetch(`${baseUrl}/api/state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-SFL-Auth-Token': token },
+      body: JSON.stringify({ ...state, settings: { ...state.settings, sitePasswordHash: 'x' } }),
+    });
+    assert.equal(existingSessionResponse.status, 200);
+
+    const settingsAfterSave = JSON.parse(await readFile(path.join(jsondbDir, 'settings.json'), 'utf8'));
+    assert.notEqual(settingsAfterSave.sitePasswordHash, 'x');
+    await loginToPhp(baseUrl, 'uusi-salasana-123');
+  } finally {
+    await server.stop();
+  }
+});
+
+test('PHP API accepts a plain sitePassword from settings.json and upgrades it to a hash', { skip: !hasPhp }, async () => {
+  const server = await startPhpServer();
+  const { baseUrl, jsondbDir } = server;
+
+  try {
+    await writeFile(
+      path.join(jsondbDir, 'settings.json'),
+      JSON.stringify({ sitePassword: 'kasin-asetettu-1' }),
+      'utf8',
+    );
+
+    await loginToPhp(baseUrl, 'kasin-asetettu-1');
+    const settingsFile = JSON.parse(await readFile(path.join(jsondbDir, 'settings.json'), 'utf8'));
+    assert.equal(Object.hasOwn(settingsFile, 'sitePassword'), false);
+    assert.match(settingsFile.sitePasswordHash, /^\$/);
+    await loginToPhp(baseUrl, 'kasin-asetettu-1');
+  } finally {
+    await server.stop();
   }
 });
