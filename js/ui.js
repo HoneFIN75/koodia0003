@@ -764,7 +764,7 @@ function renderPlayerResultCardRow(dataState, player, row) {
           autocomplete="off"
           spellcheck="false"
           value="${escapeHtml(placement)}"
-          placeholder="esim. 3 tai 3T4"
+          placeholder="3 tai 3T4"
           aria-label="Sijoitus: ${tournamentName}"
           aria-describedby="result-placement-error-${tournamentId}"
           data-result-placement
