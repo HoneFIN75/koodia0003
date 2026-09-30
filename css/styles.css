@@ -1228,7 +1228,7 @@ details[open] > summary > .help-marker::before {
   position: relative;
   width: min(100%, 26rem);
   padding: var(--spacing-xl);
-  background: var(--color-surface);
+  background: rgba(255, 255, 255, 0.5);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
   box-shadow: 0 24px 48px rgba(16, 34, 47, 0.45);

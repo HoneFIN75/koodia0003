@@ -23,7 +23,7 @@ export function renderLoginView(root, { errorMessage = '', infoMessage = '', pen
         ${infoMessage ? `<p class="message warning" role="status">${escapeHtml(infoMessage)}</p>` : ''}
         <form id="login-form" class="login-form" novalidate>
           <div class="form-field">
-            <label for="login-password">Salainen runno</label>
+            <label for="login-password">Salainen runo</label>
             <input
               id="login-password"
               name="password"
