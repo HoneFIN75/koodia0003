@@ -18,13 +18,12 @@ export function renderLoginView(root, { errorMessage = '', infoMessage = '', pen
       <section class="login-card" aria-labelledby="login-title">
         <div class="login-brand">
           <div class="brand-mark" aria-hidden="true">SFL</div>
-          <h1 id="login-title">SFL Pisteytystyökalu</h1>
+          <h1 id="login-title">SFL Porkkana</h1>
         </div>
-        <p class="login-intro">Tervetuloa! Syötä salasana jatkaaksesi.</p>
         ${infoMessage ? `<p class="message warning" role="status">${escapeHtml(infoMessage)}</p>` : ''}
         <form id="login-form" class="login-form" novalidate>
           <div class="form-field">
-            <label for="login-password">Salasana</label>
+            <label for="login-password">Salainen runno</label>
             <input
               id="login-password"
               name="password"
