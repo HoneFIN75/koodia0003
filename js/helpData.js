@@ -45,11 +45,11 @@ turnauspisteet = 1x-peruspisteet × turnauksen kerroin
         title: 'Rankingin tietolähteet',
         content: `Ranking muodostuu seuraavista tiedoista:
 - Pelaajat-sivun pelaajat ja heidän sarjansa
-- Tulokset-sivun tuloskortit ja niille tallennetut sijoitukset
+- Pelaajien tuloskorteille tallennetut sijoitukset
 - Pistetaulukot-sivun 1x-peruspisteet
 - Kertoimet-sivun kertoimet, jotka on liitetty turnaukseen
 
-Ranking päivittyy automaattisesti, kun tuloskortti tallennetaan.`,
+Ranking ja Yhteenvedon TOP-listat päivittyvät automaattisesti, kun sijoitus, pistetaulukko tai kerroin muuttuu.`,
       },
       {
         title: 'Pisteiden pyöristys',
@@ -70,28 +70,49 @@ Taulukon sarakeotsikkoa napsauttamalla lista lajitellaan nousevaan järjestyksee
     title: 'Tulokset',
     topics: [
       {
-        title: 'Tuloskortin käyttö',
-        content: `Tuloskortit ovat turnaussijoitusten ja ranking-pisteiden virallinen lähde.
+        title: 'Tulokset-sivun turnausyhteenveto',
+        content: `Tulokset-sivu näyttää kaikki turnaukset samassa järjestyksessä kuin Turnaukset-sivulla (järjestysnumero nousevasti).
 
-Tuloskortin luonti:
-1. Valitse turnaus.
-2. Valitse pelaajat, jotka osallistuivat turnaukseen.
+Jokaisesta turnauksesta näytetään:
+- Turnauksen nimi
+- Tila ja kerroin Kertoimet-sivulta
+- Alku- ja loppupäivä
+- Paras MPO ja Paras FPO muodossa sijoitus ja pelaajan nimi, esimerkiksi 1 Niklas Anttila
 
-Tämän jälkeen voit syöttää jokaiselle pelaajalle sijoituksen ja tallentaa kortin. Lisää pelaajia -toiminnolla voit täydentää korttia myöhemmin.
+Jos turnaukseen ei ole vielä syötetty kyseisen sarjan tuloksia, sarakkeessa näytetään viiva (-). Yhteenveto on lukunäkymä: sijoitukset syötetään pelaajien tuloskorteille.`,
+      },
+      {
+        title: 'Pelaajan tuloskortti',
+        content: `Tuloskortti on pelaajakohtainen, ja se on turnaussijoitusten ja ranking-pisteiden ainoa lähde.
 
-Sama pelaaja voi esiintyä samalla tuloskortilla vain kerran.
+Tuloskortti avataan Pelaajat-sivulta pelaajan rivin Tuloskortti-painikkeella. Kortilla näytetään kaikki turnaukset järjestysnumeron mukaan nousevasti, ja jokaisella rivillä on:
+- Turnauksen nimi, tila ja kerroin
+- PDGA Event ID, joka avaa turnauksen PDGA-sivun uuteen välilehteen
+- Sijoitus-kenttä
+- Lasketut pisteet
+- Tyhjennä-painike
 
-Sivun yläreunan toimintopalkin ⚠ Poista kaikki tuloskortit -toiminto poistaa kaikki tuloskortit ja niiden tulosrivit pysyvästi. Toiminto vaatii aina erillisen vahvistuksen.`,
+Tyhjennä poistaa rivin sijoituksen ja samalla lasketut pisteet. Toiminto kysyy aina vahvistuksen.`,
+      },
+      {
+        title: 'Nopea syöttö ja tallennus',
+        content: `Sijoitukset syötetään suoraan Sijoitus-kenttään. Tab-näppäin (tai Enter) siirtää kohdistuksen seuraavan turnauksen Sijoitus-kenttään kuten taulukkolaskennassa. Siirtyminen ei muuta eikä ylikirjoita kentissä jo olevia arvoja.
+
+Tallennus:
+- Automaattinen tallennus: kun sijoitus muuttuu, se tallennetaan ja pisteet lasketaan heti uudelleen.
+- Tallenna-painike: tallentaa kaikki kortin sijoitukset kerralla lisävarmistuksena.
+
+Jos sijoitus on virheellinen tai sille ei voida laskea pisteitä, rivillä näytetään virhe eikä sijoitusta tallenneta.`,
       },
       {
         title: 'Sijoituksen muoto',
         content: `Sijoitus syötetään joko yksittäisenä sijoituksena tai tasatuloksena.
 
 Sallitut muodot:
-- 1 (yksittäinen sijoitus)
-- 3T4 (tasatulos: neljä pelaajaa sijoilla 3–6)
+- 1, 2, 10 tai 100 (yksittäinen sijoitus)
+- 3T4, 5T2, 10T3 tai 100T10 (tasatulos muodossa sijoitusTpelaajamäärä)
 
-Sijoituksen pitää olla positiivinen kokonaisluku. Tasatuloksessa pelaajamäärän pitää olla vähintään 2 ja enintään 99.`,
+Sijoituksen pitää olla positiivinen kokonaisluku. Tasatuloksessa pelaajamäärän pitää olla vähintään 2.`,
       },
       {
         title: 'Tasatulokset',
@@ -99,21 +120,21 @@ Sijoituksen pitää olla positiivinen kokonaisluku. Tasatuloksessa pelaajamäär
 
 Esimerkki:
 - 3T4 tarkoittaa, että neljä pelaajaa jakaa sijat 3–6.
-- Kaikille tasatuloksen pelaajille merkitään sama sijoitus 3T4.
+- Kaikille tasatuloksen pelaajille merkitään omille tuloskorteilleen sama sijoitus 3T4.
 
 Huomioi:
-- Sijoitusalueet eivät saa mennä päällekkäin eri sijoitusten kesken.
-- Tasatuloksen merkintää pitää käyttää yhtä monella pelaajalla kuin merkintä ilmoittaa.
-- Pisteitä ei jaeta automaattisesti tasatuloksen kesken, vaan jokainen tasatuloksen pelaaja saa sijoituksensa mukaiset pisteet.`,
+- Saman turnauksen ja sarjan sijoitusalueet eivät saa mennä päällekkäin eri sijoitusten kesken.
+- Tasatulosmerkintää voi käyttää enintään niin monella pelaajalla kuin merkintä ilmoittaa.
+- Tasatuloksen pelaajat saavat jaettujen sijojen 1x-peruspisteiden keskiarvon kerrottuna turnauksen kertoimella.`,
       },
       {
         title: 'Pisteiden laskenta',
         content: `Lasketut pisteet muodostuvat kaavalla:
 turnauspisteet = 1x-peruspisteet × turnauksen kerroin
 
-1x-peruspisteet haetaan pelaajan sarjan pistetaulukosta sijoituksen perusteella. Käytetyt arvot tallennetaan tuloskortille, jotta historiallinen laskenta säilyy, vaikka pistetaulukkoa tai kerrointa muutettaisiin myöhemmin.
+1x-peruspisteet haetaan pelaajan sarjan (MPO tai FPO) pistetaulukosta sijoituksen perusteella. Tuloskortille tallennetaan vain sijoitus: pisteitä ei tallenneta, vaan ne lasketaan aina nykyisestä pistetaulukosta ja turnauksen nykyisestä kertoimesta. Jos pistetaulukkoa tai kerrointa muutetaan, pisteet päivittyvät automaattisesti Tuloskortilla, Rankingissa ja Yhteenvedossa.
 
-Jos pistetaulukosta puuttuu sijoitusta vastaava arvo, tulosta ei tallenneta.`,
+Jos pistetaulukosta puuttuu sijoitusta vastaava arvo tai turnaukselta puuttuu kerroin, sijoitusta ei tallenneta.`,
       },
     ],
   },
@@ -150,10 +171,10 @@ Pakolliset tiedot:
 Vapaaehtoiset tiedot: PDGA ID, PDGA-rating, maailmanranking ja muistiinpanot.`,
       },
       {
-        title: 'Pelaajan muokkaaminen ja poistaminen',
-        content: `Pelaajalistan Muokkaa-painike avaa saman lomakkeen olemassa olevilla tiedoilla.
+        title: 'Pelaajan tiedot, tuloskortti ja poistaminen',
+        content: `Pelaajalistan Tiedot-painike avaa pelaajan tietojen muokkauslomakkeen olemassa olevilla tiedoilla. Tuloskortti-painike avaa pelaajan tuloskortin, jolla syötetään pelaajan turnaussijoitukset.
 
-Pelaajan poistaminen vaatii aina erillisen vahvistuksen. Poistettua pelaajaa ei voi palauttaa, ja jos pelaaja on tallennettu tuloskortille, hänet näytetään tuloskortilla tekstillä Poistettu pelaaja.
+Pelaajan poistaminen vaatii aina erillisen vahvistuksen. Poistettua pelaajaa ei voi palauttaa, ja samalla poistetaan pelaajan tuloskortti ja sijoitukset.
 
 Toimintopalkin ⚠ Poista kaikki pelaajat -toiminto poistaa kaikki pelaajat kerralla. Myös se vaatii erillisen vahvistuksen.`,
       },
@@ -267,13 +288,13 @@ Rivejä voi lisätä toimintopalkin Lisää rivi -painikkeella sekä muokata ja 
         title: 'Tasatulokset pistetaulukossa',
         content: `Pistetaulukkoon tallennetaan vain yksittäiset sijoitukset, ei tasatuloksia.
 
-Kun tuloskortilla käytetään tasatulosmerkintää (esim. 3T4), jokainen tasatuloksen pelaaja saa oman sijoituksensa mukaiset 1x-peruspisteet. Pisteitä ei jaeta automaattisesti tasatuloksen pelaajien kesken tässä MVP-versiossa.`,
+Kun tuloskortilla käytetään tasatulosmerkintää (esim. 3T4), tasatuloksen pelaajat saavat jaettujen sijojen (esim. 3–6) 1x-peruspisteiden keskiarvon. Siksi pistetaulukossa pitää olla arvo jokaiselle tasatuloksen kattamalle sijoitukselle.`,
       },
       {
         title: 'Miksi keskitetty pistetaulukko?',
         content: `Keskitetty pistetaulukko pitää laskennan yhtenäisenä:
 - Käyttöliittymäkomponentit eivät sisällä kovakoodattuja pistearvoja.
-- Pisteet lasketaan aina tuloskorttien sijoituksista nykyisellä pistetaulukolla, joten Ranking ja Yhteenveto päivittyvät automaattisesti.
+- Pisteet lasketaan aina pelaajien tuloskorttien sijoituksista nykyisellä pistetaulukolla, joten Ranking ja Yhteenveto päivittyvät automaattisesti.
 - Pistetaulukon voi myöhemmin korvata API- tai tietokantaratkaisulla.`,
       },
     ],
