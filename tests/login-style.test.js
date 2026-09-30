@@ -27,9 +27,10 @@ test('login background image is used only on the login page and is not stretched
   assert.equal(imageUrls.length, 1);
 });
 
-test('login card keeps a solid surface on top of the background image', async () => {
+test('login card uses a translucent surface on top of the background image', async () => {
   const css = await readFile(path.join(rootDir, 'css/styles.css'), 'utf8');
   const loginCardRule = getRuleBody(css, '.login-card');
 
-  assert.match(loginCardRule, /background:\s*var\(--color-surface\);/);
+  assert.match(loginCardRule, /background:\s*rgba\(255,\s*255,\s*255,\s*0\.5\);/);
+  assert.doesNotMatch(loginCardRule, /opacity:/);
 });
