@@ -26,6 +26,16 @@ Ratkaisu säilyy kevyenä, mutta data kulkee nyt selaimesta REST API:n kautta pa
 - turnaustulosten lisäys, muokkaus ja poisto snapshot-pisteillä
 - ranking kaikille, MPO:lle ja FPO:lle
 - yhteenvetonäkymä tilastokorteilla, top 10 -pylväillä ja pelaajakohtaisella tulostaulukolla
+- Ohjeet-näkymä, johon kaikki käyttöohjeet on koottu
+
+## Ohjeet-näkymä
+
+Kaikki käyttöohjeet, tuontiohjeet ja selitykset ylläpidetään keskitetysti tiedostossa `js/helpData.js`.
+
+- rakenne on `{ id, title, topics: [{ title, content }] }`
+- Ohjeet-näkymä renderöi osiot ja ohjeaiheet automaattisesti `details`/`summary`-rakenteena
+- ohjeen lisääminen, muokkaaminen tai poistaminen vaatii vain muutoksen `js/helpData.js`-tiedostoon eikä lainkaan käyttöliittymäkehitystä
+- ohjeita ei muokata käyttöliittymästä eikä niitä tallenneta tietovarastoon
 
 ## Pistelaskenta
 

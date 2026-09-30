@@ -694,6 +694,110 @@ textarea {
   margin: var(--spacing-xs) 0;
 }
 
+.help-sections {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.help-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.help-section-summary,
+.help-topic-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  list-style: none;
+}
+
+.help-section-summary::-webkit-details-marker,
+.help-topic-summary::-webkit-details-marker {
+  display: none;
+}
+
+.help-section-summary {
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+.help-section[open] > .help-section-summary {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.help-section-summary:hover,
+.help-topic-summary:hover {
+  background: var(--color-surface-muted);
+}
+
+.help-section-summary:focus-visible,
+.help-topic-summary:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: -3px;
+}
+
+.help-marker::before {
+  content: '▶';
+  display: inline-block;
+  font-size: 0.75em;
+  color: var(--color-primary);
+}
+
+details[open] > summary > .help-marker::before {
+  content: '▼';
+}
+
+.help-section-title {
+  flex: 1 1 auto;
+}
+
+.help-topic-count {
+  flex: 0 0 auto;
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.help-topics {
+  display: grid;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.help-topic {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.help-topic-summary {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-weight: 600;
+}
+
+.help-topic-content {
+  padding: 0 var(--spacing-md) var(--spacing-md);
+  white-space: pre-wrap;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.help-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: 0 0 var(--spacing-md);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
 .chart {
   display: grid;
   gap: var(--spacing-sm);
@@ -912,6 +1016,12 @@ textarea {
 
   .hidden-mobile {
     display: none;
+  }
+
+  .help-section-summary,
+  .help-topics {
+    padding-left: var(--spacing-md);
+    padding-right: var(--spacing-md);
   }
 
   .players-table thead,

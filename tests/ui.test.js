@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createEmptyState } from '../js/storage.js';
 import { bindUi, renderApp } from '../js/ui.js';
+import { HELP_SECTIONS } from '../js/helpData.js';
 
 function createRootStub() {
   return {
@@ -378,7 +379,7 @@ test('renderApp näyttää yhteenvetosivulla vain dashboardin avainluvut ja TOP 
   assert.match(root.innerHTML, /Pelaajat/);
   assert.match(root.innerHTML, /Turnaukset/);
   assert.doesNotMatch(root.innerHTML, /<span class="eyebrow">Pistetaulukot<\/span>/);
-  assert.doesNotMatch(root.innerHTML, /Tulokset<\/span>/);
+  assert.doesNotMatch(root.innerHTML, /<span class="eyebrow">Tulokset<\/span>/);
   assert.doesNotMatch(root.innerHTML, /Pelaajan perustiedot/);
   assert.doesNotMatch(root.innerHTML, /Valitun pelaajan turnaustulokset/);
   assert.doesNotMatch(root.innerHTML, /data-summary-filter=/);
@@ -584,8 +585,7 @@ test('renderApp shows players CSV import instructions, required fields and summa
   );
 
   assert.match(root.innerHTML, /Pelaajien CSV-tuonti/);
-  assert.match(root.innerHTML, /Sarake-erottimena tulee käyttää puolipistettä \(\;\)/);
-  assert.match(root.innerHTML, /<li>PDGA ID<\/li>/);
+  assert.match(root.innerHTML, /Tarkemmat ohjeet löytyvät Ohjeet-osion kohdasta Pelaajat\./);
   assert.match(root.innerHTML, /Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking/);
   assert.match(root.innerHTML, /id="players-import-division" name="division" required/);
   assert.match(root.innerHTML, /id="players-import-file" name="file" type="file" accept="\.csv,text\/csv" required/);
@@ -692,7 +692,7 @@ test('renderApp shows tournament table with required column order and PDGA name 
 
   assert.match(root.innerHTML, /data-open-tournament-dialog>Lisää turnaus<\/button>/);
   assert.match(root.innerHTML, /data-open-tournament-import-dialog>Tuo turnaukset<\/button>/);
-  assert.match(root.innerHTML, /CSV-tuonnin ohje/);
+  assert.match(root.innerHTML, /Tarkemmat ohjeet löytyvät Ohjeet-osion kohdasta Turnaukset\./);
   assert.match(root.innerHTML, /Järjestysnumero;PDGA Event ID;Turnauksen nimi/);
   assert.match(root.innerHTML, /data-request-delete-all-tournaments/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="name"/);
@@ -974,8 +974,8 @@ test('renderApp shows score table import instructions, division actions and Finn
 
   renderApp(root, dataState, createUiState({ activeView: 'points' }));
 
-  assert.match(root.innerHTML, /CSV-tuonnin ohje/);
-  assert.match(root.innerHTML, /Muoto: <code>Sijoitus;Pisteet<\/code>/);
+  assert.match(root.innerHTML, /Tarkemmat ohjeet löytyvät Ohjeet-osion kohdasta Pistetaulukot\./);
+  assert.match(root.innerHTML, /Sijoitus;Pisteet/);
   assert.match(root.innerHTML, /Tuo MPO CSV/);
   assert.match(root.innerHTML, /Poista MPO-pisteet/);
   assert.match(root.innerHTML, /Tuo FPO CSV/);
@@ -1360,4 +1360,51 @@ test('bindUi restores focus to the pending control after confirmation dialog clo
   assert.equal(global.document.activeElement, deleteButton);
   assert.equal(uiState.pendingFocusSelector, '');
   restoreDocument();
+});
+
+test('renderApp shows Ohjeet tab between Kertoimet and Asetukset', () => {
+  const root = createRootStub();
+
+  renderApp(root, createEmptyState(), createUiState({ activeView: 'help' }));
+
+  const navOrder = [...root.innerHTML.matchAll(/data-view-target="([a-z]+)"/g)].map((match) => match[1]);
+
+  assert.deepEqual(navOrder.slice(0, 9), [
+    'summary',
+    'ranking',
+    'results',
+    'players',
+    'tournaments',
+    'points',
+    'multipliers',
+    'help',
+    'settings',
+  ]);
+  assert.match(root.innerHTML, /<button type="button" data-view-target="help" aria-current="page">/);
+});
+
+test('renderApp renders collapsible help sections and topics from help data', () => {
+  const root = createRootStub();
+
+  renderApp(root, createEmptyState(), createUiState({ activeView: 'help' }));
+
+  assert.match(root.innerHTML, /<section class="section" id="section-help"  aria-labelledby="help-title">/);
+  assert.match(root.innerHTML, /<h2 id="help-title">Ohjeet<\/h2>/);
+
+  HELP_SECTIONS.forEach((section) => {
+    assert.match(root.innerHTML, new RegExp(`data-help-section="${section.id}"`));
+    assert.match(root.innerHTML, new RegExp(`<span class="help-section-title">${section.title}</span>`));
+  });
+
+  assert.match(root.innerHTML, /<span class="help-topic-title">CSV-tuonti<\/span>/);
+  assert.match(root.innerHTML, /Divisioona valitaan importin yhteydessä/);
+  assert.doesNotMatch(root.innerHTML, /<details class="help-section" data-help-section="[a-z]+" open/);
+});
+
+test('renderApp keeps the help section hidden when another view is active', () => {
+  const root = createRootStub();
+
+  renderApp(root, createEmptyState(), createUiState({ activeView: 'players' }));
+
+  assert.match(root.innerHTML, /<section class="section" id="section-help" hidden aria-labelledby="help-title">/);
 });
