@@ -79,6 +79,9 @@ test('loadState sanitizes API payload and strips unknown legacy fields', async (
   assert.ok(state.multipliers.length > 0);
   assert.equal(state.resultCards[0].multiplierId, state.tournaments[0].multiplierId);
   assert.match(state.resultCards[0].status, /FPT/i);
+  assert.equal(state.resultCards[0].results[0].placement, '1');
+  assert.ok(!Object.hasOwn(state.resultCards[0].results[0], 'calculatedPoints'));
+  assert.ok(!Object.hasOwn(state.resultCards[0], 'multiplier'));
   assert.deepEqual(state.settings, {
     playerBaseUrl: 'https://www.pdga.com/player/',
     eventBaseUrl: 'https://www.pdga.com/tour/event/',

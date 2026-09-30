@@ -188,6 +188,10 @@ function createId(prefix = 'result-card') {
   return `${prefix}-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
 }
 
+function toStoredResult({ playerId, division, placement }) {
+  return { playerId, division, placement };
+}
+
 function listSelectedPlayerIds(formData) {
   return [...new Set(formData.getAll('playerIds').map((playerId) => String(playerId || '').trim()).filter(Boolean))];
 }
@@ -212,7 +216,6 @@ function createResultCardFromTournament(tournament, multipliers, playerIds, play
       playerId: player.id,
       division: player.division,
       placement: '',
-      calculatedPoints: null,
     }));
 
   return {
@@ -223,7 +226,6 @@ function createResultCardFromTournament(tournament, multipliers, playerIds, play
     startDate: tournament.startDate || '',
     endDate: tournament.endDate || '',
     status: multiplier.abbreviation || '',
-    multiplier: multiplierValue,
     multiplierId: multiplier.id,
     createdAt: now,
     updatedAt: now,
@@ -420,7 +422,6 @@ const handlers = {
           playerId,
           division: playerById.get(playerId).division,
           placement: '',
-          calculatedPoints: null,
         }));
 
       dataState.resultCards = dataState.resultCards.map((entry) => (
@@ -1173,7 +1174,8 @@ const handlers = {
         players: dataState.players,
         pointsTable: dataState.pointsTable,
         multipliers: dataState.multipliers,
-      });
+        tournaments: dataState.tournaments,
+      }).map(toStoredResult);
 
       dataState.resultCards = dataState.resultCards.map((entry) =>
         entry.id === cardId
@@ -1201,7 +1203,8 @@ const handlers = {
         players: dataState.players,
         pointsTable: dataState.pointsTable,
         multipliers: dataState.multipliers,
-      });
+        tournaments: dataState.tournaments,
+      }).map(toStoredResult);
 
       dataState.resultCards = dataState.resultCards.map((entry) =>
         entry.id === cardId

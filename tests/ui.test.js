@@ -1677,7 +1677,7 @@ test('renderApp pyöristää näytettävät pisteet asetuksen mukaan suomalaises
       location: '',
       venue: '',
       status: '',
-      multiplierId: '',
+      multiplierId: 'multiplier-c-tier',
       division: '',
       externalUrl: '',
       notes: '',
@@ -1697,9 +1697,10 @@ test('renderApp pyöristää näytettävät pisteet asetuksen mukaan suomalaises
       multiplier: 1,
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z',
-      results: [{ playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 123.45678 }],
+      results: [{ playerId: 'player-1', division: 'MPO', placement: '1' }],
     },
   ];
+  dataState.pointsTable = { MPO: { 1: 123.45678 }, FPO: {} };
 
   const expectations = [
     [0, '123 p'],
@@ -1721,7 +1722,8 @@ test('renderApp pyöristää näytettävät pisteet asetuksen mukaan suomalaises
     assert.ok(rankingRoot.innerHTML.includes(`<td class="number">${expected}</td>`), `Ranking: ${expected}`);
   }
 
-  assert.equal(dataState.resultCards[0].results[0].calculatedPoints, 123.45678);
+  assert.equal(dataState.pointsTable.MPO[1], 123.45678);
+  assert.ok(!Object.hasOwn(dataState.resultCards[0].results[0], 'calculatedPoints'));
 });
 
 test('renderApp näyttää uloskirjautumisen ja Turvallisuus-osion sivuston salasanalle', () => {
@@ -1737,4 +1739,45 @@ test('renderApp näyttää uloskirjautumisen ja Turvallisuus-osion sivuston sala
   renderApp(root, createEmptyState(), createUiState({ activeView: 'settings', sitePasswordFormError: 'Liian lyhyt.' }));
   assert.match(root.innerHTML, /id="sitePassword-error" role="alert">Liian lyhyt\.</);
   assert.match(root.innerHTML, /aria-describedby="settings-site-password-help sitePassword-error"/);
+});
+
+test('Ranking, Yhteenveto ja Tulokset käyttävät samaa tuloksista laskettua pistelähdettä', () => {
+  const dataState = createEmptyState();
+  dataState.players = [
+    { id: 'player-1', name: 'Matti Meikäläinen', division: 'MPO', pdgaNumber: '', pdgaRating: '', worldRank: '' },
+    { id: 'player-2', name: 'Maija Meikäläinen', division: 'FPO', pdgaNumber: '', pdgaRating: '', worldRank: '' },
+  ];
+  dataState.tournaments = [{ id: 'tournament-1', name: 'Testi Open', startDate: '2026-07-03', multiplierId: 'multiplier-major' }];
+  dataState.pointsTable = { MPO: { 1: 100 }, FPO: { 1: 90 } };
+  dataState.resultCards = [{
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    tournamentName: 'Testi Open',
+    multiplierId: 'multiplier-major',
+    results: [
+      { playerId: 'player-1', division: 'MPO', placement: '1' },
+      { playerId: 'player-2', division: 'FPO', placement: '1' },
+    ],
+  }];
+
+  const render = (activeView) => {
+    const root = createRootStub();
+    renderApp(root, dataState, createUiState({ activeView }));
+    return root.innerHTML;
+  };
+
+  assert.ok(render('summary').includes('<span>200,00 p</span>'));
+  assert.ok(render('summary').includes('<span>180,00 p</span>'));
+  assert.ok(render('ranking').includes('<td class="number">200,00 p</td>'));
+  assert.match(render('results'), /data-label="Lasketut pisteet">200</);
+
+  dataState.pointsTable.MPO[1] = 50;
+  dataState.multipliers = dataState.multipliers.map((entry) => (
+    entry.id === 'multiplier-major' ? { ...entry, multiplier: 3 } : entry
+  ));
+
+  assert.ok(render('summary').includes('<span>150,00 p</span>'));
+  assert.ok(render('ranking').includes('<td class="number">150,00 p</td>'));
+  assert.match(render('results'), /data-label="Lasketut pisteet">150</);
+  assert.match(render('results'), /Kerroin: 3,00/);
 });
