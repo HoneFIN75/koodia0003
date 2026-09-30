@@ -11,10 +11,14 @@ import {
 const MIME_TYPES = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
+  '.jpeg': 'image/jpeg',
+  '.jpg': 'image/jpeg',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.txt': 'text/plain; charset=utf-8',
+  '.webp': 'image/webp',
 };
 
 const ALLOWED_PUBLIC_ENTRIES = new Set(['index.html', 'css', 'js', 'assets', 'version.json']);
