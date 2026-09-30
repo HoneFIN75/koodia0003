@@ -57,6 +57,7 @@ let uiState = {
   playerFormId: null,
   playerFormErrors: {},
   playerFormDraft: null,
+  playerImportDialogOpen: false,
   playerImportDivision: '',
   playerImportSummary: null,
   playersStatus: 'loading',
@@ -86,6 +87,7 @@ let uiState = {
   multiplierFormFocusTarget: '',
   pendingFocusSelector: '',
   pointsForm: { division: 'MPO', place: '', basePoints: '', editingKey: '' },
+  pointsDialogOpen: false,
   pointsImportDialogOpen: false,
   pointsImportDivision: 'MPO',
   pointsImportFocusTarget: '',
@@ -112,7 +114,20 @@ function clearPlayerDialogState() {
 function closePointsImportDialogState() {
   uiState.pointsImportDialogOpen = false;
   uiState.pointsImportFocusTarget = '';
-  uiState.pendingFocusSelector = `[data-open-points-import="${uiState.pointsImportDivision || 'MPO'}"]`;
+  uiState.pendingFocusSelector = '[data-open-points-import]';
+}
+
+function closePointsDialogState() {
+  const editingKey = uiState.pointsForm?.editingKey;
+  uiState.pointsDialogOpen = false;
+  uiState.pointsForm = { division: 'MPO', place: '', basePoints: '', editingKey: '' };
+  uiState.pendingFocusSelector = editingKey ? `[data-edit-point="${editingKey}"]` : '[data-open-points-dialog]';
+}
+
+function closePlayersImportDialogState() {
+  uiState.playerImportDialogOpen = false;
+  uiState.playerImportSummary = null;
+  uiState.pendingFocusSelector = '[data-open-players-import-dialog]';
 }
 
 function closeTournamentImportDialogState() {
@@ -238,7 +253,8 @@ const handlers = {
     render();
   },
   setRankingFilter(filter) {
-    uiState.rankingFilter = filter;
+    uiState.rankingFilter = ['ALL', ...DIVISIONS].includes(filter) ? filter : 'ALL';
+    uiState.pendingFocusSelector = `[data-ranking-filter="${uiState.rankingFilter}"]`;
     render();
   },
   openResultCardDialog() {
@@ -344,20 +360,12 @@ const handlers = {
   },
   setPlayerSearch(query) {
     uiState.playerSearch = query;
+    uiState.pendingFocusSelector = '#player-search';
     render();
   },
   setPlayerDivisionFilter(filter) {
-    uiState.playerDivisionFilter = filter;
-    render();
-  },
-  setPlayerSortField(sortField) {
-    uiState.playerSortField = ['name', 'pdgaNumber', 'division', 'pdgaRating', 'worldRank'].includes(sortField)
-      ? sortField
-      : 'name';
-    render();
-  },
-  setPlayerSortDirection(sortDirection) {
-    uiState.playerSortDirection = sortDirection === 'desc' ? 'desc' : 'asc';
+    uiState.playerDivisionFilter = ['ALL', ...DIVISIONS].includes(filter) ? filter : 'ALL';
+    uiState.pendingFocusSelector = `[data-player-division-filter="${uiState.playerDivisionFilter}"]`;
     render();
   },
   openPlayerDialog() {
@@ -406,6 +414,46 @@ const handlers = {
         render();
         return;
       }
+      setError(error);
+    }
+  },
+  openPlayersImportDialog() {
+    uiState.activeView = 'players';
+    uiState.playerImportDialogOpen = true;
+    uiState.playerImportSummary = null;
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  closePlayersImportDialog() {
+    closePlayersImportDialogState();
+    render();
+  },
+  requestDeleteAllPlayers() {
+    if (!dataState.players.length) {
+      return;
+    }
+
+    uiState.confirmationDialog = { type: 'delete-all-players' };
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  async confirmDeleteAllPlayers() {
+    if (uiState.confirmationDialog?.type !== 'delete-all-players') {
+      return;
+    }
+
+    try {
+      dataState.players = [];
+      clearPlayerDialogState();
+      uiState.summaryPlayerId = '';
+      uiState.selectedPlayerId = '';
+      uiState.confirmationDialog = null;
+      uiState.pendingFocusSelector = '[data-open-player-dialog]';
+      await persistAndRender('Kaikki pelaajat on poistettu onnistuneesti.');
+    } catch (error) {
+      uiState.confirmationDialog = null;
       setError(error);
     }
   },
@@ -472,6 +520,12 @@ const handlers = {
       uiState.pendingFocusSelector = `[data-open-result-card-players-dialog="${uiState.confirmationDialog.cardId}"]`;
     } else if (uiState.confirmationDialog?.type === 'delete-result-card') {
       uiState.pendingFocusSelector = '[data-open-result-card-dialog]';
+    } else if (uiState.confirmationDialog?.type === 'delete-all-result-cards') {
+      uiState.pendingFocusSelector = '[data-request-delete-all-result-cards]';
+    } else if (uiState.confirmationDialog?.type === 'delete-all-players') {
+      uiState.pendingFocusSelector = '[data-request-delete-all-players]';
+    } else if (uiState.confirmationDialog?.type === 'delete-point') {
+      uiState.pendingFocusSelector = `[data-delete-point="${uiState.confirmationDialog.division}:${uiState.confirmationDialog.place}"]`;
     }
     uiState.confirmationDialog = null;
     render();
@@ -581,16 +635,12 @@ const handlers = {
   },
   setTournamentSearch(query) {
     uiState.tournamentSearch = query;
+    uiState.pendingFocusSelector = '#tournament-search';
     render();
   },
   setTournamentStatusFilter(filter) {
     uiState.tournamentStatusFilter = filter || 'ALL';
-    render();
-  },
-  setTournamentSortField(sortField) {
-    uiState.tournamentSortField = ['displayOrder', 'name', 'multiplierAbbreviation', 'pdgaEventId', 'startDate', 'endDate', 'location', 'venue'].includes(sortField)
-      ? sortField
-      : 'displayOrder';
+    uiState.pendingFocusSelector = `[data-tournament-status-filter="${CSS.escape(uiState.tournamentStatusFilter)}"]`;
     render();
   },
   openMultiplierDialog() {
@@ -714,10 +764,6 @@ const handlers = {
       setError(error);
     }
   },
-  setTournamentSortDirection(sortDirection) {
-    uiState.tournamentSortDirection = sortDirection === 'desc' ? 'desc' : 'asc';
-    render();
-  },
   toggleColumnSort(table, field, contextId = '') {
     const applySort = (fieldKey, directionKey, allowedFields, defaultField, defaultDirection = 'asc') => {
       if (!allowedFields.includes(field)) {
@@ -820,6 +866,10 @@ const handlers = {
     render();
   },
   requestDeleteAllTournaments() {
+    if (!dataState.tournaments.length) {
+      return;
+    }
+
     uiState.confirmationDialog = { type: 'delete-all-tournaments' };
     uiState.pendingFocusSelector = '';
     uiState.feedback = null;
@@ -881,7 +931,7 @@ const handlers = {
       uiState.tournamentFormDraft = null;
       uiState.tournamentFormFocusTarget = '';
       uiState.confirmationDialog = null;
-      uiState.pendingFocusSelector = '[data-request-delete-all-tournaments]';
+      uiState.pendingFocusSelector = '[data-open-tournament-dialog]';
       await persistAndRender('Kaikki turnaukset on poistettu onnistuneesti.');
     } catch (error) {
       uiState.confirmationDialog = null;
@@ -897,20 +947,28 @@ const handlers = {
       }
 
       dataState.pointsTable = upsertPointsTableEntry(dataState.pointsTable, values);
-      uiState.pointsForm = { division: 'MPO', place: '', basePoints: '', editingKey: '' };
+      closePointsDialogState();
       await persistAndRender('Pistetaulukon rivi tallennettiin.');
     } catch (error) {
       setError(error);
     }
   },
-  resetPointsForm() {
+  openPointsDialog() {
+    uiState.activeView = 'points';
+    uiState.pointsDialogOpen = true;
     uiState.pointsForm = { division: 'MPO', place: '', basePoints: '', editingKey: '' };
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  closePointsDialog() {
+    closePointsDialogState();
     render();
   },
   openPointsImportDialog(division) {
     uiState.activeView = 'points';
     uiState.pointsImportDialogOpen = true;
-    uiState.pointsImportDivision = division || 'MPO';
+    uiState.pointsImportDivision = DIVISIONS.includes(division) ? division : uiState.pointsImportDivision || 'MPO';
     uiState.pointsImportFocusTarget = 'file';
     uiState.pendingFocusSelector = '';
     uiState.feedback = null;
@@ -948,24 +1006,36 @@ const handlers = {
     const [division, place] = editingKey.split(':');
     const basePoints = dataState.pointsTable[division]?.[place];
     uiState.activeView = 'points';
+    uiState.pointsDialogOpen = true;
     uiState.pointsForm = { division, place, basePoints, editingKey };
+    uiState.pendingFocusSelector = '';
     uiState.feedback = null;
     render();
   },
-  async deletePoint(editingKey) {
-    const [division, place] = editingKey.split(':');
-    const confirmed = window.confirm(`Poistetaanko pistetaulukon rivi ${division} / sijoitus ${place}?`);
-    if (!confirmed) {
+  requestDeletePoint(editingKey) {
+    const [division, place] = String(editingKey || '').split(':');
+    if (!division || !place) {
+      return;
+    }
+
+    uiState.confirmationDialog = { type: 'delete-point', division, place };
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  async confirmDeletePoint() {
+    const { division, place, type } = uiState.confirmationDialog || {};
+    if (type !== 'delete-point' || !division || !place) {
       return;
     }
 
     try {
       dataState.pointsTable = removePointsTableEntry(dataState.pointsTable, division, place);
-      if (uiState.pointsForm.editingKey === editingKey) {
-        uiState.pointsForm = { division: 'MPO', place: '', basePoints: '', editingKey: '' };
-      }
+      uiState.confirmationDialog = null;
+      uiState.pendingFocusSelector = '[data-open-points-dialog]';
       await persistAndRender('Pistetaulukon rivi poistettiin.');
     } catch (error) {
+      uiState.confirmationDialog = null;
       setError(error);
     }
   },
@@ -1103,6 +1173,32 @@ const handlers = {
     uiState.pendingFocusSelector = '';
     uiState.feedback = null;
     render();
+  },
+  requestDeleteAllResultCards() {
+    if (!dataState.resultCards.length) {
+      return;
+    }
+
+    uiState.confirmationDialog = { type: 'delete-all-result-cards' };
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  async confirmDeleteAllResultCards() {
+    if (uiState.confirmationDialog?.type !== 'delete-all-result-cards') {
+      return;
+    }
+
+    try {
+      dataState.resultCards = [];
+      uiState.resultCardSorts = {};
+      uiState.confirmationDialog = null;
+      uiState.pendingFocusSelector = '[data-open-result-card-dialog]';
+      await persistAndRender('Kaikki tuloskortit on poistettu onnistuneesti.');
+    } catch (error) {
+      uiState.confirmationDialog = null;
+      setError(error);
+    }
   },
   async confirmDeleteResultCard() {
     const cardId = uiState.confirmationDialog?.cardId;
