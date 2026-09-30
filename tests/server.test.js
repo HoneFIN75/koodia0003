@@ -237,21 +237,26 @@ test('static image assets are served with image content types', async () => {
   const publicDir = await createTempDir();
   const jsondbDir = await createTempDir();
   await mkdir(path.join(publicDir, 'assets'), { recursive: true });
-  await writeFile(path.join(publicDir, 'assets', 'login-background.png'), 'png', 'utf8');
-  await writeFile(path.join(publicDir, 'assets', 'login-background.jpg'), 'jpg', 'utf8');
+  const imageTypes = {
+    'login-background.png': 'image/png',
+    'login-background.jpg': 'image/jpeg',
+    'login-background.jpeg': 'image/jpeg',
+    'login-background.webp': 'image/webp',
+  };
+  for (const fileName of Object.keys(imageTypes)) {
+    await writeFile(path.join(publicDir, 'assets', fileName), 'image', 'utf8');
+  }
   const storage = createJsonFileStorage({ directoryPath: jsondbDir });
   const server = createServer({ publicDir, storage });
 
   try {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
-    const pngResponse = await fetch(`http://127.0.0.1:${address.port}/assets/login-background.png`);
-    assert.equal(pngResponse.status, 200);
-    assert.equal(pngResponse.headers.get('content-type'), 'image/png');
-
-    const jpgResponse = await fetch(`http://127.0.0.1:${address.port}/assets/login-background.jpg`);
-    assert.equal(jpgResponse.status, 200);
-    assert.equal(jpgResponse.headers.get('content-type'), 'image/jpeg');
+    for (const [fileName, contentType] of Object.entries(imageTypes)) {
+      const response = await fetch(`http://127.0.0.1:${address.port}/assets/${fileName}`);
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get('content-type'), contentType);
+    }
   } finally {
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     await rm(publicDir, { recursive: true, force: true });
