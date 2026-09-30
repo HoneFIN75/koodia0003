@@ -27,7 +27,6 @@ import { SettingsValidationError, validateSettingsInput } from './pdga.js';
 import { toggleSortState } from './table-sorting.js';
 import {
   DIVISIONS,
-  recalculateResultCard,
   upsertPointsTableEntry,
   removePointsTableEntry,
   clearPointsTableDivision,
@@ -35,7 +34,13 @@ import {
   listPointsTableEntries,
   parsePointsTableCsv,
 } from './scoring.js';
-import { renderApp, bindUi } from './ui.js';
+import {
+  clearPlayerPlacement,
+  removePlayerResultCard,
+  removeTournamentFromResultCards,
+  setPlayerPlacement,
+} from './results.js';
+import { renderApp, bindUi, setPlayerResultCardStatus, updatePlayerResultRow } from './ui.js';
 import {
   AuthRequiredError,
   changeSitePassword,
@@ -100,11 +105,7 @@ let uiState = {
   pointsImportDialogOpen: false,
   pointsImportDivision: 'MPO',
   pointsImportFocusTarget: '',
-  resultCardDialogOpen: false,
-  resultCardForm: { tournamentId: '', playerIds: [] },
-  resultCardPlayersDialogOpen: false,
-  resultCardPlayersDialog: { cardId: '', playerIds: [] },
-  resultCardSorts: {},
+  resultCardPlayerId: '',
   confirmationDialog: null,
   feedback: null,
   settingsFormErrors: {},
@@ -162,8 +163,26 @@ function closeTournamentImportDialogState() {
   uiState.pendingFocusSelector = '[data-open-tournament-import-dialog]';
 }
 
+let saveQueue = Promise.resolve();
+let localRevision = 0;
+
+// Kaikki tallennukset kulkevat saman jonon kautta, jotta automaattitallennukset ja muut
+// tallennukset lähtevät palvelimelle järjestyksessä ja aina uusimmalla tilalla.
+function enqueueSave() {
+  const task = saveQueue.then(async () => {
+    const revision = localRevision;
+    const savedState = await saveState(dataState);
+    return { savedState, revision };
+  });
+  saveQueue = task.catch(() => undefined);
+  return task;
+}
+
 async function persistAndRender(successMessage = '') {
-  dataState = await saveState(dataState);
+  const { savedState, revision } = await enqueueSave();
+  if (revision === localRevision) {
+    dataState = savedState;
+  }
   if (successMessage) {
     uiState.feedback = { type: 'success', text: successMessage };
   }
@@ -182,68 +201,6 @@ function setError(error) {
 
 function formDataToObject(formData) {
   return Object.fromEntries(formData.entries());
-}
-
-function createId(prefix = 'result-card') {
-  return `${prefix}-${globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`}`;
-}
-
-function toStoredResult({ playerId, division, placement }) {
-  return { playerId, division, placement };
-}
-
-function listSelectedPlayerIds(formData) {
-  return [...new Set(formData.getAll('playerIds').map((playerId) => String(playerId || '').trim()).filter(Boolean))];
-}
-
-function createResultCardFromTournament(tournament, multipliers, playerIds, players) {
-  const multiplier = findMultiplier(multipliers, tournament.multiplierId);
-  if (!multiplier) {
-    throw new Error('Turnauksen tila tai kerroin puuttuu. Päivitä turnauksen tiedot ennen tuloskortin luontia.');
-  }
-
-  const multiplierValue = Number(multiplier.multiplier);
-  if (!Number.isFinite(multiplierValue) || multiplierValue <= 0) {
-    throw new Error('Turnauksen kerroin ei ole kelvollinen.');
-  }
-
-  const now = new Date().toISOString();
-  const playerById = new Map(players.map((player) => [player.id, player]));
-  const results = playerIds
-    .map((playerId) => playerById.get(playerId))
-    .filter(Boolean)
-    .map((player) => ({
-      playerId: player.id,
-      division: player.division,
-      placement: '',
-    }));
-
-  return {
-    id: createId(),
-    tournamentId: tournament.id,
-    tournamentName: tournament.name,
-    location: tournament.location || '',
-    startDate: tournament.startDate || '',
-    endDate: tournament.endDate || '',
-    status: multiplier.abbreviation || '',
-    multiplierId: multiplier.id,
-    createdAt: now,
-    updatedAt: now,
-    results,
-  };
-}
-
-function closeResultCardDialogState() {
-  uiState.resultCardDialogOpen = false;
-  uiState.resultCardForm = { tournamentId: '', playerIds: [] };
-  uiState.pendingFocusSelector = '[data-open-result-card-dialog]';
-}
-
-function closeResultCardPlayersDialogState() {
-  const cardId = uiState.resultCardPlayersDialog.cardId;
-  uiState.resultCardPlayersDialogOpen = false;
-  uiState.resultCardPlayersDialog = { cardId: '', playerIds: [] };
-  uiState.pendingFocusSelector = cardId ? `[data-open-result-card-players-dialog="${cardId}"]` : '[data-open-result-card-dialog]';
 }
 
 function render() {
@@ -348,98 +305,6 @@ const handlers = {
     uiState.pendingFocusSelector = `[data-ranking-filter="${uiState.rankingFilter}"]`;
     render();
   },
-  openResultCardDialog() {
-    uiState.activeView = 'results';
-    uiState.resultCardDialogOpen = true;
-    uiState.resultCardForm = { tournamentId: '', playerIds: [] };
-    uiState.pendingFocusSelector = '';
-    uiState.feedback = null;
-    render();
-  },
-  closeResultCardDialog() {
-    closeResultCardDialogState();
-    render();
-  },
-  updateResultCardTournament(tournamentId) {
-    uiState.resultCardForm = {
-      ...uiState.resultCardForm,
-      tournamentId,
-    };
-    render();
-  },
-  async submitResultCard(formData) {
-    try {
-      const tournamentId = String(formData.get('tournamentId') || '').trim();
-      const tournament = findTournament(dataState.tournaments, tournamentId);
-      if (!tournament) {
-        throw new Error('Valitse tuloskortille turnaus.');
-      }
-
-      const playerIds = listSelectedPlayerIds(formData);
-      const card = createResultCardFromTournament(tournament, dataState.multipliers, playerIds, dataState.players);
-      dataState.resultCards = [...dataState.resultCards, card];
-      closeResultCardDialogState();
-      await persistAndRender('Tuloskortti luotiin.');
-    } catch (error) {
-      uiState.resultCardForm = {
-        tournamentId: String(formData.get('tournamentId') || '').trim(),
-        playerIds: listSelectedPlayerIds(formData),
-      };
-      setError(error);
-    }
-  },
-  openResultCardPlayersDialog(cardId) {
-    const card = dataState.resultCards.find((entry) => entry.id === cardId);
-    if (!card) {
-      return;
-    }
-
-    uiState.resultCardPlayersDialogOpen = true;
-    uiState.resultCardPlayersDialog = { cardId, playerIds: [] };
-    uiState.pendingFocusSelector = '';
-    uiState.feedback = null;
-    render();
-  },
-  closeResultCardPlayersDialog() {
-    closeResultCardPlayersDialogState();
-    render();
-  },
-  async submitResultCardPlayers(formData) {
-    const cardId = String(formData.get('cardId') || '').trim();
-    const playerIds = listSelectedPlayerIds(formData);
-
-    try {
-      const card = dataState.resultCards.find((entry) => entry.id === cardId);
-      if (!card) {
-        throw new Error('Tuloskorttia ei löytynyt.');
-      }
-
-      const existingPlayerIds = new Set((card.results || []).map((result) => result.playerId));
-      const playerById = new Map(dataState.players.map((player) => [player.id, player]));
-      const appendedResults = playerIds
-        .filter((playerId) => !existingPlayerIds.has(playerId) && playerById.has(playerId))
-        .map((playerId) => ({
-          playerId,
-          division: playerById.get(playerId).division,
-          placement: '',
-        }));
-
-      dataState.resultCards = dataState.resultCards.map((entry) => (
-        entry.id === cardId
-          ? {
-              ...entry,
-              results: [...(entry.results || []), ...appendedResults],
-              updatedAt: new Date().toISOString(),
-            }
-          : entry
-      ));
-      closeResultCardPlayersDialogState();
-      await persistAndRender('Pelaajat lisättiin tuloskortille.');
-    } catch (error) {
-      uiState.resultCardPlayersDialog = { cardId, playerIds };
-      setError(error);
-    }
-  },
   setSummaryFilter(filter) {
     uiState.summaryFilter = filter;
     render();
@@ -536,6 +401,8 @@ const handlers = {
 
     try {
       dataState.players = [];
+      dataState.resultCards = [];
+      uiState.resultCardPlayerId = '';
       clearPlayerDialogState();
       uiState.summaryPlayerId = '';
       uiState.selectedPlayerId = '';
@@ -606,12 +473,8 @@ const handlers = {
         : '[data-open-multiplier-dialog]';
     } else if (uiState.confirmationDialog?.type === 'delete-points-division') {
       uiState.pendingFocusSelector = `[data-request-delete-points="${uiState.confirmationDialog.division}"]`;
-    } else if (uiState.confirmationDialog?.type === 'remove-result-player') {
-      uiState.pendingFocusSelector = `[data-open-result-card-players-dialog="${uiState.confirmationDialog.cardId}"]`;
-    } else if (uiState.confirmationDialog?.type === 'delete-result-card') {
-      uiState.pendingFocusSelector = '[data-open-result-card-dialog]';
-    } else if (uiState.confirmationDialog?.type === 'delete-all-result-cards') {
-      uiState.pendingFocusSelector = '[data-request-delete-all-result-cards]';
+    } else if (uiState.confirmationDialog?.type === 'clear-player-placement') {
+      uiState.pendingFocusSelector = `[data-clear-player-placement="${uiState.confirmationDialog.tournamentId}"]`;
     } else if (uiState.confirmationDialog?.type === 'delete-all-players') {
       uiState.pendingFocusSelector = '[data-request-delete-all-players]';
     } else if (uiState.confirmationDialog?.type === 'delete-point') {
@@ -628,6 +491,10 @@ const handlers = {
 
     try {
       dataState.players = removePlayer(dataState.players, playerId);
+      dataState.resultCards = removePlayerResultCard(dataState.resultCards, playerId);
+      if (uiState.resultCardPlayerId === playerId) {
+        uiState.resultCardPlayerId = '';
+      }
       if (uiState.playerFormId === playerId) {
         clearPlayerDialogState();
       }
@@ -854,7 +721,7 @@ const handlers = {
       setError(error);
     }
   },
-  toggleColumnSort(table, field, contextId = '') {
+  toggleColumnSort(table, field) {
     const applySort = (fieldKey, directionKey, allowedFields, defaultField, defaultDirection = 'asc') => {
       if (!allowedFields.includes(field)) {
         return;
@@ -889,22 +756,6 @@ const handlers = {
       applySort('multipliersSortField', 'multipliersSortDirection', ['orderNumber', 'name', 'abbreviation', 'multiplier'], 'orderNumber');
     } else if (table === 'points') {
       applySort('pointsSortField', 'pointsSortDirection', ['place', 'basePoints'], 'place');
-    } else if (table === 'result-card') {
-      if (!contextId) {
-        render();
-        return;
-      }
-
-      const currentSort = uiState.resultCardSorts[contextId] || { field: 'name', direction: 'asc' };
-      const nextSort = toggleSortState(currentSort, field, 'asc');
-      if (!['name', 'placement', 'calculatedPoints'].includes(nextSort.field)) {
-        render();
-        return;
-      }
-      uiState.resultCardSorts = {
-        ...uiState.resultCardSorts,
-        [contextId]: nextSort,
-      };
     }
 
     render();
@@ -991,7 +842,7 @@ const handlers = {
 
     try {
       dataState.tournaments = remainingTournaments;
-      dataState.resultCards = dataState.resultCards.filter((card) => card.tournamentId !== tournamentId);
+      dataState.resultCards = removeTournamentFromResultCards(dataState.resultCards, tournamentId);
       uiState.tournamentDialogOpen = false;
       uiState.tournamentFormId = null;
       uiState.tournamentFormErrors = {};
@@ -1153,155 +1004,119 @@ const handlers = {
       setError(error);
     }
   },
-  async updateResultPlacement(cardId, playerId, placement) {
-    try {
-      const card = dataState.resultCards.find((entry) => entry.id === cardId);
-      if (!card) {
-        throw new Error('Tuloskorttia ei löytynyt.');
-      }
-
-      const updatedResults = (card.results || []).map((result) => (
-        result.playerId === playerId
-          ? {
-              ...result,
-              placement: String(placement ?? '').trim().toUpperCase(),
-            }
-          : result
-      ));
-      const recalculatedResults = recalculateResultCard({
-        card,
-        results: updatedResults,
-        players: dataState.players,
-        pointsTable: dataState.pointsTable,
-        multipliers: dataState.multipliers,
-        tournaments: dataState.tournaments,
-      }).map(toStoredResult);
-
-      dataState.resultCards = dataState.resultCards.map((entry) =>
-        entry.id === cardId
-          ? {
-              ...entry,
-              results: recalculatedResults,
-              updatedAt: new Date().toISOString(),
-            }
-          : entry,
-      );
-      await persistAndRender('Sijoitus tallennettiin.');
-    } catch (error) {
-      setError(error);
+  openPlayerResultCard(playerId) {
+    if (!findPlayer(dataState.players, playerId)) {
+      return;
     }
+
+    uiState.activeView = 'player-result-card';
+    uiState.resultCardPlayerId = playerId;
+    uiState.navOpen = false;
+    uiState.feedback = null;
+    uiState.pendingFocusSelector = 'input[data-result-placement]';
+    render();
   },
-  async saveResultCard(cardId) {
+  closePlayerResultCard() {
+    const playerId = uiState.resultCardPlayerId;
+    uiState.activeView = 'players';
+    uiState.resultCardPlayerId = '';
+    uiState.pendingFocusSelector = playerId ? `[data-open-player-result-card="${playerId}"]` : '[data-open-player-dialog]';
+    render();
+  },
+  // Automaattitallennus: sijoitus validoidaan, pisteet lasketaan heti ja rivi päivitetään paikallaan
+  // ilman koko näkymän uudelleenpiirtoa, jotta Tab-siirtymä seuraavaan kenttään ei katkea.
+  updatePlayerPlacement(playerId, tournamentId, placement) {
+    let outcome;
     try {
-      const card = dataState.resultCards.find((entry) => entry.id === cardId);
-      if (!card) {
-        throw new Error('Tuloskorttia ei löytynyt.');
+      outcome = setPlayerPlacement(dataState, { playerId, tournamentId, placement });
+    } catch (error) {
+      updatePlayerResultRow(root, dataState, playerId, tournamentId, {
+        error: error instanceof Error ? error.message : 'Sijoitusta ei voitu tallentaa.',
+      });
+      setPlayerResultCardStatus(root, 'error', 'Sijoitusta ei tallennettu. Korjaa merkityn rivin sijoitus.');
+      return;
+    }
+
+    if (!outcome.changed) {
+      updatePlayerResultRow(root, dataState, playerId, tournamentId);
+      return;
+    }
+
+    dataState.resultCards = outcome.resultCards;
+    localRevision += 1;
+    updatePlayerResultRow(root, dataState, playerId, tournamentId);
+    setPlayerResultCardStatus(root, 'pending', 'Tallennetaan…');
+    enqueueSave()
+      .then(() => {
+        setPlayerResultCardStatus(
+          root,
+          'success',
+          outcome.placement ? 'Sijoitus tallennettiin automaattisesti.' : 'Sijoitus tyhjennettiin ja tallennettiin automaattisesti.',
+        );
+      })
+      .catch((error) => {
+        if (error instanceof AuthRequiredError) {
+          setError(error);
+          return;
+        }
+
+        setPlayerResultCardStatus(
+          root,
+          'error',
+          `Automaattinen tallennus epäonnistui: ${error instanceof Error ? error.message : 'Tuntematon virhe.'} Yritä uudelleen Tallenna-painikkeella.`,
+        );
+      });
+  },
+  async savePlayerResultCard(playerId, entries = []) {
+    let nextState = dataState;
+    const failedTournamentIds = [];
+
+    entries.forEach(({ tournamentId, placement }) => {
+      try {
+        const outcome = setPlayerPlacement(nextState, { playerId, tournamentId, placement });
+        nextState = { ...nextState, resultCards: outcome.resultCards };
+        updatePlayerResultRow(root, nextState, playerId, tournamentId);
+      } catch (error) {
+        failedTournamentIds.push(tournamentId);
+        updatePlayerResultRow(root, nextState, playerId, tournamentId, {
+          error: error instanceof Error ? error.message : 'Sijoitusta ei voitu tallentaa.',
+        });
       }
+    });
 
-      const recalculatedResults = recalculateResultCard({
-        card,
-        players: dataState.players,
-        pointsTable: dataState.pointsTable,
-        multipliers: dataState.multipliers,
-        tournaments: dataState.tournaments,
-      }).map(toStoredResult);
+    if (failedTournamentIds.length) {
+      setPlayerResultCardStatus(root, 'error', 'Tuloskorttia ei tallennettu. Korjaa merkityt sijoitukset ja yritä uudelleen.');
+      root.querySelector(`input[data-result-placement][data-tournament-id="${failedTournamentIds[0]}"]`)?.focus();
+      return;
+    }
 
-      dataState.resultCards = dataState.resultCards.map((entry) =>
-        entry.id === cardId
-          ? {
-              ...entry,
-              results: recalculatedResults,
-              updatedAt: new Date().toISOString(),
-            }
-          : entry,
-      );
+    try {
+      dataState.resultCards = nextState.resultCards;
+      localRevision += 1;
+      uiState.pendingFocusSelector = '[data-save-player-result-card]';
       await persistAndRender('Tuloskortti tallennettiin.');
     } catch (error) {
       setError(error);
     }
   },
-  requestRemoveResultPlayer(cardId, playerId) {
-    const card = dataState.resultCards.find((entry) => entry.id === cardId);
-    if (!card) {
-      return;
-    }
-
-    uiState.confirmationDialog = { type: 'remove-result-player', cardId, playerId };
+  requestClearPlayerPlacement(playerId, tournamentId) {
+    uiState.confirmationDialog = { type: 'clear-player-placement', playerId, tournamentId };
     uiState.pendingFocusSelector = '';
     uiState.feedback = null;
     render();
   },
-  async confirmRemoveResultPlayer() {
-    const cardId = uiState.confirmationDialog?.cardId;
-    const playerId = uiState.confirmationDialog?.playerId;
-    if (!cardId || !playerId) {
+  async confirmClearPlayerPlacement() {
+    const { type, playerId, tournamentId } = uiState.confirmationDialog || {};
+    if (type !== 'clear-player-placement' || !playerId || !tournamentId) {
       return;
     }
 
     try {
-      dataState.resultCards = dataState.resultCards.map((card) =>
-        card.id === cardId
-          ? {
-              ...card,
-              results: (card.results || []).filter((result) => result.playerId !== playerId),
-              updatedAt: new Date().toISOString(),
-            }
-          : card,
-      );
+      dataState.resultCards = clearPlayerPlacement(dataState.resultCards, playerId, tournamentId);
+      localRevision += 1;
       uiState.confirmationDialog = null;
-      await persistAndRender('Pelaaja poistettiin tuloskortilta.');
-    } catch (error) {
-      uiState.confirmationDialog = null;
-      setError(error);
-    }
-  },
-  requestDeleteResultCard(cardId) {
-    const card = dataState.resultCards.find((entry) => entry.id === cardId);
-    if (!card) {
-      return;
-    }
-
-    uiState.confirmationDialog = { type: 'delete-result-card', cardId };
-    uiState.pendingFocusSelector = '';
-    uiState.feedback = null;
-    render();
-  },
-  requestDeleteAllResultCards() {
-    if (!dataState.resultCards.length) {
-      return;
-    }
-
-    uiState.confirmationDialog = { type: 'delete-all-result-cards' };
-    uiState.pendingFocusSelector = '';
-    uiState.feedback = null;
-    render();
-  },
-  async confirmDeleteAllResultCards() {
-    if (uiState.confirmationDialog?.type !== 'delete-all-result-cards') {
-      return;
-    }
-
-    try {
-      dataState.resultCards = [];
-      uiState.resultCardSorts = {};
-      uiState.confirmationDialog = null;
-      uiState.pendingFocusSelector = '[data-open-result-card-dialog]';
-      await persistAndRender('Kaikki tuloskortit on poistettu onnistuneesti.');
-    } catch (error) {
-      uiState.confirmationDialog = null;
-      setError(error);
-    }
-  },
-  async confirmDeleteResultCard() {
-    const cardId = uiState.confirmationDialog?.cardId;
-    if (!cardId) {
-      return;
-    }
-
-    try {
-      dataState.resultCards = dataState.resultCards.filter((card) => card.id !== cardId);
-      uiState.confirmationDialog = null;
-      await persistAndRender('Tuloskortti poistettiin.');
+      uiState.pendingFocusSelector = `input[data-result-placement][data-tournament-id="${tournamentId}"]`;
+      await persistAndRender('Sijoitus ja lasketut pisteet tyhjennettiin.');
     } catch (error) {
       uiState.confirmationDialog = null;
       setError(error);

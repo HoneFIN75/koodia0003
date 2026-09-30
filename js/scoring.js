@@ -309,59 +309,51 @@ function rangesOverlap(left, right) {
   return left.rangeStart <= right.rangeEnd && right.rangeStart <= left.rangeEnd;
 }
 
-function validateResultCardPlacements(results) {
-  const parsedPlacements = [];
-  const tieCounts = new Map();
-  let hasEmptyPlacements = false;
+function tryParsePlacement(value) {
+  try {
+    return parsePlacement(value);
+  } catch {
+    return null;
+  }
+}
 
-  results.forEach((result) => {
-    const parsed = parsePlacement(result.placement);
-    if (!parsed) {
-      hasEmptyPlacements = true;
+// Tasatulosvalidointi saman turnauksen ja saman sarjan sisällä: sijoitusalueet eivät saa
+// mennä päällekkäin (paitsi täsmälleen sama tasatulosmerkintä), eikä tasatuloksessa saa olla
+// enemmän pelaajia kuin merkintä ilmoittaa. Muiden pelaajien sijoitukset voivat vielä puuttua.
+export function validatePlacementAgainstOthers({ placement, others = [] }) {
+  const parsed = parsePlacement(placement);
+  if (!parsed) {
+    return null;
+  }
+
+  let sameTieCount = 1;
+  others.forEach((other) => {
+    const otherParsed = tryParsePlacement(other.placement);
+    if (!otherParsed || !rangesOverlap(parsed, otherParsed)) {
       return;
     }
 
-    parsedPlacements.push({
-      playerId: result.playerId,
-      parsed,
-    });
+    const sameTieNotation =
+      parsed.isTie &&
+      otherParsed.isTie &&
+      parsed.place === otherParsed.place &&
+      parsed.tieCount === otherParsed.tieCount;
 
-    if (parsed.isTie) {
-      const tieKey = `${parsed.place}T${parsed.tieCount}`;
-      const current = tieCounts.get(tieKey) || { count: 0, tieCount: parsed.tieCount };
-      current.count += 1;
-      tieCounts.set(tieKey, current);
+    if (!sameTieNotation) {
+      const otherName = other.name ? `pelaajan ${other.name} ` : '';
+      throw new Error(
+        `Sijoitus ${parsed.raw} menee päällekkäin ${otherName}sijoituksen ${otherParsed.raw} kanssa. Käytä uniikkeja sijoituksia tai samaa tasatulosta.`,
+      );
     }
+
+    sameTieCount += 1;
   });
 
-  for (let index = 0; index < parsedPlacements.length; index += 1) {
-    for (let compareIndex = index + 1; compareIndex < parsedPlacements.length; compareIndex += 1) {
-      const current = parsedPlacements[index];
-      const compare = parsedPlacements[compareIndex];
-      if (!rangesOverlap(current.parsed, compare.parsed)) {
-        continue;
-      }
-
-      const sameTieNotation =
-        current.parsed.isTie &&
-        compare.parsed.isTie &&
-        current.parsed.place === compare.parsed.place &&
-        current.parsed.tieCount === compare.parsed.tieCount;
-
-      if (!sameTieNotation) {
-        throw new Error('Sijoitukset menevät päällekkäin tuloskortilla. Käytä uniikkeja sijoituksia tai samaa tasatulosta.');
-      }
-    }
+  if (parsed.isTie && sameTieCount > parsed.tieCount) {
+    throw new Error(`Tasatuloksessa ${parsed.raw} on liikaa pelaajia suhteessa ilmoitettuun pelaajamäärään.`);
   }
 
-  tieCounts.forEach(({ count, tieCount }, tieKey) => {
-    if (count > tieCount) {
-      throw new Error(`Tasatuloksessa ${tieKey} on liikaa rivejä suhteessa ilmoitettuun pelaajamäärään.`);
-    }
-    if (!hasEmptyPlacements && count < tieCount) {
-      throw new Error(`Tasatuloksessa ${tieKey} rivejä on liian vähän ilmoitettuun pelaajamäärään nähden.`);
-    }
-  });
+  return parsed;
 }
 
 export function calculatePlacementPoints({
@@ -422,97 +414,44 @@ function resolveMultiplierById(multiplierId, multipliers = []) {
   return referencedValue;
 }
 
-export function getResultCardMultiplierId({ card, tournaments = [] }) {
-  const tournament = tournaments.find((entry) => entry.id === card?.tournamentId);
-  return String(tournament?.multiplierId || card?.multiplierId || '').trim();
-}
-
-export function resolveResultCardMultiplier({ card, tournaments = [], multipliers = [] }) {
-  return resolveMultiplierById(getResultCardMultiplierId({ card, tournaments }), multipliers);
-}
-
-function resolveResultDivision(result, playerById) {
-  return normalizeDivision(result.division || playerById.get(result.playerId)?.division);
-}
-
-export function recalculateResultCard({
-  card,
-  results = card?.results || [],
-  players = [],
-  pointsTable,
-  multipliers = [],
-  tournaments = [],
-}) {
-  const playerById = new Map(players.map((player) => [player.id, player]));
-  const resolvedMultiplier = resolveResultCardMultiplier({ card, tournaments, multipliers });
-
-  const normalizedResults = results.map((result) => {
-    const parsedPlacement = parsePlacement(result.placement);
-    return {
-      ...result,
-      placement: parsedPlacement ? parsedPlacement.raw : '',
-    };
-  });
-
-  validateResultCardPlacements(normalizedResults);
-
-  return normalizedResults.map((result) => {
-    const safeDivision = resolveResultDivision(result, playerById);
-    const calculatedPoints = calculatePlacementPoints({
-      placement: result.placement,
-      division: safeDivision,
-      pointsTable,
-      multiplier: resolvedMultiplier,
-    });
-
-    return {
-      ...result,
-      division: safeDivision,
-      calculatedPoints,
-    };
-  });
+export function resolveTournamentMultiplier(tournament, multipliers = []) {
+  return resolveMultiplierById(String(tournament?.multiplierId || '').trim(), multipliers);
 }
 
 // Tulokset ovat ainoa pistelähde: pisteet lasketaan aina nykyisestä sijoituksesta,
-// sarjan pistetaulukosta ja turnauksen nykyisestä kertoimesta. Arvoja ei tallenneta.
-export function calculateResultCardPoints({
-  card,
-  players = [],
-  pointsTable,
-  multipliers = [],
-  tournaments = [],
-}) {
-  const playerById = new Map(players.map((player) => [player.id, player]));
-  let multiplier = null;
-  try {
-    multiplier = resolveResultCardMultiplier({ card, tournaments, multipliers });
-  } catch {
-    multiplier = null;
+// pelaajan sarjan pistetaulukosta ja turnauksen nykyisestä kertoimesta. Arvoja ei tallenneta.
+export function calculateResultPoints({ placement, player, tournament, pointsTable, multipliers = [] }) {
+  if (!player) {
+    throw new Error('Pelaajaa ei löytynyt.');
+  }
+  if (!tournament) {
+    throw new Error('Turnausta ei löytynyt.');
   }
 
-  return (card?.results || []).map((result) => {
-    let division = null;
-    let calculatedPoints = null;
-    try {
-      division = resolveResultDivision(result, playerById);
-      if (multiplier !== null) {
-        calculatedPoints = calculatePlacementPoints({
-          placement: result.placement,
-          division,
-          pointsTable,
-          multiplier,
-        });
-      }
-    } catch {
-      calculatedPoints = null;
-    }
+  const division = normalizeDivision(player.division);
+  const multiplier = resolveTournamentMultiplier(tournament, multipliers);
+  return calculatePlacementPoints({ placement, division, pointsTable, multiplier });
+}
 
-    return {
-      ...result,
-      division: division || result.division,
-      calculatedPoints,
-    };
-  });
+export function tryCalculateResultPoints(input) {
+  try {
+    const points = calculateResultPoints(input);
+    return typeof points === 'number' && Number.isFinite(points) ? points : null;
+  } catch {
+    return null;
+  }
+}
+
+export function listResultEntries(resultCards = []) {
+  return resultCards.flatMap((card) =>
+    (card?.results || [])
+      .filter((result) => String(result?.placement ?? '').trim() !== '')
+      .map((result) => ({
+        playerId: card.playerId,
+        tournamentId: result.tournamentId,
+        placement: result.placement,
+      })),
+  );
 }
 
 export function calculateAllResultPoints({
@@ -522,13 +461,28 @@ export function calculateAllResultPoints({
   multipliers = [],
   tournaments = [],
 }) {
-  return resultCards.flatMap((card) =>
-    calculateResultCardPoints({ card, players, pointsTable, multipliers, tournaments })
-      .filter((result) => typeof result.calculatedPoints === 'number' && Number.isFinite(result.calculatedPoints))
-      .map((result) => ({
-        ...result,
-        cardId: card.id,
-        tournamentId: card.tournamentId,
-      })),
-  );
+  const playerById = new Map(players.map((player) => [player.id, player]));
+  const tournamentById = new Map(tournaments.map((tournament) => [tournament.id, tournament]));
+
+  return listResultEntries(resultCards).flatMap((entry) => {
+    const player = playerById.get(entry.playerId);
+    const tournament = tournamentById.get(entry.tournamentId);
+    const calculatedPoints = tryCalculateResultPoints({
+      placement: entry.placement,
+      player,
+      tournament,
+      pointsTable,
+      multipliers,
+    });
+
+    if (calculatedPoints === null) {
+      return [];
+    }
+
+    return [{
+      ...entry,
+      division: player.division,
+      calculatedPoints,
+    }];
+  });
 }

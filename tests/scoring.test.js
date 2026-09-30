@@ -10,8 +10,9 @@ import {
   parsePointsTableCsv,
   parsePlacement,
   calculatePlacementPoints,
-  recalculateResultCard,
-  calculateResultCardPoints,
+  validatePlacementAgainstOthers,
+  calculateResultPoints,
+  tryCalculateResultPoints,
   calculateAllResultPoints,
 } from '../js/scoring.js';
 import { buildRanking, getPlayerResults, getTopRanking } from '../js/ranking.js';
@@ -144,55 +145,26 @@ test('calculatePlacementPoints averages tie placements before multiplier', () =>
   }), 120);
 });
 
-test('recalculateResultCard rejects overlapping placements unless same tie notation', () => {
-  const pointsTable = {
-    MPO: { 1: 100, 2: 85, 3: 75, 4: 65, 5: 55, 6: 45 },
-    FPO: {},
-  };
-  const card = {
-    id: 'card-1',
-    tournamentId: 'tournament-1',
-    multiplierId: 'multiplier-1',
-    results: [
-      { playerId: 'player-1', division: 'MPO', placement: '3T4' },
-      { playerId: 'player-2', division: 'MPO', placement: '4' },
-    ],
-  };
+test('validatePlacementAgainstOthers hylkää päällekkäiset sijoitukset paitsi saman tasatuloksen', () => {
+  assert.throws(() => validatePlacementAgainstOthers({
+    placement: '4',
+    others: [{ playerId: 'player-1', name: 'Aapo', placement: '3T4' }],
+  }), /menee päällekkäin pelaajan Aapo sijoituksen 3T4 kanssa/);
 
-  assert.throws(() => recalculateResultCard({
-    card,
-    players: [],
-    pointsTable,
-    multipliers: TEST_MULTIPLIERS,
-  }), /Sijoitukset menevät päällekkäin/);
+  assert.equal(validatePlacementAgainstOthers({
+    placement: '3T2',
+    others: [{ playerId: 'player-1', placement: '3T2' }, { playerId: 'player-2', placement: '1' }],
+  }).raw, '3T2');
+
+  assert.equal(validatePlacementAgainstOthers({ placement: '100T10', others: [] }).rangeEnd, 109);
+  assert.equal(validatePlacementAgainstOthers({ placement: '', others: [] }), null);
 });
 
-test('recalculateResultCard laskee sekä normaalin sijoituksen että tasatuloksen oikein', () => {
-  const pointsTable = {
-    MPO: { 1: 100, 2: 85, 3: 75, 4: 65 },
-    FPO: {},
-  };
-  const card = {
-    id: 'card-1',
-    tournamentId: 'tournament-1',
-    multiplierId: 'multiplier-2',
-    results: [
-      { playerId: 'player-1', division: 'MPO', placement: '1' },
-      { playerId: 'player-2', division: 'MPO', placement: '3T2' },
-      { playerId: 'player-3', division: 'MPO', placement: '3T2' },
-    ],
-  };
-
-  const recalculated = recalculateResultCard({
-    card,
-    players: [],
-    pointsTable,
-    multipliers: TEST_MULTIPLIERS,
-  });
-
-  assert.equal(recalculated[0].calculatedPoints, 200);
-  assert.equal(recalculated[1].calculatedPoints, 140);
-  assert.equal(recalculated[2].calculatedPoints, 140);
+test('validatePlacementAgainstOthers hylkää tasatuloksen, jos pelaajia on enemmän kuin tieCount', () => {
+  assert.throws(() => validatePlacementAgainstOthers({
+    placement: '3T2',
+    others: [{ playerId: 'player-1', placement: '3T2' }, { playerId: 'player-2', placement: '3T2' }],
+  }), /liikaa pelaajia/);
 });
 
 test('calculatePlacementPoints hylkää tasatuloksen jos jokin sijoituksen piste puuttuu', () => {
@@ -209,28 +181,31 @@ test('calculatePlacementPoints hylkää tasatuloksen jos jokin sijoituksen piste
   }), /Pisteitä ei ole määritetty sarjalle MPO sijoitukselle 5/);
 });
 
-test('recalculateResultCard hylkää tasatuloksen jos rivejä on enemmän kuin tieCount', () => {
-  const pointsTable = {
-    MPO: { 3: 75, 4: 65 },
-    FPO: {},
-  };
-  const card = {
-    id: 'card-1',
-    tournamentId: 'tournament-1',
-    multiplierId: 'multiplier-1',
-    results: [
-      { playerId: 'player-1', division: 'MPO', placement: '3T2' },
-      { playerId: 'player-2', division: 'MPO', placement: '3T2' },
-      { playerId: 'player-3', division: 'MPO', placement: '3T2' },
-    ],
-  };
+test('calculateResultPoints käyttää pelaajan sarjan pistetaulukkoa ja turnauksen kerrointa', () => {
+  const pointsTable = { MPO: { 1: 100, 2: 85, 3: 75, 4: 65 }, FPO: { 1: 60, 2: 50 } };
+  const tournament = { id: 't-1', multiplierId: 'multiplier-2' };
+  const mpo = { id: 'p-1', division: 'MPO' };
+  const fpo = { id: 'p-2', division: 'FPO' };
 
-  assert.throws(() => recalculateResultCard({
-    card,
-    players: [],
+  assert.equal(calculateResultPoints({ placement: '1', player: mpo, tournament, pointsTable, multipliers: TEST_MULTIPLIERS }), 200);
+  assert.equal(calculateResultPoints({ placement: '1', player: fpo, tournament, pointsTable, multipliers: TEST_MULTIPLIERS }), 120);
+  assert.equal(calculateResultPoints({ placement: '3T2', player: mpo, tournament, pointsTable, multipliers: TEST_MULTIPLIERS }), 140);
+
+  assert.throws(() => calculateResultPoints({
+    placement: '3',
+    player: fpo,
+    tournament,
     pointsTable,
     multipliers: TEST_MULTIPLIERS,
-  }), /liikaa rivejä/);
+  }), /Pisteitä ei ole määritetty sarjalle FPO sijoitukselle 3/);
+  assert.throws(() => calculateResultPoints({
+    placement: '1',
+    player: mpo,
+    tournament: { id: 't-2', multiplierId: '' },
+    pointsTable,
+    multipliers: TEST_MULTIPLIERS,
+  }), /kerrointa ei löytynyt/);
+  assert.equal(tryCalculateResultPoints({ placement: '3', player: fpo, tournament, pointsTable, multipliers: TEST_MULTIPLIERS }), null);
 });
 
 function createChainState() {
@@ -251,30 +226,34 @@ function createChainState() {
     },
     resultCards: [
       {
-        id: 'card-1',
-        tournamentId: 't-1',
-        multiplierId: 'multiplier-1',
+        id: 'result-card-mpo-1',
+        playerId: 'mpo-1',
         results: [
-          { playerId: 'mpo-1', division: 'MPO', placement: '1' },
-          { playerId: 'mpo-2', division: 'MPO', placement: '2' },
-          { playerId: 'fpo-1', division: 'FPO', placement: '1' },
+          { tournamentId: 't-1', placement: '1' },
+          { tournamentId: 't-2', placement: '3' },
         ],
       },
       {
-        id: 'card-2',
-        tournamentId: 't-2',
-        multiplierId: 'multiplier-2',
+        id: 'result-card-mpo-2',
+        playerId: 'mpo-2',
         results: [
-          { playerId: 'mpo-1', division: 'MPO', placement: '3' },
-          { playerId: 'mpo-2', division: 'MPO', placement: '' },
-          { playerId: 'fpo-1', division: 'FPO', placement: '2' },
+          { tournamentId: 't-1', placement: '2' },
+          { tournamentId: 't-2', placement: '' },
+        ],
+      },
+      {
+        id: 'result-card-fpo-1',
+        playerId: 'fpo-1',
+        results: [
+          { tournamentId: 't-1', placement: '1' },
+          { tournamentId: 't-2', placement: '2' },
         ],
       },
     ],
   };
 }
 
-test('kokonaispisteet lasketaan tuloksista sarjan pistetaulukolla ja turnauksen kertoimella', () => {
+test('kokonaispisteet lasketaan pelaajan tuloskortista sarjan pistetaulukolla ja turnauksen kertoimella', () => {
   const state = createChainState();
   const ranking = buildRanking(state, 'ALL');
 
@@ -296,7 +275,7 @@ test('ranking päivittyy automaattisesti, kun sijoitus, pistetaulukko tai kerroi
   const state = createChainState();
 
   state.resultCards[1].results[1].placement = '1';
-  state.resultCards[1].results[0].placement = '2';
+  state.resultCards[0].results[1].placement = '2';
   assert.deepEqual(buildRanking(state, 'MPO').map((entry) => [entry.id, entry.totalPoints]), [
     ['mpo-2', 95 + 100 * 2],
     ['mpo-1', 100 + 95 * 2],
@@ -315,27 +294,26 @@ test('ranking päivittyy automaattisesti, kun sijoitus, pistetaulukko tai kerroi
   assert.equal(buildRanking(state, 'MPO')[0].totalPoints, 100 + 120);
 });
 
-test('calculateResultCardPoints laskee tasatuloksen ja jättää puuttuvat pisteet laskematta', () => {
+test('calculateAllResultPoints laskee tasatuloksen ja ohittaa laskemattomat sijoitukset', () => {
   const state = createChainState();
-  state.resultCards[0].results = [
-    { playerId: 'mpo-1', division: 'MPO', placement: '1T2' },
-    { playerId: 'mpo-2', division: 'MPO', placement: '1T2' },
-    { playerId: 'fpo-1', division: 'FPO', placement: '5' },
-  ];
-
-  const results = calculateResultCardPoints({ ...state, card: state.resultCards[0] });
-  assert.deepEqual(results.map((result) => result.calculatedPoints), [97.5, 97.5, null]);
-  assert.ok(state.resultCards[0].results.every((result) => !Object.hasOwn(result, 'calculatedPoints')));
+  state.resultCards[0].results[0].placement = '1T2';
+  state.resultCards[1].results[0].placement = '1T2';
+  state.resultCards[2].results[0].placement = '5';
 
   const allResults = calculateAllResultPoints(state);
   assert.ok(allResults.every((result) => Number.isFinite(result.calculatedPoints)));
-  assert.equal(allResults.filter((result) => result.cardId === 'card-1').length, 2);
+  assert.deepEqual(
+    allResults.filter((result) => result.tournamentId === 't-1').map((result) => [result.playerId, result.calculatedPoints]),
+    [['mpo-1', 97.5], ['mpo-2', 97.5]],
+  );
+  assert.ok(state.resultCards.every((card) => card.results.every((result) => !Object.hasOwn(result, 'calculatedPoints'))));
 });
 
-test('tuloskortin tallennettuja pisteitä tai kerroinsnapshotia ei käytetä laskennassa', () => {
+test('tuloskortin mahdollisia tallennettuja pisteitä tai kerroinsnapshotia ei käytetä laskennassa', () => {
   const state = createChainState();
   state.resultCards[0].multiplier = 10;
   state.resultCards[0].results[0].calculatedPoints = 9999;
+  state.resultCards[0].results[0].basePoints = 9999;
 
   assert.equal(buildRanking(state, 'MPO')[0].totalPoints, 100 + 85 * 2);
 });

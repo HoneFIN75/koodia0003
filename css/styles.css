@@ -359,18 +359,46 @@ a {
   font-weight: 500;
 }
 
-.result-player-list {
-  width: 100%;
-  max-height: 18rem;
-  overflow: auto;
-  padding: var(--spacing-sm);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-sm);
+.placement-input {
+  width: 7.5rem;
+  max-width: 100%;
+  padding: 0.5rem 0.65rem;
+  font-variant-numeric: tabular-nums;
 }
 
-.result-player-list label {
-  width: 100%;
-  justify-content: flex-start;
+.placement-input:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-color: var(--color-primary);
+}
+
+.player-result-card-table .field-error {
+  display: block;
+  margin-top: var(--spacing-2xs);
+  max-width: 18rem;
+}
+
+.result-card-save-status {
+  min-height: 1.5em;
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.result-card-save-status[data-status-type="success"] {
+  color: var(--color-success);
+}
+
+.result-card-save-status[data-status-type="success"]::before {
+  content: "✓ ";
+}
+
+.result-card-save-status[data-status-type="error"] {
+  color: var(--color-error);
+}
+
+.result-card-save-status[data-status-type="error"]::before {
+  content: "⚠ ";
 }
 
 .badge,

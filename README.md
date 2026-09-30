@@ -23,6 +23,8 @@ Ratkaisu säilyy kevyenä, mutta data kulkee nyt selaimesta REST API:n kautta pa
 - turnausten CRUD-hallinta ennalta määritetyillä multiplier-vaihtoehdoilla
 - asetussivu yhteisille PDGA-linkkiasetuksille
 - keskitetty MPO/FPO-pistetaulukkonäkymä ja ylläpito
+- Tulokset-sivun turnausyhteenveto (Paras MPO / Paras FPO) turnausten järjestysnumeron mukaisessa järjestyksessä
+- pelaajakohtaiset tuloskortit (Pelaajat → Tuloskortti): sijoitusten syöttö turnauksittain, automaattitallennus, Tallenna-painike ja Tab-siirtymä seuraavalle riville
 - tuloskortit ovat ainoa pistelähde: turnaus- ja kokonaispisteet lasketaan aina dynaamisesti sijoituksista, pistetaulukoista ja kertoimista
 - ranking kaikille, MPO:lle ja FPO:lle
 - yhteenvetonäkymä tilastokorteilla, top 10 -pylväillä ja pelaajakohtaisella tulostaulukolla
@@ -41,10 +43,9 @@ Kaikki käyttöohjeet, tuontiohjeet ja selitykset ylläpidetään keskitetysti t
 
 - `turnauspisteet = sijoituksen 1x-peruspisteet × turnauksen multiplier`
 - `kokonaispisteet = pelaajan kaikkien turnauspisteiden summa`
-- tulosta tallennettaessa mukaan tallennetaan:
-  - käytetty 1x-peruspistemäärä
-  - käytetty multiplier
-  - laskettu turnauspistemäärä
+- tuloskortti on pelaajakohtainen (`resultCards: [{ id, playerId, results: [{ tournamentId, placement }] }]`) ja sille tallennetaan vain sijoitus
+- pisteitä, peruspisteitä tai kertoimia ei tallenneta: ne lasketaan aina nykyisestä pistetaulukosta ja turnauksen nykyisestä kertoimesta
+- vanhat turnauskohtaiset tuloskortit ja `tournamentResults`-rivit migroidaan pelaajakohtaisiksi tuloskorteiksi datan normalisoinnissa
 
 Pisteet haetaan keskitetysti `js/scoring.js`-moduulista. Pistearvoja ei kovakoodata käyttöliittymäkomponentteihin.
 
