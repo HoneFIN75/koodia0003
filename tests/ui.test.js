@@ -210,7 +210,7 @@ test('renderApp builds PDGA links from centralized settings', () => {
   assert.match(root.innerHTML, /aria-label="Avaa pelaajan Testi Pelaaja PDGA-profiili"/);
 });
 
-test('renderApp renders player names as PDGA links across summary, ranking and player list views and falls back to text without PDGA ID', () => {
+test('renderApp renders PDGA ID as the PDGA profile link and keeps player names as plain text', () => {
   const root = createRootStub();
   const dataState = createEmptyState();
   dataState.settings = {
@@ -285,17 +285,18 @@ test('renderApp renders player names as PDGA links across summary, ranking and p
 
   assert.match(
     root.innerHTML,
-    /id="section-summary"[\s\S]*class="player-name-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan Linkki Pelaaja PDGA-profiili">Linkki Pelaaja<\/a>[\s\S]*<span class="player-name-text">Teksti Pelaaja<\/span>/,
+    /id="section-summary"[\s\S]*<span class="player-name-text">Linkki Pelaaja<\/span>[\s\S]*<span class="player-name-text">Teksti Pelaaja<\/span>/,
   );
   assert.match(
     root.innerHTML,
-    /id="section-ranking"[\s\S]*class="player-name-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan Linkki Pelaaja PDGA-profiili">Linkki Pelaaja<\/a>[\s\S]*<span class="player-name-text">Teksti Pelaaja<\/span>/,
+    /id="section-ranking"[\s\S]*<span class="player-name-text">Linkki Pelaaja<\/span>[\s\S]*<a class="pdga-id-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan Linkki Pelaaja PDGA-profiili">12345<\/a>/,
   );
   assert.match(
     root.innerHTML,
-    /id="section-players"[\s\S]*class="player-name-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan Linkki Pelaaja PDGA-profiili">Linkki Pelaaja<\/a>[\s\S]*<span class="player-name-text">Teksti Pelaaja<\/span>/,
+    /id="section-players"[\s\S]*<span class="player-name-text">Linkki Pelaaja<\/span>[\s\S]*<a class="pdga-id-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan Linkki Pelaaja PDGA-profiili">12345<\/a>/,
   );
-  assert.doesNotMatch(root.innerHTML, /href="https:\/\/example\.com\/player\/[^"]*">Teksti Pelaaja<\/a>/);
+  assert.doesNotMatch(root.innerHTML, /href="https:\/\/example\.com\/player\/[^"]*">Linkki Pelaaja<\/a>/);
+  assert.doesNotMatch(root.innerHTML, /player-name-link/);
 });
 
 test('renderApp näyttää yhteenvetosivulla vain dashboardin avainluvut ja TOP 10 -listat', () => {
@@ -1646,4 +1647,79 @@ test('bindUi kutsuu suodatinpainikkeiden ja toimintopalkin käsittelijöitä', (
   } finally {
     restoreDocument();
   }
+});
+
+test('renderApp pyöristää näytettävät pisteet asetuksen mukaan suomalaisessa muodossa', () => {
+  const dataState = createEmptyState();
+  dataState.players = [
+    {
+      id: 'player-1',
+      firstName: 'Tuomo',
+      lastName: 'Rikman',
+      name: 'Tuomo Rikman',
+      division: 'MPO',
+      pdgaNumber: 12345,
+      pdgaRating: '',
+      worldRank: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Testi Open',
+      pdgaEventId: '',
+      startDate: '2026-07-03',
+      endDate: '',
+      displayOrder: 1,
+      location: '',
+      venue: '',
+      status: '',
+      multiplierId: '',
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  dataState.resultCards = [
+    {
+      id: 'card-1',
+      tournamentId: 'tournament-1',
+      tournamentName: 'Testi Open',
+      location: '',
+      startDate: '2026-07-03',
+      endDate: '',
+      status: '',
+      multiplier: 1,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      results: [{ playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 123.45678 }],
+    },
+  ];
+
+  const expectations = [
+    [0, '123 p'],
+    [1, '123,5 p'],
+    [2, '123,46 p'],
+    [3, '123,457 p'],
+    [4, '123,4568 p'],
+  ];
+
+  for (const [pointDecimals, expected] of expectations) {
+    dataState.settings = { ...dataState.settings, pointDecimals };
+
+    const summaryRoot = createRootStub();
+    renderApp(summaryRoot, dataState, createUiState({ activeView: 'summary' }));
+    assert.ok(summaryRoot.innerHTML.includes(`<span>${expected}</span>`), `Yhteenveto: ${expected}`);
+
+    const rankingRoot = createRootStub();
+    renderApp(rankingRoot, dataState, createUiState({ activeView: 'ranking' }));
+    assert.ok(rankingRoot.innerHTML.includes(`<td class="number">${expected}</td>`), `Ranking: ${expected}`);
+  }
+
+  assert.equal(dataState.resultCards[0].results[0].calculatedPoints, 123.45678);
 });

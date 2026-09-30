@@ -4,8 +4,10 @@ import {
   buildPdgaEventUrl,
   buildPdgaPlayerUrl,
   DEFAULT_PDGA_SETTINGS,
+  DEFAULT_POINT_DECIMALS,
   extractPdgaEventId,
   extractPdgaPlayerId,
+  sanitizePointDecimals,
   SettingsValidationError,
   validateSettingsInput,
 } from '../js/pdga.js';
@@ -40,6 +42,7 @@ test('normalizes PDGA settings with trailing slashes', () => {
   assert.deepEqual(settings, {
     playerBaseUrl: 'https://example.com/player/',
     eventBaseUrl: 'https://example.com/event/',
+    pointDecimals: 2,
   });
 });
 
@@ -54,6 +57,32 @@ test('rejects invalid PDGA settings urls', () => {
       assert.ok(error instanceof SettingsValidationError);
       assert.equal(error.fieldErrors.playerBaseUrl, 'PDGA-pelaajaosoitteen perus-URL ei ole kelvollinen verkko-osoite.');
       assert.equal(error.fieldErrors.eventBaseUrl, 'PDGA-kilpailuosoitteen perus-URL on pakollinen.');
+      return true;
+    },
+  );
+});
+
+test('validates and sanitizes the point rounding setting', () => {
+  const settings = validateSettingsInput({
+    playerBaseUrl: 'https://example.com/player/',
+    eventBaseUrl: 'https://example.com/event/',
+    pointDecimals: '4',
+  });
+
+  assert.equal(settings.pointDecimals, 4);
+  assert.equal(sanitizePointDecimals('0'), 0);
+  assert.equal(sanitizePointDecimals('5'), DEFAULT_POINT_DECIMALS);
+  assert.equal(sanitizePointDecimals(''), DEFAULT_POINT_DECIMALS);
+  assert.throws(
+    () =>
+      validateSettingsInput({
+        playerBaseUrl: 'https://example.com/player/',
+        eventBaseUrl: 'https://example.com/event/',
+        pointDecimals: '7',
+      }),
+    (error) => {
+      assert.ok(error instanceof SettingsValidationError);
+      assert.equal(error.fieldErrors.pointDecimals, 'Pyöristys pitää olla arvo väliltä 0–4.');
       return true;
     },
   );

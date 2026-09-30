@@ -1,6 +1,6 @@
 import { DIVISIONS, getVisiblePlayers } from './players.js';
 import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, sortTournaments, filterAndSortTournaments } from './tournaments.js';
-import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS } from './pdga.js';
+import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS, POINT_DECIMALS_OPTIONS, sanitizePointDecimals } from './pdga.js';
 import { listPointsTableEntries, parsePlacement } from './scoring.js';
 import { buildRanking, getTopRanking } from './ranking.js';
 import { findMultiplier, formatMultiplier, sortMultipliers } from './multipliers.js';
@@ -36,8 +36,21 @@ function formatNumber(value) {
   }).format(parsed);
 }
 
-function formatDeploymentTimestamp(value) {
-  const parsedDate = new Date(value);
+export function formatPoints(value, settings) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return '—';
+  }
+
+  const decimals = sanitizePointDecimals(settings?.pointDecimals);
+
+  return new Intl.NumberFormat('fi-FI', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(parsed);
+}
+
+function formatDeploymentTimestamp(value) {  const parsedDate = new Date(value);
   if (Number.isNaN(parsedDate.getTime())) {
     return escapeHtml(value);
   }
@@ -204,14 +217,19 @@ function renderLinkButton(url, label, ariaLabel = '') {
   return `<a class="secondary-link-button" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer"${ariaLabel ? ` aria-label="${escapeHtml(ariaLabel)}"` : ''}>${escapeHtml(label)}</a>`;
 }
 
-function renderPlayerName(player, settings) {
-  const playerName = escapeHtml(player?.name || '—');
+function renderPlayerName(player) {
+  return `<span class="player-name-text">${escapeHtml(player?.name || '—')}</span>`;
+}
+
+function renderPdgaPlayerIdLink(player, settings) {
+  const pdgaNumber = renderValueOrDash(player?.pdgaNumber);
   const playerPdgaUrl = buildPdgaPlayerUrl(settings, player);
   if (!playerPdgaUrl) {
-    return `<span class="player-name-text">${playerName}</span>`;
+    return escapeHtml(pdgaNumber);
   }
 
-  return `<a class="player-name-link" href="${escapeHtml(playerPdgaUrl)}" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan ${playerName} PDGA-profiili">${playerName}</a>`;
+  const playerName = escapeHtml(player?.name || '');
+  return `<a class="pdga-id-link" href="${escapeHtml(playerPdgaUrl)}" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan ${playerName} PDGA-profiili">${escapeHtml(pdgaNumber)}</a>`;
 }
 
 function getSortState(sortField, sortDirection, fieldName) {
@@ -256,9 +274,9 @@ function renderPlayerDetailCard(player, settings) {
   return `
     <div class="player-detail-layout">
       <dl class="definition-list">
-        <div><dt>Nimi</dt><dd>${renderPlayerName(player, settings)}</dd></div>
+        <div><dt>Nimi</dt><dd>${renderPlayerName(player)}</dd></div>
         <div><dt>Sarja</dt><dd>${escapeHtml(player.division)}</dd></div>
-        <div><dt>PDGA-tunnus</dt><dd>${escapeHtml(player.pdgaNumber || '—')}</dd></div>
+        <div><dt>PDGA-tunnus</dt><dd>${renderPdgaPlayerIdLink(player, settings)}</dd></div>
         <div><dt>PDGA-rating</dt><dd>${escapeHtml(player.pdgaRating || '—')}</dd></div>
         <div><dt>Maailman ranking sijoitus</dt><dd>${escapeHtml(player.worldRank || '—')}</dd></div>
         <div><dt>PDGA-profiili</dt><dd>${renderLinkButton(pdgaProfileUrl, 'Avaa PDGA')}</dd></div>
@@ -469,9 +487,9 @@ function renderTopTenCard(title, ranking, division, dataState) {
                       <div class="chart-meta chart-meta-dashboard">
                         <span class="chart-player-meta">
                           <strong>${index + 1}.</strong>
-                          <span>${renderPlayerName(entry, dataState.settings)}</span>
+                          <span>${renderPlayerName(entry)}</span>
                         </span>
-                        <span>${formatNumber(entry.totalPoints)} p</span>
+                        <span>${formatPoints(entry.totalPoints, dataState.settings)} p</span>
                       </div>
                       <div class="chart-bar-track">
                         <div class="chart-bar" style="width: ${width}%" aria-hidden="true"></div>
@@ -516,6 +534,7 @@ function renderRankingSection(dataState, uiState) {
     {
       rankPosition: { type: 'number' },
       name: { type: 'text' },
+      pdgaNumber: { type: 'number' },
       division: { type: 'text' },
       pdgaRating: { type: 'number' },
       worldRank: { type: 'number' },
@@ -567,6 +586,13 @@ function renderRankingSection(dataState, uiState) {
                       })}
                       ${renderSortableHeader({
                         table: 'ranking',
+                        field: 'pdgaNumber',
+                        label: 'PDGA ID',
+                        sortField: uiState.rankingSortField,
+                        sortDirection: uiState.rankingSortDirection,
+                      })}
+                      ${renderSortableHeader({
+                        table: 'ranking',
                         field: 'division',
                         label: 'Sarja',
                         sortField: uiState.rankingSortField,
@@ -609,12 +635,13 @@ function renderRankingSection(dataState, uiState) {
                         (entry, index) => `
                           <tr>
                             <td>${index + 1}</td>
-                            <td>${renderPlayerName(entry, dataState.settings)}</td>
+                            <td>${renderPlayerName(entry)}</td>
+                            <td>${renderPdgaPlayerIdLink(entry, dataState.settings)}</td>
                             <td>${escapeHtml(entry.division)}</td>
                             <td>${escapeHtml(entry.pdgaRating || '—')}</td>
                             <td>${escapeHtml(entry.worldRank || '—')}</td>
                             <td>${formatNumber(entry.tournamentCount)}</td>
-                            <td class="number">${formatNumber(entry.totalPoints)} p</td>
+                            <td class="number">${formatPoints(entry.totalPoints, dataState.settings)} p</td>
                           </tr>
                         `,
                       )
@@ -739,7 +766,7 @@ function renderResultsSection(dataState, uiState) {
                             ? rows
                               .map((row) => `
                                 <tr>
-                                  <td data-label="Pelaajan nimi">${row.player ? renderPlayerName(row.player, dataState.settings) : escapeHtml(row.name)}</td>
+                                  <td data-label="Pelaajan nimi">${row.player ? renderPlayerName(row.player) : escapeHtml(row.name)}</td>
                                   <td data-label="Sarja">${escapeHtml(row.division)}</td>
                                   <td data-label="Sijoitus">
                                     <input type="text" inputmode="text" maxlength="6" value="${escapeHtml(row.placement || '')}" data-result-placement data-result-card-id="${escapeHtml(card.id)}" data-result-player-id="${escapeHtml(row.playerId)}" placeholder="esim. 3 tai 3T4" />
@@ -914,8 +941,8 @@ function renderPlayerSection(dataState, uiState) {
                             .map((player) => {
                               return `
                                 <tr>
-                                  <td data-label="Pelaajan nimi">${renderPlayerName(player, dataState.settings)}</td>
-                                  <td data-label="PDGA ID">${escapeHtml(renderValueOrDash(player.pdgaNumber))}</td>
+                                  <td data-label="Pelaajan nimi">${renderPlayerName(player)}</td>
+                                  <td data-label="PDGA ID">${renderPdgaPlayerIdLink(player, dataState.settings)}</td>
                                   <td data-label="Sarja">${escapeHtml(player.division)}</td>
                                   <td data-label="PDGA-rating">${escapeHtml(renderValueOrDash(player.pdgaRating))}</td>
                                   <td data-label="Maailmanranking">${escapeHtml(renderValueOrDash(player.worldRank))}</td>
@@ -1846,6 +1873,25 @@ function renderSettingsSection(dataState, uiState) {
               ${renderFieldError(fieldErrors, 'eventBaseUrl')}
             </div>
           </div>
+          <h3>Pisteiden näyttö</h3>
+          <div class="form-grid">
+            <div class="form-field full-width">
+              <label for="settings-point-decimals">Pyöristys *</label>
+              <select
+                id="settings-point-decimals"
+                name="pointDecimals"
+                required
+                ${getFieldAttributes(fieldErrors, 'pointDecimals')}
+              >
+                ${POINT_DECIMALS_OPTIONS.map(
+                  (option) =>
+                    `<option value="${option}" ${sanitizePointDecimals(formValues.pointDecimals) === option ? 'selected' : ''}>${option}</option>`,
+                ).join('')}
+              </select>
+              <span class="help-text">Näytettävien desimaalien määrä ranking- ja yhteenvetopisteissä. Oletus: ${DEFAULT_PDGA_SETTINGS.pointDecimals}. Pyöristys vaikuttaa vain näyttöön, ei laskentaan tai tallennettuihin arvoihin.</span>
+              ${renderFieldError(fieldErrors, 'pointDecimals')}
+            </div>
+          </div>
           <div class="form-actions">
             <button type="submit" class="button">Tallenna asetukset</button>
             <button type="button" class="secondary-button" data-reset-settings-form>Palauta tallennetut arvot</button>
@@ -1857,6 +1903,7 @@ function renderSettingsSection(dataState, uiState) {
             <li>Pelaajille tallennetaan vain PDGA-pelaajatunnus.</li>
             <li>Turnauksille tallennetaan vain PDGA-kilpailutunnus.</li>
             <li>Linkit muodostetaan automaattisesti muodossa perusosoite + tunnus.</li>
+            <li>Pelaajan PDGA-profiili avautuu uuteen välilehteen PDGA ID -kentästä, ei pelaajan nimestä.</li>
             <li>Vanhoista täydellisistä PDGA-osoitteista poimitaan tunnus automaattisesti latauksen yhteydessä.</li>
           </ul>
         </article>
