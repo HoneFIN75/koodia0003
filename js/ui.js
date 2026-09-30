@@ -327,6 +327,113 @@ function renderHelpHint(sectionTitle, { showLink = true } = {}) {
   `;
 }
 
+function renderActionBar({ label, actions = [], dangerActions = [] }) {
+  const normalActions = actions.filter(Boolean);
+  const destructiveActions = dangerActions.filter(Boolean);
+  if (!normalActions.length && !destructiveActions.length) {
+    return '';
+  }
+
+  return `
+    <div class="action-bar" role="group" aria-label="${escapeHtml(label)}">
+      ${normalActions.length ? `<div class="action-bar-group">${normalActions.join('')}</div>` : ''}
+      ${
+        destructiveActions.length
+          ? `<div class="action-bar-group action-bar-danger" role="group" aria-label="Vaaralliset toiminnot">${destructiveActions.join('')}</div>`
+          : ''
+      }
+    </div>
+  `;
+}
+
+function renderDangerActionButton({ attribute, value = '', label, disabled = false }) {
+  const attributeMarkup = value ? `${attribute}="${escapeHtml(value)}"` : attribute;
+  return `<button type="button" class="danger-button danger-action-button" ${attributeMarkup}${disabled ? ' disabled' : ''}><span class="danger-icon" aria-hidden="true">⚠</span> ${escapeHtml(label)}</button>`;
+}
+
+function renderFilterButtons({ label, attribute, options, activeValue }) {
+  return `
+    <div class="filter-group" role="group" aria-label="${escapeHtml(label)}">
+      ${options
+        .map(
+          (option) => `
+            <button type="button" class="filter-button" ${attribute}="${escapeHtml(option.value)}" aria-pressed="${activeValue === option.value}"${option.title ? ` title="${escapeHtml(option.title)}"` : ''}>${escapeHtml(option.label)}</button>
+          `,
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+function renderTableSearch({ id, attribute, value, label = 'Haku', placeholder }) {
+  return `
+    <div class="table-search">
+      <label for="${escapeHtml(id)}">${escapeHtml(label)}</label>
+      <input id="${escapeHtml(id)}" type="search" ${attribute} value="${escapeHtml(value || '')}" placeholder="${escapeHtml(placeholder)}" />
+    </div>
+  `;
+}
+
+function renderTableToolbar({ label, search = '', filters = '', meta = '' }) {
+  if (!search && !filters && !meta) {
+    return '';
+  }
+
+  return `
+    <div class="table-toolbar" role="group" aria-label="${escapeHtml(label)}">
+      ${search}
+      ${filters}
+      ${meta ? `<div class="table-toolbar-meta">${meta}</div>` : ''}
+    </div>
+  `;
+}
+
+function renderImportInstructions({ id, format, requirements = [], example = [] }) {
+  return `
+    <section class="import-instructions" aria-labelledby="${escapeHtml(id)}-title">
+      <h3 id="${escapeHtml(id)}-title"><span class="import-icon" aria-hidden="true">📄</span> Tuettu CSV-muoto</h3>
+      <p class="import-format"><code>${escapeHtml(format)}</code></p>
+      <p class="import-delimiter"><strong>Erotin:</strong> puolipiste <code>;</code></p>
+      ${
+        requirements.length
+          ? `
+            <h4>Vaatimukset</h4>
+            <ul class="import-requirements">
+              ${requirements.map((requirement) => `<li><span aria-hidden="true">✓</span> ${escapeHtml(requirement)}</li>`).join('')}
+            </ul>
+          `
+          : ''
+      }
+      ${
+        example.length
+          ? `
+            <h4>Esimerkki</h4>
+            <pre class="import-example"><code>${example.map((line) => escapeHtml(line)).join('\n')}</code></pre>
+          `
+          : ''
+      }
+    </section>
+  `;
+}
+
+function renderDangerConfirmDialog({ title, body, confirmAttribute, confirmLabel = 'Poista' }) {
+  return `
+    <div class="dialog-backdrop" data-close-confirm-dialog>
+      <div class="dialog-panel dialog-panel-danger" role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-warning confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
+        <p class="danger-banner" id="confirm-dialog-warning"><span aria-hidden="true">⚠</span> VAROITUS <span aria-hidden="true">⚠</span></p>
+        <h2 id="confirm-dialog-title">${escapeHtml(title)}</h2>
+        <div id="confirm-dialog-description" class="confirm-dialog-body">
+          ${body}
+        </div>
+        <div class="form-actions">
+          <button type="button" class="danger-button danger-action-button" ${confirmAttribute}>${escapeHtml(confirmLabel)}</button>
+          <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderStats(dataState) {
   return `
     <div class="stats-grid">
@@ -424,19 +531,18 @@ function renderRankingSection(dataState, uiState) {
           <h2 id="ranking-title">Ranking</h2>
           <p class="section-subtitle">Kokonaispisteet lasketaan kaikista pelaajan turnaustuloksista.</p>
         </div>
-        <div class="filter-row" role="group" aria-label="Ranking-suodatus">
-          ${['ALL', ...DIVISIONS]
-            .map(
-              (filter) => `
-                <button type="button" class="secondary-button" data-ranking-filter="${filter}" aria-pressed="${uiState.rankingFilter === filter}">
-                  ${filter === 'ALL' ? 'Kaikki' : filter}
-                </button>
-              `,
-            )
-            .join('')}
-        </div>
       </div>
       <article class="card">
+        ${renderTableToolbar({
+          label: 'Ranking-taulukon suodatus',
+          filters: renderFilterButtons({
+            label: 'Suodata sarjan mukaan',
+            attribute: 'data-ranking-filter',
+            options: [{ value: 'ALL', label: 'Kaikki' }, ...DIVISIONS.map((division) => ({ value: division, label: division }))],
+            activeValue: uiState.rankingFilter,
+          }),
+          meta: `<span class="status-chip">${formatNumber(ranking.length)} pelaajaa</span>`,
+        })}
         ${
           ranking.length
             ? `
@@ -560,8 +666,18 @@ function renderResultsSection(dataState, uiState) {
           <h2 id="results-title">Tulokset</h2>
           <p class="section-subtitle">Tuloskortit ovat turnaussijoitusten ja ranking-pisteiden virallinen lähde.</p>
         </div>
-        <button type="button" class="button" data-open-result-card-dialog>Lisää tuloskortti</button>
       </div>
+      ${renderActionBar({
+        label: 'Tulosten toiminnot',
+        actions: ['<button type="button" class="button" data-open-result-card-dialog>Lisää tuloskortti</button>'],
+        dangerActions: [
+          renderDangerActionButton({
+            attribute: 'data-request-delete-all-result-cards',
+            label: 'Poista kaikki tuloskortit',
+            disabled: !dataState.resultCards.length,
+          }),
+        ],
+      })}
       ${
         dataState.resultCards.length
           ? dataState.resultCards
@@ -693,123 +809,47 @@ function renderPlayerSection(dataState, uiState) {
     pdgaRating: { type: 'number' },
     worldRank: { type: 'number' },
   });
-  const importSummary = uiState.playerImportSummary;
-  const importSummaryType = importSummary
-    ? importSummary.failedCount > 0
-      ? 'warning'
-      : 'success'
-    : '';
-  const importSummaryRole = importSummary?.failedCount > 0 ? 'alert' : 'status';
-  const importSummaryAriaLive = importSummary?.failedCount > 0 ? 'assertive' : 'polite';
 
   return `
     <section class="section" id="section-players" ${uiState.activeView === 'players' ? '' : 'hidden'} aria-labelledby="players-title">
       <div class="section-heading">
         <div>
           <h2 id="players-title">Pelaajat</h2>
-          <p class="section-subtitle">Pelaajalista on tämän sivun pääsisältö. Hae ja lajittele nimellä tai PDGA-tunnuksella.</p>
+          <p class="section-subtitle">Pelaajalista on tämän sivun pääsisältö. Hae nimellä tai PDGA-tunnuksella ja lajittele sarakeotsikoista.</p>
         </div>
-        <button type="button" class="button" data-open-player-dialog>Lisää pelaaja</button>
       </div>
+      ${renderActionBar({
+        label: 'Pelaajien toiminnot',
+        actions: [
+          '<button type="button" class="button" data-open-player-dialog>Lisää pelaaja</button>',
+          '<button type="button" class="secondary-button" data-open-players-import-dialog>Tuo pelaajat</button>',
+        ],
+        dangerActions: [
+          renderDangerActionButton({
+            attribute: 'data-request-delete-all-players',
+            label: 'Poista kaikki pelaajat',
+            disabled: !dataState.players.length,
+          }),
+        ],
+      })}
+      ${renderHelpHint('Pelaajat')}
       <article class="panel">
-        <div class="section-heading">
-          <div>
-            <h3>Pelaajien CSV-tuonti</h3>
-            <p class="section-subtitle">Tuo uusia pelaajia massana valittuun divisioonaan.</p>
-          </div>
-        </div>
-        ${renderHelpHint('Pelaajat')}
-        <form id="players-import-form">
-          <div class="form-grid compact-grid">
-            <div class="form-field">
-              <label for="players-import-division">Importoi divisioonaan *</label>
-              <select id="players-import-division" name="division" required>
-                <option value="">Valitse divisioona</option>
-                ${DIVISIONS.map(
-                  (division) =>
-                    `<option value="${division}" ${uiState.playerImportDivision === division ? 'selected' : ''}>${division}</option>`,
-                ).join('')}
-              </select>
-            </div>
-            <div class="form-field">
-              <label for="players-import-file">CSV-tiedosto *</label>
-              <input id="players-import-file" name="file" type="file" accept=".csv,text/csv" required />
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="button">Tuo</button>
-          </div>
-        </form>
-        ${
-          importSummary
-            ? `
-              <div class="message ${importSummaryType}" role="${importSummaryRole}" aria-live="${importSummaryAriaLive}">
-                <strong>Importti valmis</strong><br />
-                Yhteensä rivejä: ${formatNumber(importSummary.totalRows)}<br />
-                Onnistuneesti tuotu: ${formatNumber(importSummary.importedCount)}<br />
-                Epäonnistuneet: ${formatNumber(importSummary.failedCount)}
-                ${
-                  importSummary.failures.length
-                    ? `
-                      <p>Epäonnistuneet rivit:</p>
-                      <ul>
-                        ${importSummary.failures
-                          .map(
-                            (failure) =>
-                              `<li>${escapeHtml(failure.pdgaId ? `PDGA ID ${failure.pdgaId}` : `Rivi ${failure.rowNumber}`)} — Syy: ${escapeHtml(failure.reason)}</li>`,
-                          )
-                          .join('')}
-                      </ul>
-                    `
-                    : ''
-                }
-              </div>
-            `
-            : ''
-        }
-      </article>
-      <article class="panel">
-        <div class="section-heading">
-          <div class="status-chip">${formatNumber(visiblePlayers.length)} / ${formatNumber(dataState.players.length)} pelaajaa</div>
-        </div>
-        <div class="form-grid compact-grid">
-          <div class="form-field">
-            <label for="player-search">Haku</label>
-            <input
-              id="player-search"
-              type="search"
-              data-player-search
-              value="${escapeHtml(uiState.playerSearch)}"
-              placeholder="Hae nimellä tai PDGA ID:llä"
-            />
-          </div>
-          <div class="form-field">
-            <label for="player-sort-field">Lajittelukenttä</label>
-            <select id="player-sort-field" data-player-sort-field>
-              <option value="name" ${uiState.playerSortField === 'name' ? 'selected' : ''}>Pelaajan nimi</option>
-              <option value="pdgaNumber" ${uiState.playerSortField === 'pdgaNumber' ? 'selected' : ''}>PDGA ID</option>
-              <option value="division" ${uiState.playerSortField === 'division' ? 'selected' : ''}>Sarja</option>
-              <option value="pdgaRating" ${uiState.playerSortField === 'pdgaRating' ? 'selected' : ''}>PDGA-rating</option>
-              <option value="worldRank" ${uiState.playerSortField === 'worldRank' ? 'selected' : ''}>Maailmanranking</option>
-            </select>
-          </div>
-          <div class="form-field">
-            <label for="player-sort-direction">Lajittelusuunta</label>
-            <select id="player-sort-direction" data-player-sort-direction>
-              <option value="asc" ${uiState.playerSortDirection === 'asc' ? 'selected' : ''}>Nouseva</option>
-              <option value="desc" ${uiState.playerSortDirection === 'desc' ? 'selected' : ''}>Laskeva</option>
-            </select>
-          </div>
-          <div class="form-field">
-            <label for="player-division-filter">Sarja</label>
-            <select id="player-division-filter" data-player-division-filter>
-              <option value="ALL" ${uiState.playerDivisionFilter === 'ALL' ? 'selected' : ''}>Kaikki</option>
-              ${DIVISIONS.map(
-                (division) => `<option value="${division}" ${uiState.playerDivisionFilter === division ? 'selected' : ''}>${division}</option>`,
-              ).join('')}
-            </select>
-          </div>
-        </div>
+        ${renderTableToolbar({
+          label: 'Pelaajalistan haku ja suodatus',
+          search: renderTableSearch({
+            id: 'player-search',
+            attribute: 'data-player-search',
+            value: uiState.playerSearch,
+            placeholder: 'Hae nimellä tai PDGA ID:llä',
+          }),
+          filters: renderFilterButtons({
+            label: 'Suodata sarjan mukaan',
+            attribute: 'data-player-division-filter',
+            options: [{ value: 'ALL', label: 'Kaikki' }, ...DIVISIONS.map((division) => ({ value: division, label: division }))],
+            activeValue: uiState.playerDivisionFilter,
+          }),
+          meta: `<span class="status-chip">${formatNumber(visiblePlayers.length)} / ${formatNumber(dataState.players.length)} pelaajaa</span>`,
+        })}
         ${
           uiState.playersStatus === 'loading'
             ? '<div class="message" role="status" aria-live="polite">Ladataan pelaajalistaa…</div>'
@@ -992,6 +1032,92 @@ function renderPlayerDialog(dataState, uiState) {
   `;
 }
 
+function renderPlayersImportDialog(uiState) {
+  if (!uiState.playerImportDialogOpen) {
+    return '';
+  }
+
+  const importSummary = uiState.playerImportSummary;
+  const hasFailures = importSummary?.failedCount > 0;
+  const importSummaryType = hasFailures ? 'warning' : 'success';
+  const importSummaryRole = hasFailures ? 'alert' : 'status';
+  const importSummaryAriaLive = hasFailures ? 'assertive' : 'polite';
+
+  return `
+    <div class="dialog-backdrop" data-close-players-import-dialog>
+      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="players-import-dialog-title" aria-describedby="players-import-dialog-description" data-players-import-dialog-panel tabindex="-1">
+        <form id="players-import-form">
+          <div class="section-heading">
+            <div>
+              <h2 id="players-import-dialog-title">Tuo pelaajat</h2>
+              <p id="players-import-dialog-description" class="section-subtitle">Tuo uusia pelaajia CSV-tiedostosta valittuun divisioonaan. Olemassa olevia pelaajia ei ylikirjoiteta.</p>
+            </div>
+          </div>
+          ${renderImportInstructions({
+            id: 'players-import-instructions',
+            format: 'Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking',
+            requirements: [
+              'PDGA ID on pakollinen ja yksilöllinen',
+              'Muut kentät voivat olla tyhjiä',
+              'Divisioona valitaan alla olevasta valikosta',
+              'Otsikkorivi on sallittu, UTF-8-koodaus suositeltu',
+            ],
+            example: ['Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking', 'Matti;Meikäläinen;12345;950;1250'],
+          })}
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="players-import-division">Divisioona *</label>
+              <select id="players-import-division" name="division" required>
+                <option value="">Valitse divisioona</option>
+                ${DIVISIONS.map(
+                  (division) =>
+                    `<option value="${division}" ${uiState.playerImportDivision === division ? 'selected' : ''}>${division}</option>`,
+                ).join('')}
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="players-import-file">CSV-tiedosto *</label>
+              <input id="players-import-file" name="file" type="file" accept=".csv,text/csv" required />
+            </div>
+          </div>
+          ${renderHelpHint('Pelaajat', { showLink: false })}
+          <div class="form-actions">
+            ${importSummary ? '' : '<button type="submit" class="button">Tuo</button>'}
+            <button type="button" class="secondary-button" data-cancel-players-import>${importSummary ? 'Sulje' : 'Peruuta'}</button>
+          </div>
+        </form>
+        ${
+          importSummary
+            ? `
+              <div class="message ${importSummaryType}" role="${importSummaryRole}" aria-live="${importSummaryAriaLive}">
+                <strong>Importti valmis</strong><br />
+                Yhteensä rivejä: ${formatNumber(importSummary.totalRows)}<br />
+                Onnistuneesti tuotu: ${formatNumber(importSummary.importedCount)}<br />
+                Epäonnistuneet: ${formatNumber(importSummary.failedCount)}
+                ${
+                  importSummary.failures.length
+                    ? `
+                      <p>Epäonnistuneet rivit:</p>
+                      <ul>
+                        ${importSummary.failures
+                          .map(
+                            (failure) =>
+                              `<li>${escapeHtml(failure.pdgaId ? `PDGA ID ${failure.pdgaId}` : `Rivi ${failure.rowNumber}`)} — Syy: ${escapeHtml(failure.reason)}</li>`,
+                          )
+                          .join('')}
+                      </ul>
+                    `
+                    : ''
+                }
+              </div>
+            `
+            : ''
+        }
+      </div>
+    </div>
+  `;
+}
+
 function renderTournamentSection(dataState, uiState) {
   const orderedMultipliers = sortMultipliers(dataState.multipliers || []);
   const visibleTournamentsWithMultipliers = sortTableRows(filterAndSortTournaments(dataState.tournaments, {
@@ -1026,71 +1152,48 @@ function renderTournamentSection(dataState, uiState) {
           <h2 id="tournaments-title">Turnaukset</h2>
           <p class="section-subtitle">Hallinnoi turnauksia, suodata listaa ja pidä turnaustiedot ajan tasalla.</p>
         </div>
-        <div class="section-actions">
-          <button type="button" class="secondary-button" data-open-tournament-import-dialog>Tuo turnaukset</button>
-          <button type="button" class="button" data-open-tournament-dialog>Lisää turnaus</button>
-        </div>
       </div>
+      ${renderActionBar({
+        label: 'Turnausten toiminnot',
+        actions: [
+          '<button type="button" class="button" data-open-tournament-dialog>Lisää turnaus</button>',
+          '<button type="button" class="secondary-button" data-open-tournament-import-dialog>Tuo turnaukset</button>',
+        ],
+        dangerActions: [
+          renderDangerActionButton({
+            attribute: 'data-request-delete-all-tournaments',
+            label: 'Poista kaikki turnaukset',
+            disabled: !dataState.tournaments.length,
+          }),
+        ],
+      })}
       ${renderHelpHint('Turnaukset')}
-      <article class="panel danger-zone" aria-labelledby="delete-all-tournaments-title">
-        <div>
-          <h3 id="delete-all-tournaments-title">Vaaravyöhyke: poista kaikki turnaukset</h3>
-          <p class="section-subtitle">Toiminto poistaa kaikki turnaukset ja niihin liittyvät turnaustulokset pysyvästi.</p>
-        </div>
-        <button type="button" class="danger-button" data-request-delete-all-tournaments>
-          ⚠ Poista kaikki turnaukset
-        </button>
-      </article>
       <article class="panel">
         <div class="section-heading">
           <div>
             <h3>Turnauslista</h3>
-            <p class="section-subtitle">Listaa voi suodattaa nimen, tilan, paikkakunnan ja radan perusteella.</p>
+            <p class="section-subtitle">Listaa voi hakea nimen, paikkakunnan ja radan perusteella sekä suodattaa tilan mukaan.</p>
           </div>
         </div>
-        <div class="form-grid compact-grid">
-          <div class="form-field full-width">
-            <label for="tournament-search">Haku</label>
-            <input
-              id="tournament-search"
-              data-tournament-search
-              value="${escapeHtml(uiState.tournamentSearch || '')}"
-              placeholder="Hae nimellä, paikkakunnalla tai radalla"
-            />
-          </div>
-          <div class="form-field">
-            <label for="tournament-status-filter">Tila</label>
-            <select id="tournament-status-filter" data-tournament-status-filter>
-              <option value="ALL">Kaikki tilat</option>
-              ${availableStatuses
-                .map(
-                  (status) =>
-                   `<option value="${escapeHtml(status.id)}" ${uiState.tournamentStatusFilter === status.id ? 'selected' : ''}>${escapeHtml(status.name)} (${escapeHtml(status.abbreviation)})</option>`,
-                )
-                .join('')}
-            </select>
-          </div>
-          <div class="form-field">
-            <label for="tournament-sort-field">Lajittelu</label>
-            <select id="tournament-sort-field" data-tournament-sort-field>
-              <option value="displayOrder" ${uiState.tournamentSortField === 'displayOrder' ? 'selected' : ''}>Järjestysnumero</option>
-              <option value="name" ${uiState.tournamentSortField === 'name' ? 'selected' : ''}>Turnauksen nimi</option>
-              <option value="multiplierAbbreviation" ${uiState.tournamentSortField === 'multiplierAbbreviation' ? 'selected' : ''}>Tila</option>
-              <option value="pdgaEventId" ${uiState.tournamentSortField === 'pdgaEventId' ? 'selected' : ''}>PDGA Event ID</option>
-              <option value="startDate" ${uiState.tournamentSortField === 'startDate' ? 'selected' : ''}>Alkamispäivä</option>
-              <option value="endDate" ${uiState.tournamentSortField === 'endDate' ? 'selected' : ''}>Päättymispäivä</option>
-              <option value="location" ${uiState.tournamentSortField === 'location' ? 'selected' : ''}>Paikkakunta</option>
-              <option value="venue" ${uiState.tournamentSortField === 'venue' ? 'selected' : ''}>Rata</option>
-            </select>
-          </div>
-          <div class="form-field">
-            <label for="tournament-sort-direction">Järjestys</label>
-            <select id="tournament-sort-direction" data-tournament-sort-direction>
-              <option value="asc" ${uiState.tournamentSortDirection === 'asc' ? 'selected' : ''}>Nouseva</option>
-              <option value="desc" ${uiState.tournamentSortDirection === 'desc' ? 'selected' : ''}>Laskeva</option>
-            </select>
-          </div>
-        </div>
+        ${renderTableToolbar({
+          label: 'Turnauslistan haku ja suodatus',
+          search: renderTableSearch({
+            id: 'tournament-search',
+            attribute: 'data-tournament-search',
+            value: uiState.tournamentSearch,
+            placeholder: 'Hae nimellä, paikkakunnalla tai radalla',
+          }),
+          filters: renderFilterButtons({
+            label: 'Suodata tilan mukaan',
+            attribute: 'data-tournament-status-filter',
+            options: [
+              { value: 'ALL', label: 'Kaikki' },
+              ...availableStatuses.map((status) => ({ value: status.id, label: status.abbreviation || status.name, title: status.name })),
+            ],
+            activeValue: uiState.tournamentStatusFilter,
+          }),
+          meta: `<span class="status-chip">${formatNumber(visibleTournamentsWithMultipliers.length)} / ${formatNumber(dataState.tournaments.length)} turnausta</span>`,
+        })}
         ${
           orderedTournaments.length
             ? visibleTournamentsWithMultipliers.length
@@ -1214,7 +1317,7 @@ function renderTournamentImportDialog(uiState) {
 
   return `
     <div class="dialog-backdrop" data-close-tournament-import-dialog>
-      <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="tournament-import-dialog-title" aria-describedby="tournament-import-dialog-description" data-tournament-import-dialog-panel tabindex="-1">
+      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="tournament-import-dialog-title" aria-describedby="tournament-import-dialog-description" data-tournament-import-dialog-panel tabindex="-1">
         <form id="tournament-import-form">
           <div class="section-heading">
             <div>
@@ -1222,11 +1325,16 @@ function renderTournamentImportDialog(uiState) {
               <p id="tournament-import-dialog-description" class="section-subtitle">Tuonti luo vain uusia turnauksia eikä koskaan ylikirjoita olemassa olevia.</p>
             </div>
           </div>
-          <article class="panel import-instructions" aria-label="CSV-tuonnin ohjeet">
-            <h3>Tuonnin tuettu muoto</h3>
-            <p><code>Järjestysnumero;PDGA Event ID;Turnauksen nimi</code></p>
-            ${renderHelpHint('Turnaukset', { showLink: false })}
-          </article>
+          ${renderImportInstructions({
+            id: 'tournament-import-instructions',
+            format: 'Järjestysnumero;PDGA Event ID;Turnauksen nimi',
+            requirements: [
+              'Kaikki kolme kenttää ovat pakollisia',
+              'PDGA Event ID on yksilöllinen: jo olemassa olevat turnaukset ohitetaan',
+              'Otsikkorivi on sallittu, UTF-8-koodaus suositeltu',
+            ],
+            example: ['Järjestysnumero;PDGA Event ID;Turnauksen nimi', '1;123456;European Open 2027'],
+          })}
           <div class="form-grid">
             <div class="form-field full-width">
               <label for="tournament-import-file">CSV-tiedosto *</label>
@@ -1234,13 +1342,14 @@ function renderTournamentImportDialog(uiState) {
               <p id="tournament-import-file-hint" class="form-help">Valitse tiedosto, niin Tuo-painike aktivoituu.</p>
             </div>
           </div>
+          ${renderHelpHint('Turnaukset', { showLink: false })}
           <div class="form-actions">
-            <button type="button" class="secondary-button" data-cancel-tournament-import>${importSummary ? 'Sulje' : 'Peruuta'}</button>
             ${
               importSummary
                 ? ''
                 : '<button type="submit" class="button" data-submit-tournament-import disabled aria-describedby="tournament-import-file-hint">Tuo</button>'
             }
+            <button type="button" class="secondary-button" data-cancel-tournament-import>${importSummary ? 'Sulje' : 'Peruuta'}</button>
           </div>
         </form>
         ${
@@ -1456,8 +1565,11 @@ function renderMultipliersSection(dataState, uiState) {
           <h2 id="multipliers-title">Kertoimet</h2>
           <p class="section-subtitle">Hallinnoi turnausten tilat ja pistekertoimet keskitetysti yhdestä paikasta.</p>
         </div>
-        <button type="button" class="button" data-open-multiplier-dialog>Lisää</button>
       </div>
+      ${renderActionBar({
+        label: 'Kertoimien toiminnot',
+        actions: ['<button type="button" class="button" data-open-multiplier-dialog>Lisää kerroin</button>'],
+      })}
       <article class="panel">
         ${
           multipliers.length
@@ -1754,21 +1866,17 @@ function renderSettingsSection(dataState, uiState) {
 }
 
 function renderPointsSection(dataState, uiState) {
-  const editingPoint = uiState.pointsForm || { division: 'MPO', place: '', basePoints: '', editingKey: '' };
-  const mpoEntries = sortTableRows(listPointsTableEntries(dataState.pointsTable, 'MPO'), {
-    field: uiState.pointsSortField,
-    direction: uiState.pointsSortDirection,
-  }, {
+  const pointsColumns = {
     place: { type: 'number' },
     basePoints: { type: 'number' },
-  });
-  const fpoEntries = sortTableRows(listPointsTableEntries(dataState.pointsTable, 'FPO'), {
+  };
+  const pointsSort = {
     field: uiState.pointsSortField,
     direction: uiState.pointsSortDirection,
-  }, {
-    place: { type: 'number' },
-    basePoints: { type: 'number' },
-  });
+  };
+  const entriesByDivision = Object.fromEntries(
+    DIVISIONS.map((division) => [division, sortTableRows(listPointsTableEntries(dataState.pointsTable, division), pointsSort, pointsColumns)]),
+  );
 
   return `
     <section class="section" id="section-points" ${uiState.activeView === 'points' ? '' : 'hidden'} aria-labelledby="points-title">
@@ -1778,47 +1886,32 @@ function renderPointsSection(dataState, uiState) {
           <p class="section-subtitle">Pisteet tallennetaan keskitettyyn pointsTable-rakenteeseen sarjan ja sijoituksen perusteella.</p>
         </div>
       </div>
+      ${renderActionBar({
+        label: 'Pistetaulukoiden toiminnot',
+        actions: [
+          '<button type="button" class="button" data-open-points-dialog>Lisää rivi</button>',
+          '<button type="button" class="secondary-button" data-open-points-import>Tuo pistetaulukko</button>',
+        ],
+        dangerActions: DIVISIONS.map((division) =>
+          renderDangerActionButton({
+            attribute: 'data-request-delete-points',
+            value: division,
+            label: `Poista kaikki ${division}-pisteet`,
+            disabled: !entriesByDivision[division].length,
+          }),
+        ),
+      })}
       ${renderHelpHint('Pistetaulukot')}
-      <form id="points-form" class="panel">
-        <h3>${editingPoint.editingKey ? 'Muokkaa pistetaulukon riviä' : 'Lisää pistetaulukon rivi'}</h3>
-        <input type="hidden" name="editingKey" value="${escapeHtml(editingPoint.editingKey || '')}" />
-        <div class="form-grid">
-          <div class="form-field">
-            <label for="points-division">Sarja *</label>
-            <select id="points-division" name="division" required>
-              ${DIVISIONS.map(
-                (division) => `<option value="${division}" ${editingPoint.division === division ? 'selected' : ''}>${division}</option>`,
-              ).join('')}
-            </select>
-          </div>
-          <div class="form-field">
-            <label for="points-place">Sijoitus *</label>
-            <input id="points-place" name="place" required inputmode="numeric" min="1" value="${escapeHtml(editingPoint.place || '')}" />
-          </div>
-          <div class="form-field full-width">
-            <label for="points-base-points">1x-peruspisteet *</label>
-            <input id="points-base-points" name="basePoints" required inputmode="decimal" min="0" step="0.1" value="${escapeHtml(editingPoint.basePoints || '')}" />
-          </div>
-        </div>
-        <div class="form-actions">
-          <button type="submit" class="button">${editingPoint.editingKey ? 'Tallenna rivi' : 'Lisää rivi'}</button>
-          <button type="button" class="secondary-button" data-reset-points-form>Tyhjennä lomake</button>
-        </div>
-      </form>
       <div class="two-column">
-        ${['MPO', 'FPO']
-          .map((division) => {
-            const entries = division === 'MPO' ? mpoEntries : fpoEntries;
-            return `
+        ${DIVISIONS.map((division) => {
+          const entries = entriesByDivision[division];
+          return `
               <article class="panel">
                 <div class="section-heading">
                   <div>
                     <h3>${division}-pistetaulukko</h3>
                   </div>
-                  <div class="section-actions">
-                    <button type="button" class="secondary-button" data-open-points-import="${division}">Tuo ${division} CSV</button>
-                    <button type="button" class="danger-button" data-request-delete-points="${division}">Poista ${division}-pisteet</button>
-                  </div>
+                  <span class="status-chip">${formatNumber(entries.length)} riviä</span>
                 </div>
                 ${
                   entries.length
@@ -1869,10 +1962,56 @@ function renderPointsSection(dataState, uiState) {
                 }
               </article>
             `;
-          })
-          .join('')}
+        }).join('')}
       </div>
     </section>
+  `;
+}
+
+function renderPointsDialog(uiState) {
+  if (!uiState.pointsDialogOpen) {
+    return '';
+  }
+
+  const editingPoint = uiState.pointsForm || { division: 'MPO', place: '', basePoints: '', editingKey: '' };
+  const isEditing = Boolean(editingPoint.editingKey);
+
+  return `
+    <div class="dialog-backdrop" data-points-dialog-backdrop>
+      <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="points-dialog-title" aria-describedby="points-dialog-description" data-points-dialog-panel tabindex="-1">
+        <form id="points-form">
+          <div class="section-heading">
+            <div>
+              <h2 id="points-dialog-title">${isEditing ? 'Muokkaa pistetaulukon riviä' : 'Lisää pistetaulukon rivi'}</h2>
+              <p id="points-dialog-description" class="section-subtitle">Pakolliset kentät on merkitty tähdellä. 1x-peruspisteet voivat olla desimaalilukuja (esim. 10,5).</p>
+            </div>
+          </div>
+          <input type="hidden" name="editingKey" value="${escapeHtml(editingPoint.editingKey || '')}" />
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="points-division">Sarja *</label>
+              <select id="points-division" name="division" required>
+                ${DIVISIONS.map(
+                  (division) => `<option value="${division}" ${editingPoint.division === division ? 'selected' : ''}>${division}</option>`,
+                ).join('')}
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="points-place">Sijoitus *</label>
+              <input id="points-place" name="place" required inputmode="numeric" min="1" value="${escapeHtml(editingPoint.place ?? '')}" />
+            </div>
+            <div class="form-field full-width">
+              <label for="points-base-points">1x-peruspisteet *</label>
+              <input id="points-base-points" name="basePoints" required inputmode="decimal" min="0" step="0.1" value="${escapeHtml(editingPoint.basePoints ?? '')}" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="button">${isEditing ? 'Tallenna rivi' : 'Lisää rivi'}</button>
+            <button type="button" class="ghost-button" data-dismiss-points-dialog>Peruuta</button>
+          </div>
+        </form>
+      </div>
+    </div>
   `;
 }
 
@@ -1885,36 +2024,43 @@ function renderPointsImportDialog(uiState) {
 
   return `
     <div class="dialog-backdrop" data-close-points-import-dialog>
-      <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="points-import-dialog-title" aria-describedby="points-import-dialog-description" data-points-import-dialog-panel tabindex="-1">
+      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="points-import-dialog-title" aria-describedby="points-import-dialog-description" data-points-import-dialog-panel tabindex="-1">
         <form id="points-import-form">
           <div class="section-heading">
             <div>
-              <h2 id="points-import-dialog-title">Tuo pistetaulukko CSV-tiedostosta</h2>
+              <h2 id="points-import-dialog-title">Tuo pistetaulukko</h2>
               <p id="points-import-dialog-description" class="section-subtitle">Valitse kohdesarja ja tuotava CSV-tiedosto. Tuonti sallitaan vain tyhjään pistetaulukkoon.</p>
             </div>
           </div>
+          ${renderImportInstructions({
+            id: 'points-import-instructions',
+            format: 'Sijoitus;Pisteet',
+            requirements: [
+              'Sijoitusten tulee alkaa 1:stä ja edetä peräkkäin ilman aukkoja',
+              'Pisteet voivat olla desimaalilukuja (esim. 10,5)',
+              'Kohdesarjan pistetaulukon pitää olla tyhjä',
+              'Otsikkorivi on sallittu, UTF-8-koodaus suositeltu',
+            ],
+            example: ['Sijoitus;Pisteet', '1;100', '2;85', '3;10,5'],
+          })}
           <div class="form-grid">
-            <fieldset class="form-field full-width">
-              <legend>Sarja *</legend>
-              <div class="segmented-control">
+            <div class="form-field">
+              <label for="points-import-division">Divisioona *</label>
+              <select id="points-import-division" name="division" required>
                 ${DIVISIONS.map(
-                  (division) => `
-                    <label>
-                      <input type="radio" name="division" value="${division}" ${selectedDivision === division ? 'checked' : ''} />
-                      <span>${division}</span>
-                    </label>
-                  `,
+                  (division) => `<option value="${division}" ${selectedDivision === division ? 'selected' : ''}>${division}</option>`,
                 ).join('')}
-              </div>
-            </fieldset>
-            <div class="form-field full-width">
+              </select>
+            </div>
+            <div class="form-field">
               <label for="points-import-file">CSV-tiedosto *</label>
               <input id="points-import-file" name="file" type="file" accept=".csv,text/csv" required />
             </div>
           </div>
+          ${renderHelpHint('Pistetaulukot', { showLink: false })}
           <div class="form-actions">
-            <button type="button" class="secondary-button" data-cancel-points-import>Peruuta</button>
             <button type="submit" class="button">Tuo</button>
+            <button type="button" class="secondary-button" data-cancel-points-import>Peruuta</button>
           </div>
         </form>
       </div>
@@ -2047,176 +2193,140 @@ function renderResultCardPlayersDialog(dataState, uiState) {
 }
 
 function renderConfirmationDialog(dataState, uiState) {
-  if (!uiState.confirmationDialog) {
+  const dialog = uiState.confirmationDialog;
+  if (!dialog) {
     return '';
   }
 
-  if (uiState.confirmationDialog.type === 'delete-player') {
-    const player = dataState.players.find((entry) => entry.id === uiState.confirmationDialog.playerId);
+  if (dialog.type === 'delete-player') {
+    const player = dataState.players.find((entry) => entry.id === dialog.playerId);
     if (!player) {
       return '';
     }
 
-    return `
-      <div class="dialog-backdrop" data-close-confirm-dialog>
-        <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
-          <div class="section-heading">
-            <div>
-              <h2 id="confirm-dialog-title">Poista pelaaja</h2>
-              <p id="confirm-dialog-description" class="section-subtitle">
-                Haluatko varmasti poistaa pelaajan ${escapeHtml(player.name)}?<br />
-                Toimintoa ei voi peruuttaa.
-              </p>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
-            <button type="button" class="danger-button" data-confirm-delete-player="${escapeHtml(player.id)}">Poista pelaaja</button>
-          </div>
-        </div>
-      </div>
-    `;
+    return renderDangerConfirmDialog({
+      title: 'Poista pelaaja',
+      body: `<p>Haluatko varmasti poistaa pelaajan ${escapeHtml(player.name)}?<br />
+                Toimintoa ei voi peruuttaa.</p>`,
+      confirmAttribute: `data-confirm-delete-player="${escapeHtml(player.id)}"`,
+      confirmLabel: 'Poista pelaaja',
+    });
   }
 
-  if (uiState.confirmationDialog.type === 'delete-points-division') {
-    const division = uiState.confirmationDialog.division;
-
-    return `
-      <div class="dialog-backdrop" data-close-confirm-dialog>
-        <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
-          <div class="section-heading">
-            <div>
-              <h2 id="confirm-dialog-title">Poista sarjan ${escapeHtml(division)} pisteet</h2>
-              <p id="confirm-dialog-description" class="section-subtitle">
-                Haluatko varmasti poistaa kaikki sarjan ${escapeHtml(division)} pistetaulukon rivit?<br />
-                Tätä toimintoa ei voi perua.
-              </p>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
-            <button type="button" class="danger-button" data-confirm-delete-points-division="${escapeHtml(division)}">Poista</button>
-          </div>
-        </div>
-      </div>
-    `;
+  if (dialog.type === 'delete-all-players') {
+    return renderDangerConfirmDialog({
+      title: 'Poista kaikki pelaajat',
+      body: `
+        <p>Olet poistamassa kaikki pelaajat (${formatNumber(dataState.players.length)} kpl).</p>
+        <p>Tuloskorteille tallennetut pelaajat näytetään jatkossa tekstillä Poistettu pelaaja.</p>
+        <p><strong>Tätä toimintoa ei voi perua.</strong></p>
+      `,
+      confirmAttribute: 'data-confirm-delete-all-players',
+    });
   }
 
-  if (uiState.confirmationDialog.type === 'remove-result-player') {
-    const card = dataState.resultCards.find((entry) => entry.id === uiState.confirmationDialog.cardId);
-    const player = dataState.players.find((entry) => entry.id === uiState.confirmationDialog.playerId);
+  if (dialog.type === 'delete-points-division') {
+    const division = dialog.division;
+
+    return renderDangerConfirmDialog({
+      title: `Poista sarjan ${division} pisteet`,
+      body: `<p>Haluatko varmasti poistaa kaikki sarjan ${escapeHtml(division)} pistetaulukon rivit?<br />
+                Tätä toimintoa ei voi perua.</p>`,
+      confirmAttribute: `data-confirm-delete-points-division="${escapeHtml(division)}"`,
+    });
+  }
+
+  if (dialog.type === 'delete-point') {
+    return renderDangerConfirmDialog({
+      title: 'Poista pistetaulukon rivi',
+      body: `
+        <p>Olet poistamassa pistetaulukon rivin ${escapeHtml(dialog.division)} / sijoitus ${escapeHtml(dialog.place)}.</p>
+        <p><strong>Tätä toimintoa ei voi perua.</strong></p>
+      `,
+      confirmAttribute: 'data-confirm-delete-point',
+    });
+  }
+
+  if (dialog.type === 'remove-result-player') {
+    const card = dataState.resultCards.find((entry) => entry.id === dialog.cardId);
+    const player = dataState.players.find((entry) => entry.id === dialog.playerId);
     if (!card) {
       return '';
     }
 
-    return `
-      <div class="dialog-backdrop" data-close-confirm-dialog>
-        <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
-          <div class="section-heading">
-            <div>
-              <h2 id="confirm-dialog-title">Poista pelaaja tuloskortilta</h2>
-              <p id="confirm-dialog-description" class="section-subtitle">
-                Haluatko varmasti poistaa pelaajan ${escapeHtml(player?.name || 'Poistettu pelaaja')} tuloskortilta ${escapeHtml(card.tournamentName || '')}?<br />
-                Tämä poistaa vain tuloskortin rivin.
-              </p>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
-            <button type="button" class="danger-button" data-confirm-remove-result-player>Poista</button>
-          </div>
-        </div>
-      </div>
-    `;
+    return renderDangerConfirmDialog({
+      title: 'Poista pelaaja tuloskortilta',
+      body: `<p>Haluatko varmasti poistaa pelaajan ${escapeHtml(player?.name || 'Poistettu pelaaja')} tuloskortilta ${escapeHtml(card.tournamentName || '')}?<br />
+                Tämä poistaa vain tuloskortin rivin.</p>`,
+      confirmAttribute: 'data-confirm-remove-result-player',
+    });
   }
 
-  if (uiState.confirmationDialog.type === 'delete-result-card') {
-    const card = dataState.resultCards.find((entry) => entry.id === uiState.confirmationDialog.cardId);
+  if (dialog.type === 'delete-result-card') {
+    const card = dataState.resultCards.find((entry) => entry.id === dialog.cardId);
     if (!card) {
       return '';
     }
 
-    return `
-      <div class="dialog-backdrop" data-close-confirm-dialog>
-        <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
-          <div class="section-heading">
-            <div>
-              <h2 id="confirm-dialog-title">⚠ VAROITUS ⚠</h2>
-              <div id="confirm-dialog-description" class="section-subtitle">
-                <p>Olet poistamassa tuloskortin <strong>${escapeHtml(card.tournamentName || '')}</strong>.</p>
-                <p>Kaikki tämän kortin tulosrivit poistetaan.</p>
-                <p>Toimintoa ei voi peruuttaa.</p>
-              </div>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
-            <button type="button" class="danger-button" data-confirm-delete-result-card>Poista</button>
-          </div>
-        </div>
-      </div>
-    `;
+    return renderDangerConfirmDialog({
+      title: 'Poista tuloskortti',
+      body: `
+        <p>Olet poistamassa tuloskortin <strong>${escapeHtml(card.tournamentName || '')}</strong>.</p>
+        <p>Kaikki tämän kortin tulosrivit poistetaan.</p>
+        <p><strong>Toimintoa ei voi peruuttaa.</strong></p>
+      `,
+      confirmAttribute: 'data-confirm-delete-result-card',
+    });
   }
 
-  if (uiState.confirmationDialog.type === 'delete-all-tournaments') {
+  if (dialog.type === 'delete-all-result-cards') {
+    const resultCount = dataState.resultCards.reduce((sum, card) => sum + (card.results?.length || 0), 0);
+    return renderDangerConfirmDialog({
+      title: 'Poista kaikki tuloskortit',
+      body: `
+        <p>Olet poistamassa kaikki tuloskortit (${formatNumber(dataState.resultCards.length)} kpl) ja niiden tulosrivit (${formatNumber(resultCount)} kpl).</p>
+        <p><strong>Tätä toimintoa ei voi perua.</strong></p>
+      `,
+      confirmAttribute: 'data-confirm-delete-all-result-cards',
+    });
+  }
+
+  if (dialog.type === 'delete-all-tournaments') {
     const tournamentCount = dataState.tournaments.length;
     const resultCount = dataState.resultCards.reduce((sum, card) => sum + (card.results?.length || 0), 0);
-    return `
-      <div class="dialog-backdrop" data-close-confirm-dialog>
-        <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
-          <div class="section-heading">
-            <div>
-              <h2 id="confirm-dialog-title">VAROITUS</h2>
-              <p class="warning-text"><span aria-hidden="true">⚠</span> Tämä toiminto on pysyvä.</p>
-              <div id="confirm-dialog-description" class="section-subtitle">
-                <p>Olet poistamassa kaikki turnaukset (${formatNumber(tournamentCount)} kpl) ja turnaustulokset (${formatNumber(resultCount)} kpl).</p>
-                <p>Toimintoa ei voi peruuttaa.</p>
-              </div>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="secondary-button" data-cancel-confirm-dialog>Peruuta</button>
-            <button type="button" class="danger-button" data-confirm-delete-all-tournaments>Poista kaikki turnaukset</button>
-          </div>
-        </div>
-      </div>
-    `;
+    return renderDangerConfirmDialog({
+      title: 'Poista kaikki turnaukset',
+      body: `
+        <p>Olet poistamassa kaikki turnaukset (${formatNumber(tournamentCount)} kpl) ja turnaustulokset (${formatNumber(resultCount)} kpl).</p>
+        <p><strong>Tätä toimintoa ei voi perua.</strong></p>
+      `,
+      confirmAttribute: 'data-confirm-delete-all-tournaments',
+    });
   }
 
-  if (uiState.confirmationDialog.type === 'delete-multiplier') {
-    const multiplier = dataState.multipliers.find((entry) => entry.id === uiState.confirmationDialog.multiplierId);
+  if (dialog.type === 'delete-multiplier') {
+    const multiplier = dataState.multipliers.find((entry) => entry.id === dialog.multiplierId);
     if (!multiplier) {
       return '';
     }
 
-    return `
-      <div class="dialog-backdrop" data-close-confirm-dialog>
-        <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
-          <div class="section-heading">
-            <div>
-              <h2 id="confirm-dialog-title">Varoitus: poista kerroin</h2>
-              <div id="confirm-dialog-description" class="section-subtitle">
-                <p>Tämä on pysyvä poistotoiminto.</p>
-                <p>Olet poistamassa kertoimen.</p>
-                <p>Tätä toimintoa ei voi perua.</p>
-                <p>Haluatko varmasti jatkaa?</p>
-              </div>
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="danger-button" data-confirm-delete-multiplier="${escapeHtml(multiplier.id)}">Poista</button>
-            <button type="button" class="secondary-button" data-cancel-confirm-dialog>Peruuta</button>
-          </div>
-        </div>
-      </div>
-    `;
+    return renderDangerConfirmDialog({
+      title: 'Varoitus: poista kerroin',
+      body: `
+        <p>Tämä on pysyvä poistotoiminto.</p>
+        <p>Olet poistamassa kertoimen.</p>
+        <p>Tätä toimintoa ei voi perua.</p>
+        <p>Haluatko varmasti jatkaa?</p>
+      `,
+      confirmAttribute: `data-confirm-delete-multiplier="${escapeHtml(multiplier.id)}"`,
+    });
   }
 
-  if (uiState.confirmationDialog.type !== 'delete-tournament') {
+  if (dialog.type !== 'delete-tournament') {
     return '';
   }
 
-  const tournament = dataState.tournaments.find((entry) => entry.id === uiState.confirmationDialog.tournamentId);
+  const tournament = dataState.tournaments.find((entry) => entry.id === dialog.tournamentId);
   if (!tournament) {
     return '';
   }
@@ -2224,25 +2334,13 @@ function renderConfirmationDialog(dataState, uiState) {
   const resultCount = dataState.resultCards
     .filter((card) => card.tournamentId === tournament.id)
     .reduce((sum, card) => sum + (card.results?.length || 0), 0);
-  return `
-    <div class="dialog-backdrop" data-close-confirm-dialog>
-      <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
-        <div class="section-heading">
-          <div>
-            <h2 id="confirm-dialog-title">Poista turnaus</h2>
-            <p id="confirm-dialog-description" class="section-subtitle">
-              Haluatko varmasti poistaa turnauksen ${escapeHtml(tournament.name)}?<br />
-              Samalla poistetaan ${formatNumber(resultCount)} turnaustulosta eikä toimintoa voi peruuttaa.
-            </p>
-          </div>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
-          <button type="button" class="danger-button" data-confirm-delete-tournament="${escapeHtml(tournament.id)}">Poista turnaus</button>
-        </div>
-      </div>
-    </div>
-  `;
+  return renderDangerConfirmDialog({
+    title: 'Poista turnaus',
+    body: `<p>Haluatko varmasti poistaa turnauksen ${escapeHtml(tournament.name)}?<br />
+              Samalla poistetaan ${formatNumber(resultCount)} turnaustulosta eikä toimintoa voi peruuttaa.</p>`,
+    confirmAttribute: `data-confirm-delete-tournament="${escapeHtml(tournament.id)}"`,
+    confirmLabel: 'Poista turnaus',
+  });
 }
 
 export function renderApp(root, dataState, uiState) {
@@ -2285,7 +2383,9 @@ export function renderApp(root, dataState, uiState) {
       ${renderResultCardDialog(dataState, uiState)}
       ${renderResultCardPlayersDialog(dataState, uiState)}
       ${renderMultiplierDialog(dataState, uiState)}
+      ${renderPlayersImportDialog(uiState)}
       ${renderTournamentImportDialog(uiState)}
+      ${renderPointsDialog(uiState)}
       ${renderPointsImportDialog(uiState)}
       ${renderConfirmationDialog(dataState, uiState)}
     </div>
@@ -2364,6 +2464,7 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelectorAll('[data-request-delete-result-card]').forEach((button) => {
     button.addEventListener('click', () => handlers.requestDeleteResultCard(button.dataset.requestDeleteResultCard));
   });
+  root.querySelector('[data-request-delete-all-result-cards]')?.addEventListener('click', () => handlers.requestDeleteAllResultCards());
 
   root.querySelectorAll('[data-summary-filter]').forEach((button) => {
     button.addEventListener('click', () => handlers.setSummaryFilter(button.dataset.summaryFilter));
@@ -2377,24 +2478,21 @@ export function bindUi(root, dataState, uiState, handlers) {
     handlers.setPlayerSearch(event.target.value);
   });
 
-  root.querySelector('[data-player-division-filter]')?.addEventListener('change', (event) => {
-    handlers.setPlayerDivisionFilter(event.target.value);
-  });
-
-  root.querySelector('[data-player-sort-field]')?.addEventListener('change', (event) => {
-    handlers.setPlayerSortField(event.target.value);
-  });
-
-  root.querySelector('[data-player-sort-direction]')?.addEventListener('change', (event) => {
-    handlers.setPlayerSortDirection(event.target.value);
+  root.querySelectorAll('[data-player-division-filter]').forEach((button) => {
+    button.addEventListener('click', () => handlers.setPlayerDivisionFilter(button.dataset.playerDivisionFilter));
   });
 
   root.querySelector('[data-open-player-dialog]')?.addEventListener('click', () => handlers.openPlayerDialog());
   root.querySelector('[data-retry-players-load]')?.addEventListener('click', () => handlers.retryPlayersLoad());
+  root.querySelector('[data-open-players-import-dialog]')?.addEventListener('click', () => handlers.openPlayersImportDialog());
   root.querySelector('#players-import-form')?.addEventListener('submit', (event) => {
     event.preventDefault();
     handlers.submitPlayersImport(new FormData(event.currentTarget));
   });
+  root.querySelector('[data-cancel-players-import]')?.addEventListener('click', () => handlers.closePlayersImportDialog());
+  root.querySelector('[data-close-players-import-dialog]')?.addEventListener('click', () => handlers.closePlayersImportDialog());
+  root.querySelector('[data-players-import-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
+  root.querySelector('[data-request-delete-all-players]')?.addEventListener('click', () => handlers.requestDeleteAllPlayers());
 
   root.querySelector('#player-form')?.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -2451,16 +2549,8 @@ export function bindUi(root, dataState, uiState, handlers) {
     handlers.setTournamentSearch(event.target.value);
   });
 
-  root.querySelector('[data-tournament-status-filter]')?.addEventListener('change', (event) => {
-    handlers.setTournamentStatusFilter(event.target.value);
-  });
-
-  root.querySelector('[data-tournament-sort-field]')?.addEventListener('change', (event) => {
-    handlers.setTournamentSortField(event.target.value);
-  });
-
-  root.querySelector('[data-tournament-sort-direction]')?.addEventListener('change', (event) => {
-    handlers.setTournamentSortDirection(event.target.value);
+  root.querySelectorAll('[data-tournament-status-filter]').forEach((button) => {
+    button.addEventListener('click', () => handlers.setTournamentStatusFilter(button.dataset.tournamentStatusFilter));
   });
 
   root.querySelectorAll('[data-delete-tournament]').forEach((button) => {
@@ -2489,7 +2579,10 @@ export function bindUi(root, dataState, uiState, handlers) {
     handlers.submitPoints(new FormData(event.currentTarget));
   });
 
-  root.querySelector('[data-reset-points-form]')?.addEventListener('click', () => handlers.resetPointsForm());
+  root.querySelector('[data-open-points-dialog]')?.addEventListener('click', () => handlers.openPointsDialog());
+  root.querySelector('[data-dismiss-points-dialog]')?.addEventListener('click', () => handlers.closePointsDialog());
+  root.querySelector('[data-points-dialog-backdrop]')?.addEventListener('click', () => handlers.closePointsDialog());
+  root.querySelector('[data-points-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
 
   root.querySelector('#points-import-form')?.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -2509,7 +2602,7 @@ export function bindUi(root, dataState, uiState, handlers) {
   });
 
   root.querySelectorAll('[data-delete-point]').forEach((button) => {
-    button.addEventListener('click', () => handlers.deletePoint(button.dataset.deletePoint));
+    button.addEventListener('click', () => handlers.requestDeletePoint(button.dataset.deletePoint));
   });
 
   root.querySelectorAll('[data-request-delete-points]').forEach((button) => {
@@ -2526,6 +2619,9 @@ export function bindUi(root, dataState, uiState, handlers) {
   });
   root.querySelector('[data-cancel-confirm-dialog]')?.addEventListener('click', () => handlers.closeConfirmationDialog());
   root.querySelector('[data-confirm-delete-player]')?.addEventListener('click', () => handlers.confirmDeletePlayer());
+  root.querySelector('[data-confirm-delete-all-players]')?.addEventListener('click', () => handlers.confirmDeleteAllPlayers());
+  root.querySelector('[data-confirm-delete-all-result-cards]')?.addEventListener('click', () => handlers.confirmDeleteAllResultCards());
+  root.querySelector('[data-confirm-delete-point]')?.addEventListener('click', () => handlers.confirmDeletePoint());
   root.querySelector('[data-confirm-delete-tournament]')?.addEventListener('click', () => handlers.confirmDeleteTournament());
   root.querySelector('[data-confirm-delete-all-tournaments]')?.addEventListener('click', () => handlers.confirmDeleteAllTournaments());
   root.querySelector('[data-confirm-delete-multiplier]')?.addEventListener('click', () => handlers.confirmDeleteMultiplier());
@@ -2545,6 +2641,8 @@ export function bindUi(root, dataState, uiState, handlers) {
     uiState.multiplierDialogOpen ||
     uiState.playerDialogOpen ||
     uiState.tournamentImportDialogOpen ||
+    uiState.playerImportDialogOpen ||
+    uiState.pointsDialogOpen ||
     uiState.pointsImportDialogOpen ||
     uiState.confirmationDialog
   ) {
@@ -2565,6 +2663,14 @@ export function bindUi(root, dataState, uiState, handlers) {
         }
         if (uiState.pointsImportDialogOpen) {
           handlers.closePointsImportDialog();
+          return;
+        }
+        if (uiState.pointsDialogOpen) {
+          handlers.closePointsDialog();
+          return;
+        }
+        if (uiState.playerImportDialogOpen) {
+          handlers.closePlayersImportDialog();
           return;
         }
         if (uiState.tournamentImportDialogOpen) {
@@ -2591,6 +2697,8 @@ export function bindUi(root, dataState, uiState, handlers) {
         !uiState.tournamentDialogOpen &&
         !uiState.multiplierDialogOpen &&
         !uiState.tournamentImportDialogOpen &&
+        !uiState.playerImportDialogOpen &&
+        !uiState.pointsDialogOpen &&
         !uiState.pointsImportDialogOpen
       ) {
         return;
@@ -2606,6 +2714,10 @@ export function bindUi(root, dataState, uiState, handlers) {
           ? root.querySelector('[data-tournament-import-dialog-panel]')
         : uiState.pointsImportDialogOpen
           ? root.querySelector('[data-points-import-dialog-panel]')
+        : uiState.pointsDialogOpen
+          ? root.querySelector('[data-points-dialog-panel]')
+        : uiState.playerImportDialogOpen
+          ? root.querySelector('[data-players-import-dialog-panel]')
         : uiState.multiplierDialogOpen
           ? root.querySelector('[data-multiplier-dialog-panel]')
         : uiState.playerDialogOpen
@@ -2640,6 +2752,10 @@ export function bindUi(root, dataState, uiState, handlers) {
     uiState.pointsImportFocusTarget = '';
   } else if (uiState.pointsImportDialogOpen) {
     root.querySelector('[data-points-import-dialog-panel]')?.focus();
+  } else if (uiState.pointsDialogOpen) {
+    (root.querySelector('#points-place') || root.querySelector('[data-points-dialog-panel]'))?.focus();
+  } else if (uiState.playerImportDialogOpen) {
+    (root.querySelector('#players-import-division') || root.querySelector('[data-players-import-dialog-panel]'))?.focus();
   } else if (uiState.playerDialogOpen && uiState.playerDialogFocusTarget) {
     root.querySelector(getPlayerFieldSelector(uiState.playerDialogFocusTarget))?.focus();
     uiState.playerDialogFocusTarget = '';
@@ -2648,7 +2764,12 @@ export function bindUi(root, dataState, uiState, handlers) {
   } else if (uiState.confirmationDialog) {
     root.querySelector('[data-cancel-confirm-dialog]')?.focus();
   } else if (uiState.pendingFocusSelector) {
-    root.querySelector(uiState.pendingFocusSelector)?.focus();
+    const pendingFocusElement = root.querySelector(uiState.pendingFocusSelector);
+    pendingFocusElement?.focus();
+    if (pendingFocusElement?.type === 'search' && typeof pendingFocusElement.setSelectionRange === 'function') {
+      const caretPosition = String(pendingFocusElement.value || '').length;
+      pendingFocusElement.setSelectionRange(caretPosition, caretPosition);
+    }
     uiState.pendingFocusSelector = '';
   }
 }

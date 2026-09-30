@@ -53,9 +53,9 @@ Ranking päivittyy automaattisesti, kun tuloskortti tallennetaan.`,
       },
       {
         title: 'Rankingin suodatus ja lajittelu',
-        content: `Ranking-listaa voi suodattaa sarjan mukaan (Kaikki, MPO, FPO).
+        content: `Ranking-listaa voi suodattaa sarjan mukaan taulukon yläpuolella olevilla painikkeilla (Kaikki, MPO, FPO). Valittu suodatin on korostettu ja merkitty ✓-merkillä.
 
-Taulukon sarakeotsikoita napsauttamalla listan voi lajitella esimerkiksi sijan, nimen, PDGA-ratingin, maailmanrankingin, turnausmäärän tai kokonaispisteiden mukaan.`,
+Taulukon sarakeotsikkoa napsauttamalla lista lajitellaan nousevaan järjestykseen (▲) ja uudelleen napsauttamalla laskevaan järjestykseen (▼). Lajitella voi esimerkiksi sijan, nimen, PDGA-ratingin, maailmanrankingin, turnausmäärän tai kokonaispisteiden mukaan.`,
       },
     ],
   },
@@ -73,7 +73,9 @@ Tuloskortin luonti:
 
 Tämän jälkeen voit syöttää jokaiselle pelaajalle sijoituksen ja tallentaa kortin. Lisää pelaajia -toiminnolla voit täydentää korttia myöhemmin.
 
-Sama pelaaja voi esiintyä samalla tuloskortilla vain kerran.`,
+Sama pelaaja voi esiintyä samalla tuloskortilla vain kerran.
+
+Sivun yläreunan toimintopalkin ⚠ Poista kaikki tuloskortit -toiminto poistaa kaikki tuloskortit ja niiden tulosrivit pysyvästi. Toiminto vaatii aina erillisen vahvistuksen.`,
       },
       {
         title: 'Sijoituksen muoto',
@@ -115,7 +117,7 @@ Jos pistetaulukosta puuttuu sijoitusta vastaava arvo, tulosta ei tallenneta.`,
     topics: [
       {
         title: 'CSV-tuonti',
-        content: `Voit tuoda pelaajia CSV-tiedostosta.
+        content: `Voit tuoda pelaajia CSV-tiedostosta sivun yläreunan toimintopalkin Tuo pelaajat -painikkeella. Painike avaa tuontiikkunan, jossa valitaan divisioona ja CSV-tiedosto.
 
 Vaatimukset:
 - Sarake-erotin on puolipiste (;)
@@ -145,7 +147,9 @@ Vapaaehtoiset tiedot: PDGA ID, PDGA-rating, maailmanranking ja muistiinpanot.`,
         title: 'Pelaajan muokkaaminen ja poistaminen',
         content: `Pelaajalistan Muokkaa-painike avaa saman lomakkeen olemassa olevilla tiedoilla.
 
-Pelaajan poistaminen vaatii aina erillisen vahvistuksen. Poistettua pelaajaa ei voi palauttaa, ja jos pelaaja on tallennettu tuloskortille, hänet näytetään tuloskortilla tekstillä Poistettu pelaaja.`,
+Pelaajan poistaminen vaatii aina erillisen vahvistuksen. Poistettua pelaajaa ei voi palauttaa, ja jos pelaaja on tallennettu tuloskortille, hänet näytetään tuloskortilla tekstillä Poistettu pelaaja.
+
+Toimintopalkin ⚠ Poista kaikki pelaajat -toiminto poistaa kaikki pelaajat kerralla. Myös se vaatii erillisen vahvistuksen.`,
       },
       {
         title: 'PDGA ID',
@@ -164,9 +168,9 @@ Linkin osoite muodostetaan keskitetysti Asetukset-sivun perusosoitteesta, joten 
       },
       {
         title: 'Haku ja lajittelu',
-        content: `Pelaajalistaa voi hakea nimellä tai PDGA ID:llä ja suodattaa sarjan mukaan.
+        content: `Hakukenttä ja sarjasuodattimet (Kaikki, MPO, FPO) ovat suoraan pelaajalistan yläpuolella. Pelaajalistaa voi hakea nimellä tai PDGA ID:llä.
 
-Lista voidaan lajitella nimen, PDGA ID:n, sarjan, PDGA-ratingin tai maailmanrankingin perusteella nousevaan tai laskevaan järjestykseen.`,
+Lista lajitellaan sarakeotsikkoa napsauttamalla: ensimmäinen napsautus lajittelee nousevaan järjestykseen (▲) ja toinen laskevaan (▼). Lajitella voi nimen, PDGA ID:n, sarjan, PDGA-ratingin tai maailmanrankingin perusteella.`,
       },
     ],
   },
@@ -209,13 +213,13 @@ Kerroin valitaan Kertoimet-sivulla ylläpidetyistä arvoista, joten lisää väh
         title: 'Turnausten poistaminen',
         content: `Turnauksen poistaminen poistaa myös kaikki turnaukselle tallennetut tulokset, eikä toimintoa voi peruuttaa.
 
-Vaaravyöhykkeen Poista kaikki turnaukset -toiminto poistaa kaikki turnaukset ja niihin liittyvät turnaustulokset pysyvästi. Molemmat toiminnot vaativat erillisen vahvistuksen.`,
+Toimintopalkin ⚠ Poista kaikki turnaukset -toiminto poistaa kaikki turnaukset ja niihin liittyvät turnaustulokset pysyvästi. Molemmat toiminnot vaativat erillisen vahvistuksen.`,
       },
       {
         title: 'Turnauslistan suodatus',
-        content: `Turnauslistaa voi hakea nimen, paikkakunnan ja radan perusteella sekä suodattaa tilan mukaan.
+        content: `Hakukenttä ja tilasuodattimet ovat suoraan turnauslistan yläpuolella. Turnauslistaa voi hakea nimen, paikkakunnan ja radan perusteella sekä suodattaa tilan mukaan painikkeilla.
 
-Lista voidaan lajitella esimerkiksi järjestysnumeron, nimen, tilan, PDGA Event ID:n, päivämäärien, paikkakunnan tai radan mukaan.`,
+Lista lajitellaan sarakeotsikkoa napsauttamalla (▲ nouseva, ▼ laskeva) esimerkiksi järjestysnumeron, nimen, tilan, PDGA Event ID:n, päivämäärien, paikkakunnan tai radan mukaan.`,
       },
     ],
   },
@@ -225,7 +229,7 @@ Lista voidaan lajitella esimerkiksi järjestysnumeron, nimen, tilan, PDGA Event 
     topics: [
       {
         title: 'Pistetaulukon CSV-tuonti',
-        content: `Pistetaulukko tuodaan sarjakohtaisesti. Tuonti sallitaan vain tyhjään pistetaulukkoon.
+        content: `Pistetaulukko tuodaan sarjakohtaisesti toimintopalkin Tuo pistetaulukko -painikkeella. Tuonti sallitaan vain tyhjään pistetaulukkoon.
 
 Muoto:
 Sijoitus;Pisteet
@@ -251,7 +255,7 @@ Säännöt:
 - 1x-peruspisteet voivat olla desimaaliluku (esim. 10,5).
 - Pistetaulukot on alustettu tyhjiksi: pisteitä ei oleteta eikä kovakoodata käyttöliittymään.
 
-Rivejä voi lisätä, muokata ja poistaa yksitellen tai poistaa koko sarjan pistetaulukon kerralla.`,
+Rivejä voi lisätä toimintopalkin Lisää rivi -painikkeella sekä muokata ja poistaa yksitellen rivin omilla painikkeilla. Koko sarjan pistetaulukon voi poistaa kerralla toimintopalkin ⚠ Poista kaikki -painikkeilla. Kaikki poistot vaativat erillisen vahvistuksen.`,
       },
       {
         title: 'Tasatulokset pistetaulukossa',

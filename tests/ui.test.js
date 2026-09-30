@@ -571,6 +571,7 @@ test('renderApp shows players CSV import instructions, required fields and summa
     dataState,
     createUiState({
       activeView: 'players',
+      playerImportDialogOpen: true,
       playerImportDivision: 'MPO',
       playerImportSummary: {
         totalRows: 4,
@@ -584,12 +585,14 @@ test('renderApp shows players CSV import instructions, required fields and summa
     }),
   );
 
-  assert.match(root.innerHTML, /Pelaajien CSV-tuonti/);
+  assert.match(root.innerHTML, /<h2 id="players-import-dialog-title">Tuo pelaajat<\/h2>/);
+  assert.match(root.innerHTML, /data-players-import-dialog-panel/);
   assert.match(root.innerHTML, /Tarkemmat ohjeet löytyvät Ohjeet-osion kohdasta Pelaajat\./);
-  assert.match(root.innerHTML, /Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking/);
+  assert.match(root.innerHTML, /<code>Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking<\/code>/);
+  assert.match(root.innerHTML, /<strong>Erotin:<\/strong> puolipiste <code>;<\/code>/);
   assert.match(root.innerHTML, /id="players-import-division" name="division" required/);
   assert.match(root.innerHTML, /id="players-import-file" name="file" type="file" accept="\.csv,text\/csv" required/);
-  assert.match(root.innerHTML, /<button type="submit" class="button">Tuo<\/button>/);
+  assert.match(root.innerHTML, /data-cancel-players-import>Sulje<\/button>/);
   assert.match(root.innerHTML, /Importti valmis/);
   assert.match(root.innerHTML, /class="message warning" role="alert" aria-live="assertive"/);
   assert.match(root.innerHTML, /Yhteensä rivejä: 4/);
@@ -785,11 +788,13 @@ test('renderApp shows delete all tournaments confirmation dialog copy', () => {
     }),
   );
 
-  assert.match(root.innerHTML, /<h2 id="confirm-dialog-title">VAROITUS<\/h2>/);
-  assert.match(root.innerHTML, /Tämä toiminto on pysyvä\./);
+  assert.match(root.innerHTML, /role="alertdialog"/);
+  assert.match(root.innerHTML, /class="danger-banner" id="confirm-dialog-warning"><span aria-hidden="true">⚠<\/span> VAROITUS <span aria-hidden="true">⚠<\/span>/);
+  assert.match(root.innerHTML, /<h2 id="confirm-dialog-title">Poista kaikki turnaukset<\/h2>/);
   assert.match(root.innerHTML, /Olet poistamassa kaikki turnaukset \(2 kpl\) ja turnaustulokset \(1 kpl\)\./);
-  assert.match(root.innerHTML, /Toimintoa ei voi peruuttaa\./);
-  assert.match(root.innerHTML, /data-confirm-delete-all-tournaments>Poista kaikki turnaukset<\/button>/);
+  assert.match(root.innerHTML, /Tätä toimintoa ei voi perua\./);
+  assert.match(root.innerHTML, /data-confirm-delete-all-tournaments>Poista<\/button>/);
+  assert.match(root.innerHTML, /data-cancel-confirm-dialog autofocus>Peruuta<\/button>/);
 });
 
 test('renderApp shows shared tournament modal and delete action only in edit mode', () => {
@@ -976,15 +981,16 @@ test('renderApp shows score table import instructions, division actions and Finn
 
   assert.match(root.innerHTML, /Tarkemmat ohjeet löytyvät Ohjeet-osion kohdasta Pistetaulukot\./);
   assert.match(root.innerHTML, /Sijoitus;Pisteet/);
-  assert.match(root.innerHTML, /Tuo MPO CSV/);
-  assert.match(root.innerHTML, /Poista MPO-pisteet/);
-  assert.match(root.innerHTML, /Tuo FPO CSV/);
-  assert.match(root.innerHTML, /Poista FPO-pisteet/);
+  assert.match(root.innerHTML, /data-open-points-dialog>Lisää rivi<\/button>/);
+  assert.match(root.innerHTML, /data-open-points-import>Tuo pistetaulukko<\/button>/);
+  assert.match(root.innerHTML, /data-request-delete-points="MPO">.*Poista kaikki MPO-pisteet<\/button>/);
+  assert.match(root.innerHTML, /data-request-delete-points="FPO">.*Poista kaikki FPO-pisteet<\/button>/);
+  assert.doesNotMatch(root.innerHTML, /id="points-form"/);
   assert.match(root.innerHTML, /<td>10,5<\/td>/);
   assert.match(root.innerHTML, /<td>7,25<\/td>/);
 });
 
-test('renderApp shows score table import dialog with division radios and file input', () => {
+test('renderApp shows score table import dialog with division dropdown and file input', () => {
   const root = createRootStub();
   const dataState = createEmptyState();
 
@@ -998,9 +1004,11 @@ test('renderApp shows score table import dialog with division radios and file in
     }),
   );
 
-  assert.match(root.innerHTML, /<h2 id="points-import-dialog-title">Tuo pistetaulukko CSV-tiedostosta<\/h2>/);
-  assert.match(root.innerHTML, /name="division" value="MPO"/);
-  assert.match(root.innerHTML, /name="division" value="FPO" checked/);
+  assert.match(root.innerHTML, /<h2 id="points-import-dialog-title">Tuo pistetaulukko<\/h2>/);
+  assert.match(root.innerHTML, /id="points-import-division" name="division" required/);
+  assert.match(root.innerHTML, /<option value="MPO" >MPO<\/option>/);
+  assert.match(root.innerHTML, /<option value="FPO" selected>FPO<\/option>/);
+  assert.match(root.innerHTML, /<code>Sijoitus;Pisteet<\/code>/);
   assert.match(root.innerHTML, /id="points-import-file" name="file" type="file" accept="\.csv,text\/csv" required/);
   assert.match(root.innerHTML, /<button type="submit" class="button">Tuo<\/button>/);
   assert.match(root.innerHTML, /data-cancel-points-import>Peruuta<\/button>/);
@@ -1032,7 +1040,7 @@ test('renderApp näyttää Kertoimet-välilehden ja taulukon sarakkeet', () => {
 
   assert.match(root.innerHTML, /data-view-target="multipliers"/);
   assert.match(root.innerHTML, /<h2 id="multipliers-title">Kertoimet<\/h2>/);
-  assert.match(root.innerHTML, /data-open-multiplier-dialog>Lisää<\/button>/);
+  assert.match(root.innerHTML, /data-open-multiplier-dialog>Lisää kerroin<\/button>/);
   assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="orderNumber"/);
   assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="name"/);
   assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="abbreviation"/);
@@ -1227,7 +1235,7 @@ test('renderApp näyttää tuloskortin poiston ja rivipoiston vahvistusdialogit'
     activeView: 'results',
     confirmationDialog: { type: 'delete-result-card', cardId: 'card-1' },
   }));
-  assert.match(root.innerHTML, /⚠ VAROITUS ⚠/);
+  assert.match(root.innerHTML, /⚠<\/span> VAROITUS <span aria-hidden="true">⚠/);
   assert.match(root.innerHTML, /Kaikki tämän kortin tulosrivit poistetaan\./);
   assert.match(root.innerHTML, /data-confirm-delete-result-card>Poista<\/button>/);
 });
@@ -1407,4 +1415,235 @@ test('renderApp keeps the help section hidden when another view is active', () =
   renderApp(root, createEmptyState(), createUiState({ activeView: 'players' }));
 
   assert.match(root.innerHTML, /<section class="section" id="section-help" hidden aria-labelledby="help-title">/);
+});
+
+function createTestPlayer(overrides = {}) {
+  return {
+    id: 'player-1',
+    firstName: 'Testi',
+    lastName: 'Pelaaja',
+    name: 'Testi Pelaaja',
+    division: 'MPO',
+    pdgaNumber: 12345,
+    pdgaRating: 1000,
+    worldRank: 5,
+    notes: '',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+test('renderApp näyttää pelaajasivun toimintopalkin ja erotetun Poista kaikki -toiminnon', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [createTestPlayer()];
+
+  renderApp(root, dataState, createUiState({ activeView: 'players' }));
+
+  assert.match(root.innerHTML, /class="action-bar" role="group" aria-label="Pelaajien toiminnot"/);
+  assert.match(root.innerHTML, /data-open-player-dialog>Lisää pelaaja<\/button>/);
+  assert.match(root.innerHTML, /data-open-players-import-dialog>Tuo pelaajat<\/button>/);
+  assert.match(
+    root.innerHTML,
+    /class="action-bar-group action-bar-danger" role="group" aria-label="Vaaralliset toiminnot"><button type="button" class="danger-button danger-action-button" data-request-delete-all-players><span class="danger-icon" aria-hidden="true">⚠<\/span> Poista kaikki pelaajat<\/button>/,
+  );
+  assert.doesNotMatch(root.innerHTML, /id="players-import-form"/);
+  assert.doesNotMatch(root.innerHTML, /data-players-import-dialog-panel/);
+});
+
+test('renderApp näyttää pelaajalistan haun ja sarjasuodattimet painikkeina ilman lajitteluvalikoita', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [createTestPlayer()];
+
+  renderApp(root, dataState, createUiState({ activeView: 'players', playerDivisionFilter: 'MPO' }));
+
+  assert.match(root.innerHTML, /class="table-toolbar" role="group" aria-label="Pelaajalistan haku ja suodatus"/);
+  assert.match(root.innerHTML, /id="player-search" type="search" data-player-search/);
+  assert.match(root.innerHTML, /data-player-division-filter="ALL" aria-pressed="false">Kaikki<\/button>/);
+  assert.match(root.innerHTML, /data-player-division-filter="MPO" aria-pressed="true">MPO<\/button>/);
+  assert.match(root.innerHTML, /data-player-division-filter="FPO" aria-pressed="false">FPO<\/button>/);
+  assert.doesNotMatch(root.innerHTML, /Lajittelukenttä|Lajittelusuunta/);
+  assert.doesNotMatch(root.innerHTML, /data-player-sort-field|data-player-sort-direction/);
+  assert.doesNotMatch(root.innerHTML, /<select id="player-division-filter"/);
+  assert.ok(root.innerHTML.indexOf('class="table-toolbar"') < root.innerHTML.indexOf('class="table players-table"'));
+});
+
+test('renderApp näyttää turnaussivun toimintopalkin, tilasuodattimet ja ilman lajitteluvalikoita', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  const [firstMultiplier] = dataState.multipliers;
+  dataState.tournaments = [{
+    id: 'tournament-1',
+    name: 'Testi Open',
+    pdgaEventId: 123456,
+    startDate: '2026-07-03',
+    endDate: '',
+    displayOrder: 1,
+    location: 'Helsinki',
+    venue: 'Rata',
+    multiplierId: firstMultiplier.id,
+    division: '',
+    externalUrl: '',
+    notes: '',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  }];
+
+  renderApp(root, dataState, createUiState({ activeView: 'tournaments', tournamentStatusFilter: firstMultiplier.id }));
+
+  assert.match(root.innerHTML, /aria-label="Turnausten toiminnot"/);
+  assert.match(root.innerHTML, /action-bar-danger[^>]*><button type="button" class="danger-button danger-action-button" data-request-delete-all-tournaments>/);
+  assert.doesNotMatch(root.innerHTML, /Vaaravyöhyke: poista kaikki turnaukset/);
+  assert.match(root.innerHTML, /data-tournament-status-filter="ALL" aria-pressed="false">Kaikki<\/button>/);
+  assert.match(root.innerHTML, new RegExp(`data-tournament-status-filter="${firstMultiplier.id}" aria-pressed="true"`));
+  assert.doesNotMatch(root.innerHTML, /data-tournament-sort-field|data-tournament-sort-direction|<select id="tournament-status-filter"/);
+  assert.match(root.innerHTML, /id="tournament-search" type="search" data-tournament-search/);
+});
+
+test('renderApp poistaa kaikki -painikkeet ovat pois käytöstä, kun poistettavaa ei ole', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+
+  renderApp(root, dataState, createUiState({ activeView: 'players' }));
+  assert.match(root.innerHTML, /data-request-delete-all-players disabled>/);
+  assert.match(root.innerHTML, /data-request-delete-all-tournaments disabled>/);
+  assert.match(root.innerHTML, /data-request-delete-all-result-cards disabled>/);
+  assert.match(root.innerHTML, /data-request-delete-points="MPO" disabled>/);
+});
+
+test('renderApp näyttää ranking-suodattimet taulukon yläpuolella korostettuna', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [createTestPlayer()];
+
+  renderApp(root, dataState, createUiState({ activeView: 'ranking', rankingFilter: 'FPO' }));
+
+  assert.match(root.innerHTML, /aria-label="Ranking-taulukon suodatus"/);
+  assert.match(root.innerHTML, /data-ranking-filter="FPO" aria-pressed="true">FPO<\/button>/);
+  assert.match(root.innerHTML, /data-ranking-filter="ALL" aria-pressed="false">Kaikki<\/button>/);
+});
+
+test('renderApp näyttää tulossivun toimintopalkin ja kaikkien tuloskorttien poiston vahvistuksen', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.resultCards = [{
+    id: 'card-1',
+    tournamentId: 'tournament-1',
+    tournamentName: 'Testi Open',
+    results: [{ playerId: 'player-1', division: 'MPO', placement: '1', calculatedPoints: 100 }],
+  }];
+
+  renderApp(root, dataState, createUiState({ activeView: 'results' }));
+  assert.match(root.innerHTML, /aria-label="Tulosten toiminnot"/);
+  assert.match(root.innerHTML, /data-request-delete-all-result-cards><span class="danger-icon" aria-hidden="true">⚠<\/span> Poista kaikki tuloskortit<\/button>/);
+  assert.match(root.innerHTML, /data-request-delete-result-card="card-1">Poista tuloskortti<\/button>/);
+
+  renderApp(root, dataState, createUiState({ activeView: 'results', confirmationDialog: { type: 'delete-all-result-cards' } }));
+  assert.match(root.innerHTML, /VAROITUS/);
+  assert.match(root.innerHTML, /<h2 id="confirm-dialog-title">Poista kaikki tuloskortit<\/h2>/);
+  assert.match(root.innerHTML, /Olet poistamassa kaikki tuloskortit \(1 kpl\) ja niiden tulosrivit \(1 kpl\)\./);
+  assert.match(root.innerHTML, /Tätä toimintoa ei voi perua\./);
+  assert.match(root.innerHTML, /data-confirm-delete-all-result-cards>Poista<\/button>/);
+});
+
+test('renderApp näyttää kaikkien pelaajien poiston vahvistusdialogin', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [createTestPlayer(), createTestPlayer({ id: 'player-2', pdgaNumber: 2 })];
+
+  renderApp(root, dataState, createUiState({ activeView: 'players', confirmationDialog: { type: 'delete-all-players' } }));
+
+  assert.match(root.innerHTML, /role="alertdialog"/);
+  assert.match(root.innerHTML, /<h2 id="confirm-dialog-title">Poista kaikki pelaajat<\/h2>/);
+  assert.match(root.innerHTML, /Olet poistamassa kaikki pelaajat \(2 kpl\)\./);
+  assert.match(root.innerHTML, /data-confirm-delete-all-players>Poista<\/button>/);
+  assert.match(root.innerHTML, /data-cancel-confirm-dialog autofocus>Peruuta<\/button>/);
+});
+
+test('renderApp näyttää pistetaulukon rivin lisäyksen dialogina ja rivipoiston vahvistuksen', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.pointsTable = { MPO: { '1': 100 }, FPO: {} };
+
+  renderApp(root, dataState, createUiState({
+    activeView: 'points',
+    pointsDialogOpen: true,
+    pointsForm: { division: 'MPO', place: '1', basePoints: 100, editingKey: 'MPO:1' },
+  }));
+  assert.match(root.innerHTML, /<h2 id="points-dialog-title">Muokkaa pistetaulukon riviä<\/h2>/);
+  assert.match(root.innerHTML, /<form id="points-form">/);
+  assert.match(root.innerHTML, /data-dismiss-points-dialog>Peruuta<\/button>/);
+  assert.match(root.innerHTML, /data-edit-point="MPO:1">Muokkaa<\/button>/);
+  assert.match(root.innerHTML, /data-delete-point="MPO:1">Poista<\/button>/);
+
+  renderApp(root, dataState, createUiState({
+    activeView: 'points',
+    confirmationDialog: { type: 'delete-point', division: 'MPO', place: '1' },
+  }));
+  assert.match(root.innerHTML, /<h2 id="confirm-dialog-title">Poista pistetaulukon rivi<\/h2>/);
+  assert.match(root.innerHTML, /Olet poistamassa pistetaulukon rivin MPO \/ sijoitus 1\./);
+  assert.match(root.innerHTML, /data-confirm-delete-point>Poista<\/button>/);
+});
+
+test('bindUi kutsuu suodatinpainikkeiden ja toimintopalkin käsittelijöitä', () => {
+  const restoreDocument = installDocumentStub();
+  const playerFilterButton = createFocusableElement();
+  playerFilterButton.dataset = { playerDivisionFilter: 'FPO' };
+  const tournamentFilterButton = createFocusableElement();
+  tournamentFilterButton.dataset = { tournamentStatusFilter: 'multiplier-1' };
+  const importButton = createFocusableElement();
+  const deleteAllPlayersButton = createFocusableElement();
+  const deleteAllResultCardsButton = createFocusableElement();
+  const openPointsDialogButton = createFocusableElement();
+  const root = {
+    __dialogKeydownHandler: null,
+    querySelector(selector) {
+      return {
+        '[data-open-players-import-dialog]': importButton,
+        '[data-request-delete-all-players]': deleteAllPlayersButton,
+        '[data-request-delete-all-result-cards]': deleteAllResultCardsButton,
+        '[data-open-points-dialog]': openPointsDialogButton,
+      }[selector] || null;
+    },
+    querySelectorAll(selector) {
+      if (selector === '[data-player-division-filter]') {
+        return [playerFilterButton];
+      }
+      if (selector === '[data-tournament-status-filter]') {
+        return [tournamentFilterButton];
+      }
+      return [];
+    },
+  };
+  const calls = [];
+  const handlers = new Proxy(
+    {},
+    {
+      get(target, property) {
+        return (...args) => calls.push([property, ...args]);
+      },
+    },
+  );
+
+  try {
+    bindUi(root, createEmptyState(), createUiState(), handlers);
+    playerFilterButton.listeners.click();
+    tournamentFilterButton.listeners.click();
+    importButton.listeners.click();
+    deleteAllPlayersButton.listeners.click();
+    deleteAllResultCardsButton.listeners.click();
+    openPointsDialogButton.listeners.click();
+    assert.deepEqual(calls, [
+      ['setPlayerDivisionFilter', 'FPO'],
+      ['setTournamentStatusFilter', 'multiplier-1'],
+      ['openPlayersImportDialog'],
+      ['requestDeleteAllPlayers'],
+      ['requestDeleteAllResultCards'],
+      ['openPointsDialog'],
+    ]);
+  } finally {
+    restoreDocument();
+  }
 });
