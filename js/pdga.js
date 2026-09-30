@@ -1,6 +1,11 @@
+export const POINT_DECIMALS_OPTIONS = [0, 1, 2, 3, 4];
+
+export const DEFAULT_POINT_DECIMALS = 2;
+
 export const DEFAULT_PDGA_SETTINGS = {
   playerBaseUrl: 'https://www.pdga.com/player/',
   eventBaseUrl: 'https://www.pdga.com/tour/event/',
+  pointDecimals: DEFAULT_POINT_DECIMALS,
 };
 
 export class SettingsValidationError extends Error {
@@ -97,11 +102,37 @@ function extractIdFromPattern(value, pattern) {
   return parsePositiveInteger(match[1]);
 }
 
+export function sanitizePointDecimals(value, fallbackValue = DEFAULT_POINT_DECIMALS) {
+  const normalized = normalizeText(value);
+  if (!/^\d+$/.test(normalized)) {
+    return fallbackValue;
+  }
+
+  const parsed = Number(normalized);
+  return POINT_DECIMALS_OPTIONS.includes(parsed) ? parsed : fallbackValue;
+}
+
 export function sanitizePdgaSettings(settings = {}) {
   return {
     playerBaseUrl: normalizePdgaBaseUrl(settings.playerBaseUrl, DEFAULT_PDGA_SETTINGS.playerBaseUrl),
     eventBaseUrl: normalizePdgaBaseUrl(settings.eventBaseUrl, DEFAULT_PDGA_SETTINGS.eventBaseUrl),
+    pointDecimals: sanitizePointDecimals(settings.pointDecimals),
   };
+}
+
+function normalizePointDecimalsInput(value, fieldErrors) {
+  const normalized = normalizeText(value);
+  if (!normalized) {
+    return DEFAULT_POINT_DECIMALS;
+  }
+
+  const parsed = Number(normalized);
+  if (!/^\d+$/.test(normalized) || !POINT_DECIMALS_OPTIONS.includes(parsed)) {
+    addFieldError(fieldErrors, 'pointDecimals', 'Pyöristys pitää olla arvo väliltä 0–4.');
+    return DEFAULT_POINT_DECIMALS;
+  }
+
+  return parsed;
 }
 
 export function validateSettingsInput(input = {}) {
@@ -121,6 +152,7 @@ export function validateSettingsInput(input = {}) {
       fieldErrors,
       DEFAULT_PDGA_SETTINGS.eventBaseUrl,
     ),
+    pointDecimals: normalizePointDecimalsInput(input.pointDecimals, fieldErrors),
   };
 
   if (Object.keys(fieldErrors).length > 0) {

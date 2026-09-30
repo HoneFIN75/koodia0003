@@ -82,6 +82,7 @@ test('loadState sanitizes API payload and strips unknown legacy fields', async (
   assert.deepEqual(state.settings, {
     playerBaseUrl: 'https://www.pdga.com/player/',
     eventBaseUrl: 'https://www.pdga.com/tour/event/',
+    pointDecimals: 2,
   });
 });
 
@@ -148,6 +149,7 @@ test('saveState sanitizes payload before sending it to API', async () => {
   assert.deepEqual(sentState.settings, {
     playerBaseUrl: 'https://www.pdga.com/player/',
     eventBaseUrl: 'https://www.pdga.com/tour/event/',
+    pointDecimals: 2,
   });
   assert.equal(state.players[0].pdgaNumber, 76543);
   assert.equal(state.tournaments[0].pdgaEventId, 321);

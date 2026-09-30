@@ -52,6 +52,12 @@ turnauspisteet = 1x-peruspisteet × turnauksen kerroin
 Ranking päivittyy automaattisesti, kun tuloskortti tallennetaan.`,
       },
       {
+        title: 'Pisteiden pyöristys',
+        content: `Asetukset-sivun Pyöristys-valinta määrittää, montako desimaalia kokonaispisteissä näytetään (0–4, oletus 2). Pisteet näytetään suomalaisessa muodossa desimaalipilkulla, esimerkiksi 123,46.
+
+Pyöristys vaikuttaa vain näytettäviin arvoihin Yhteenveto-sivun TOP 10 -listoissa ja Ranking-sivun kokonaispisteissä. Laskenta, tallennetut arvot, pistetaulukot, kertoimet ja tulokset säilyttävät aina täyden tarkkuuden.`,
+      },
+      {
         title: 'Rankingin suodatus ja lajittelu',
         content: `Ranking-listaa voi suodattaa sarjan mukaan taulukon yläpuolella olevilla painikkeilla (Kaikki, MPO, FPO). Valittu suodatin on korostettu ja merkitty ✓-merkillä.
 
@@ -162,9 +168,9 @@ Huomioi:
       },
       {
         title: 'PDGA-profiililinkit',
-        content: `Kun pelaajalle on tallennettu PDGA ID, pelaajan nimi näytetään linkkinä PDGA-profiiliin yhteenvedossa, rankingissa ja pelaajalistassa.
+        content: `Kun pelaajalle on tallennettu PDGA ID, PDGA ID näytetään linkkinä PDGA-profiiliin pelaajalistassa, rankingissa ja pelaajan tietosivulla. Pelaajan nimi on pelkkää tekstiä eikä toimi linkkinä.
 
-Linkin osoite muodostetaan keskitetysti Asetukset-sivun perusosoitteesta, joten yksittäisiä linkkejä ei tarvitse ylläpitää käsin.`,
+Linkki avautuu aina uuteen välilehteen ja sen osoite muodostetaan keskitetysti Asetukset-sivun perusosoitteesta, joten yksittäisiä linkkejä ei tarvitse ylläpitää käsin.`,
       },
       {
         title: 'Haku ja lajittelu',
