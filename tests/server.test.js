@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
 import path from 'node:path';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createJsonFileStorage } from '../server/json-file-storage.mjs';
 import { createServer } from '../server/app.mjs';
 import { createSiteAuth, DEFAULT_SITE_PASSWORD } from '../server/site-auth.mjs';
@@ -226,6 +226,32 @@ test('static HEAD request returns headers without body', async () => {
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-length'), String('<!doctype html><title>SFL</title>'.length));
     assert.equal(await response.text(), '');
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    await rm(publicDir, { recursive: true, force: true });
+    await rm(jsondbDir, { recursive: true, force: true });
+  }
+});
+
+test('static image assets are served with image content types', async () => {
+  const publicDir = await createTempDir();
+  const jsondbDir = await createTempDir();
+  await mkdir(path.join(publicDir, 'assets'), { recursive: true });
+  await writeFile(path.join(publicDir, 'assets', 'login-background.png'), 'png', 'utf8');
+  await writeFile(path.join(publicDir, 'assets', 'login-background.jpg'), 'jpg', 'utf8');
+  const storage = createJsonFileStorage({ directoryPath: jsondbDir });
+  const server = createServer({ publicDir, storage });
+
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    const pngResponse = await fetch(`http://127.0.0.1:${address.port}/assets/login-background.png`);
+    assert.equal(pngResponse.status, 200);
+    assert.equal(pngResponse.headers.get('content-type'), 'image/png');
+
+    const jpgResponse = await fetch(`http://127.0.0.1:${address.port}/assets/login-background.jpg`);
+    assert.equal(jpgResponse.status, 200);
+    assert.equal(jpgResponse.headers.get('content-type'), 'image/jpeg');
   } finally {
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     await rm(publicDir, { recursive: true, force: true });
