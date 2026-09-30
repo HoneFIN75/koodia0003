@@ -108,9 +108,9 @@ test('renderLoginView shows only the login form with accessible error message', 
   const root = { innerHTML: '' };
   renderLoginView(root, { errorMessage: 'Väärä salasana. Yritä uudelleen.' });
 
-  assert.match(root.innerHTML, /<h1 id="login-title">SFL Pisteytystyökalu<\/h1>/);
-  assert.match(root.innerHTML, /Syötä salasana jatkaaksesi\./);
-  assert.match(root.innerHTML, /<label for="login-password">Salasana<\/label>/);
+  assert.match(root.innerHTML, /<h1 id="login-title">SFL Porkkana<\/h1>/);
+  assert.doesNotMatch(root.innerHTML, /Tervetuloa! Syötä salasana jatkaaksesi\./);
+  assert.match(root.innerHTML, /<label for="login-password">Salainen runno<\/label>/);
   assert.match(root.innerHTML, /type="password"/);
   assert.match(root.innerHTML, />\s*Kirjaudu\s*</);
   assert.match(root.innerHTML, /role="alert"[^>]*>.*Väärä salasana\. Yritä uudelleen\./s);
