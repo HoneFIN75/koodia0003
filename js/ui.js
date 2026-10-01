@@ -1263,6 +1263,8 @@ function renderPlayerSection(dataState, uiState) {
           '<button type="button" class="button" data-open-player-dialog>Lisää pelaaja</button>',
           '<button type="button" class="secondary-button" data-open-players-import-dialog>Tuo pelaajat</button>',
           '<button type="button" class="secondary-button" data-open-rating-ranking-dialog>Päivitä Rating ja Ranking</button>',
+          '<button type="button" class="secondary-button" data-export-result-cards>Export Tuloskortit</button>',
+          '<button type="button" class="secondary-button" data-open-result-card-import-dialog>Import Tuloskortit</button>',
         ],
         dangerActions: [
           renderDangerActionButton({
@@ -1576,6 +1578,104 @@ function renderRatingRankingDialog(uiState) {
           </div>
           <div class="form-actions"><button type="button" class="secondary-button" data-cancel-rating-ranking-dialog>Sulje</button></div>
         ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderResultCardImportIssuesTable(summary) {
+  const issues = [
+    ...summary.errors.map((issue) => ({ ...issue, type: 'Virhe', order: 0 })),
+    ...summary.observations.map((issue) => ({ ...issue, type: 'Huomio', order: 1 })),
+  ].sort((left, right) => left.rowNumber - right.rowNumber || left.order - right.order);
+
+  if (!issues.length) {
+    return '';
+  }
+
+  return `
+    <div class="table-wrap">
+      <table class="table result-card-import-issues-table">
+        <caption class="visually-hidden">Importin virheet ja huomiot riveittäin</caption>
+        <thead>
+          <tr>
+            <th scope="col">Rivi</th>
+            <th scope="col">Tyyppi</th>
+            <th scope="col">PDGA ID</th>
+            <th scope="col">Sarake</th>
+            <th scope="col">Kuvaus</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${issues
+            .map(
+              (issue) => `
+                <tr data-result-card-import-issue="${issue.order === 0 ? 'error' : 'observation'}">
+                  <td data-label="Rivi" class="number">${formatNumber(issue.rowNumber)}</td>
+                  <td data-label="Tyyppi">${issue.order === 0 ? '<span aria-hidden="true">✕</span> ' : '<span aria-hidden="true">ℹ</span> '}${issue.type}</td>
+                  <td data-label="PDGA ID">${escapeHtml(renderValueOrDash(issue.pdgaId))}</td>
+                  <td data-label="Sarake">${escapeHtml(renderValueOrDash(issue.column))}</td>
+                  <td data-label="Kuvaus">${escapeHtml(issue.reason)}</td>
+                </tr>
+              `,
+            )
+            .join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderResultCardImportDialog(uiState) {
+  if (!uiState.resultCardImportDialogOpen) {
+    return '';
+  }
+
+  const summary = uiState.resultCardImportSummary;
+  const hasErrors = summary?.errors.length > 0;
+
+  return `
+    <div class="dialog-backdrop" data-close-result-card-import-dialog>
+      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="result-card-import-dialog-title" data-result-card-import-dialog-panel tabindex="-1">
+        <form id="result-card-import-form">
+          <div class="section-heading">
+            <div>
+              <h2 id="result-card-import-dialog-title">Import Tuloskortit</h2>
+            </div>
+          </div>
+          ${
+            summary
+              ? ''
+              : `
+                <p>Tuo kaikkien pelaajien tuloskorttien sijoitukset CSV-tiedostosta (UTF-8, puolipiste-erotin, otsikkorivi PDGA ID;Nimi;T1;T2;…). Pelaajat tunnistetaan PDGA ID:n ja turnaukset T-sarakkeen järjestysnumeron perusteella.</p>
+                <div class="form-grid">
+                  <div class="form-field full-width">
+                    <label for="result-card-import-file">CSV-tiedosto *</label>
+                    <input id="result-card-import-file" name="file" type="file" accept=".csv,text/csv" required />
+                  </div>
+                </div>
+              `
+          }
+          <div class="form-actions">
+            ${summary ? '' : '<button type="submit" class="button">Tuo</button>'}
+            <button type="button" class="secondary-button" data-cancel-result-card-import>${summary ? 'Sulje' : 'Peruuta'}</button>
+          </div>
+        </form>
+        ${
+          summary
+            ? `
+              <div class="message ${hasErrors ? 'warning' : 'success'}" role="${hasErrors ? 'alert' : 'status'}" aria-live="${hasErrors ? 'assertive' : 'polite'}">
+                <strong>Import valmis</strong>
+                <dl>
+                  <div><dt>Päivitetyt pelaajat</dt><dd>${formatNumber(summary.updatedCount)}</dd></div>
+                  <div><dt>Virheet</dt><dd>${formatNumber(summary.errors.length)}</dd></div>
+                  <div><dt>Huomiot</dt><dd>${formatNumber(summary.observations.length)}</dd></div>
+                </dl>
+              </div>
+              ${renderResultCardImportIssuesTable(summary)}
+            `
+            : ''
+        }
       </div>
     </div>
   `;
@@ -2703,6 +2803,7 @@ export function renderApp(root, dataState, uiState) {
       ${renderMultiplierDialog(dataState, uiState)}
       ${renderPlayersImportDialog(uiState)}
       ${renderRatingRankingDialog(uiState)}
+      ${renderResultCardImportDialog(uiState)}
       ${renderTournamentImportDialog(uiState)}
       ${renderPointsDialog(uiState)}
       ${renderPointsImportDialog(uiState)}
@@ -2851,6 +2952,15 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-cancel-rating-ranking-dialog]')?.addEventListener('click', () => handlers.closeRatingRankingDialog());
   root.querySelector('[data-close-rating-ranking-dialog]')?.addEventListener('click', () => handlers.closeRatingRankingDialog());
   root.querySelector('[data-rating-ranking-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
+  root.querySelector('[data-export-result-cards]')?.addEventListener('click', () => handlers.exportResultCards());
+  root.querySelector('[data-open-result-card-import-dialog]')?.addEventListener('click', () => handlers.openResultCardImportDialog());
+  root.querySelector('#result-card-import-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handlers.submitResultCardImport(new FormData(event.currentTarget));
+  });
+  root.querySelector('[data-cancel-result-card-import]')?.addEventListener('click', () => handlers.closeResultCardImportDialog());
+  root.querySelector('[data-close-result-card-import-dialog]')?.addEventListener('click', () => handlers.closeResultCardImportDialog());
+  root.querySelector('[data-result-card-import-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
   root.querySelector('[data-request-delete-all-players]')?.addEventListener('click', () => handlers.requestDeleteAllPlayers());
 
   root.querySelector('#player-form')?.addEventListener('submit', (event) => {
@@ -2999,6 +3109,7 @@ export function bindUi(root, dataState, uiState, handlers) {
     uiState.tournamentImportDialogOpen ||
     uiState.playerImportDialogOpen ||
     uiState.ratingRankingDialogOpen ||
+    uiState.resultCardImportDialogOpen ||
     uiState.pointsDialogOpen ||
     uiState.pointsImportDialogOpen ||
     uiState.confirmationDialog
@@ -3026,6 +3137,10 @@ export function bindUi(root, dataState, uiState, handlers) {
           handlers.closeRatingRankingDialog();
           return;
         }
+        if (uiState.resultCardImportDialogOpen) {
+          handlers.closeResultCardImportDialog();
+          return;
+        }
         if (uiState.tournamentImportDialogOpen) {
           handlers.closeTournamentImportDialog();
           return;
@@ -3050,6 +3165,7 @@ export function bindUi(root, dataState, uiState, handlers) {
         !uiState.tournamentImportDialogOpen &&
         !uiState.playerImportDialogOpen &&
         !uiState.ratingRankingDialogOpen &&
+        !uiState.resultCardImportDialogOpen &&
         !uiState.pointsDialogOpen &&
         !uiState.pointsImportDialogOpen
       ) {
@@ -3068,6 +3184,8 @@ export function bindUi(root, dataState, uiState, handlers) {
           ? root.querySelector('[data-players-import-dialog-panel]')
         : uiState.ratingRankingDialogOpen
           ? root.querySelector('[data-rating-ranking-dialog-panel]')
+        : uiState.resultCardImportDialogOpen
+          ? root.querySelector('[data-result-card-import-dialog-panel]')
         : uiState.multiplierDialogOpen
           ? root.querySelector('[data-multiplier-dialog-panel]')
         : uiState.playerDialogOpen
@@ -3106,6 +3224,10 @@ export function bindUi(root, dataState, uiState, handlers) {
     (uiState.ratingRankingSummary
       ? root.querySelector('[data-cancel-rating-ranking-dialog]')
       : root.querySelector('#rating-ranking-csv') || root.querySelector('[data-rating-ranking-dialog-panel]'))?.focus();
+  } else if (uiState.resultCardImportDialogOpen) {
+    (uiState.resultCardImportSummary
+      ? root.querySelector('[data-cancel-result-card-import]')
+      : root.querySelector('#result-card-import-file') || root.querySelector('[data-result-card-import-dialog-panel]'))?.focus();
   } else if (uiState.playerDialogOpen && uiState.playerDialogFocusTarget) {
     root.querySelector(getPlayerFieldSelector(uiState.playerDialogFocusTarget))?.focus();
     uiState.playerDialogFocusTarget = '';

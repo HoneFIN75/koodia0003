@@ -363,3 +363,53 @@ test('API protects state with the shared site password when site auth is enabled
     await rm(jsondbDir, { recursive: true, force: true });
   }
 });
+
+test('API appends errors to jsondb/errors.json through the centralized error log', async () => {
+  const publicDir = await createTempDir();
+  const jsondbDir = await createTempDir();
+  const storage = createJsonFileStorage({ directoryPath: jsondbDir });
+  const server = createServer({ publicDir, storage });
+
+  try {
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const baseUrl = `http://127.0.0.1:${server.address().port}`;
+    const post = (body) => fetch(`${baseUrl}/api/errors`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const response = await post({
+      source: 'resultCardImport',
+      errors: [
+        { message: 'PDGA ID:llä ei löydy pelaajaa.', rowNumber: 2, pdgaId: '99999' },
+        { message: 'Virheellinen sijoitus "1TT2".', rowNumber: 3, pdgaId: '12345', column: 'T1', extra: 'ignored' },
+      ],
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { logged: 2 });
+    assert.equal((await post({ source: 'resultCardImport', errors: [{ message: 'Import epäonnistui.' }] })).status, 200);
+
+    const errors = JSON.parse(await readFile(path.join(jsondbDir, 'errors.json'), 'utf8'));
+    assert.equal(errors.length, 3);
+    assert.deepEqual(
+      errors.map(({ timestamp, ...entry }) => entry),
+      [
+        { source: 'resultCardImport', message: 'PDGA ID:llä ei löydy pelaajaa.', rowNumber: 2, pdgaId: '99999' },
+        { source: 'resultCardImport', message: 'Virheellinen sijoitus "1TT2".', rowNumber: 3, pdgaId: '12345', column: 'T1' },
+        { source: 'resultCardImport', message: 'Import epäonnistui.' },
+      ],
+    );
+    errors.forEach((entry) => assert.match(entry.timestamp, /^\d{4}-\d{2}-\d{2}T/));
+
+    assert.equal((await post({ source: 'resultCardImport', errors: [] })).status, 400);
+    assert.equal((await post({ errors: [{ message: 'x' }] })).status, 400);
+    assert.equal((await post({ source: 'x', errors: [{ message: '   ' }] })).status, 400);
+    const getResponse = await fetch(`${baseUrl}/api/errors`);
+    assert.equal(getResponse.status, 405);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await rm(publicDir, { recursive: true, force: true });
+    await rm(jsondbDir, { recursive: true, force: true });
+  }
+});

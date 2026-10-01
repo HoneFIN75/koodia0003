@@ -11,7 +11,11 @@ const STORAGE_FILES = [
     'scoreTables' => 'scoreTables.json',
     'multipliers' => 'multipliers.json',
     'settings' => 'settings.json',
+    'errors' => 'errors.json',
 ];
+
+const ERROR_LOG_MAX_ENTRIES = 1000;
+const ERROR_LOG_MAX_ENTRIES_PER_REQUEST = 200;
 
 const SITE_AUTH_SETTING_KEYS = [
     'sitePassword',
@@ -587,6 +591,93 @@ function handle_state_endpoint(string $method): void
     send_json(405, ['message' => 'Metodia ei tueta.'], ['Allow' => 'GET, PUT']);
 }
 
+function sanitize_error_log_text($value, int $maxLength): string
+{
+    if (!is_string($value)) {
+        return '';
+    }
+
+    if (preg_match('/^.{0,' . $maxLength . '}/us', trim($value), $matches) !== 1) {
+        return '';
+    }
+
+    return $matches[0];
+}
+
+function validate_error_log_payload(array $payload): array
+{
+    $source = sanitize_error_log_text($payload['source'] ?? null, 100);
+    $errors = $payload['errors'] ?? null;
+    if (
+        $source === ''
+        || !is_array($errors)
+        || !array_is_list($errors)
+        || count($errors) === 0
+        || count($errors) > ERROR_LOG_MAX_ENTRIES_PER_REQUEST
+    ) {
+        throw new InvalidArgumentException('INVALID_ERROR_LOG_PAYLOAD');
+    }
+
+    $timestamp = gmdate('Y-m-d\TH:i:s.v\Z');
+    $entries = [];
+    foreach ($errors as $error) {
+        $message = sanitize_error_log_text(is_array($error) ? ($error['message'] ?? null) : null, 1000);
+        if ($message === '') {
+            throw new InvalidArgumentException('INVALID_ERROR_LOG_PAYLOAD');
+        }
+
+        $entry = ['timestamp' => $timestamp, 'source' => $source, 'message' => $message];
+        $rowNumber = $error['rowNumber'] ?? null;
+        if (is_int($rowNumber) && $rowNumber >= 0) {
+            $entry['rowNumber'] = $rowNumber;
+        }
+        foreach (['pdgaId', 'column'] as $key) {
+            $value = sanitize_error_log_text($error[$key] ?? null, 100);
+            if ($value !== '') {
+                $entry[$key] = $value;
+            }
+        }
+        $entries[] = $entry;
+    }
+
+    return $entries;
+}
+
+// Keskitetty virheloki: virheet lisätään jsondb/errors.json-tiedoston loppuun.
+// Tiedostossa säilytetään enintään ERROR_LOG_MAX_ENTRIES uusinta merkintää.
+function append_error_log_entries(array $entries): int
+{
+    ensure_jsondb_directory();
+    $lockHandle = fopen(jsondb_file_path('.errors.lock'), 'c');
+    if ($lockHandle === false || !flock($lockHandle, LOCK_EX)) {
+        throw new RuntimeException('FAILED_TO_LOCK_ERROR_LOG');
+    }
+
+    try {
+        $existing = read_json_file(jsondb_file_path(STORAGE_FILES['errors']), []);
+        $existing = is_array($existing) && array_is_list($existing) ? $existing : [];
+        $nextEntries = array_slice(array_merge($existing, $entries), -ERROR_LOG_MAX_ENTRIES);
+        write_json_atomically(jsondb_file_path(STORAGE_FILES['errors']), $nextEntries);
+    } finally {
+        flock($lockHandle, LOCK_UN);
+        fclose($lockHandle);
+    }
+
+    return count($entries);
+}
+
+function handle_errors_endpoint(string $method): void
+{
+    if ($method !== 'POST') {
+        send_json(405, ['message' => 'Metodia ei tueta.'], ['Allow' => 'POST']);
+        return;
+    }
+
+    require_authenticated_request();
+    $entries = validate_error_log_payload(read_request_json_payload());
+    send_json(200, ['logged' => append_error_log_entries($entries)]);
+}
+
 try {
     $endpoint = strtolower(trim((string) ($_GET['endpoint'] ?? ''), '/'));
     $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
@@ -611,6 +702,11 @@ try {
         return;
     }
 
+    if ($endpoint === 'errors') {
+        handle_errors_endpoint($method);
+        return;
+    }
+
     send_json(404, ['message' => 'Rajapintaa ei löytynyt.']);
 } catch (AuthRequiredException $error) {
     send_json(401, ['message' => 'Kirjautuminen vaaditaan. Kirjaudu sisään uudelleen.']);
@@ -622,6 +718,11 @@ try {
 
     if ($error->getMessage() === 'INCOMPLETE_STATE_PAYLOAD') {
         send_json(400, ['message' => 'Tallennettava tila on puutteellinen. Lähetä koko sovelluksen tila yhdessä pyynnössä.']);
+        return;
+    }
+
+    if ($error->getMessage() === 'INVALID_ERROR_LOG_PAYLOAD') {
+        send_json(400, ['message' => 'Virhelokin merkinnät ovat virheellisiä.']);
         return;
     }
 

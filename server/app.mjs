@@ -162,6 +162,40 @@ function validateStatePayload(payload) {
   return payload;
 }
 
+const ERROR_LOG_MAX_ENTRIES_PER_REQUEST = 200;
+
+function sanitizeErrorLogText(value, maxLength) {
+  return typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
+}
+
+function validateErrorLogPayload(payload, timestamp = new Date().toISOString()) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload) || !Array.isArray(payload.errors)) {
+    throw new Error('INVALID_ERROR_LOG_PAYLOAD');
+  }
+
+  const source = sanitizeErrorLogText(payload.source, 100);
+  if (!source || payload.errors.length === 0 || payload.errors.length > ERROR_LOG_MAX_ENTRIES_PER_REQUEST) {
+    throw new Error('INVALID_ERROR_LOG_PAYLOAD');
+  }
+
+  return payload.errors.map((entry) => {
+    const message = sanitizeErrorLogText(entry?.message, 1000);
+    if (!message) {
+      throw new Error('INVALID_ERROR_LOG_PAYLOAD');
+    }
+
+    const rowNumber = Number(entry.rowNumber);
+    return {
+      timestamp,
+      source,
+      message,
+      ...(Number.isSafeInteger(rowNumber) && rowNumber >= 0 ? { rowNumber } : {}),
+      ...(sanitizeErrorLogText(entry.pdgaId, 100) ? { pdgaId: sanitizeErrorLogText(entry.pdgaId, 100) } : {}),
+      ...(sanitizeErrorLogText(entry.column, 100) ? { column: sanitizeErrorLogText(entry.column, 100) } : {}),
+    };
+  });
+}
+
 function resolvePublicPath(publicDir, pathname) {
   const normalizedPath = pathname === '/' ? '/index.html' : pathname;
   const decodedPath = decodeURIComponent(normalizedPath);
@@ -275,6 +309,29 @@ export function createRequestHandler({
         return;
       }
 
+      if (url.pathname === '/api/errors') {
+        if (request.method !== 'POST') {
+          sendJson(response, 405, { message: 'Metodia ei tueta.' }, { Allow: 'POST' });
+          return;
+        }
+
+        if (!(await isAuthenticatedRequest(request, siteAuth))) {
+          sendAuthRequired(response);
+          return;
+        }
+
+        if (!authorizeWriteRequest(request)) {
+          sendJson(response, 403, {
+            message: 'Tallennus on sallittu vain paikallisen palvelimen kautta tai suojatulla välityspalvelimella.',
+          });
+          return;
+        }
+
+        const entries = validateErrorLogPayload(await readRequestJson(request));
+        sendJson(response, 200, { logged: await storage.appendErrors(entries) });
+        return;
+      }
+
       if (request.method !== 'GET' && request.method !== 'HEAD') {
         sendJson(response, 405, { message: 'Metodia ei tueta.' }, { Allow: 'GET, HEAD' });
         return;
@@ -296,6 +353,11 @@ export function createRequestHandler({
         sendJson(response, 400, {
           message: 'Tallennettava tila on puutteellinen. Lähetä koko sovelluksen tila yhdessä pyynnössä.',
         });
+        return;
+      }
+
+      if (error?.message === 'INVALID_ERROR_LOG_PAYLOAD') {
+        sendJson(response, 400, { message: 'Virhelokin merkinnät ovat virheellisiä.' });
         return;
       }
 

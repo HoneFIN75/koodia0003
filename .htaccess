@@ -1,2 +1,2 @@
 RewriteEngine On
-RewriteRule ^api/(state|health|login|site-password)/?$ api/index.php?endpoint=$1 [QSA,L,NC]
+RewriteRule ^api/(state|health|login|site-password|errors)/?$ api/index.php?endpoint=$1 [QSA,L,NC]
