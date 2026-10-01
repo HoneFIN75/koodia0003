@@ -749,7 +749,7 @@ function renderPlayerResultPoints(calculatedPoints) {
   return typeof calculatedPoints === 'number' ? `${formatNumber(calculatedPoints)} p` : '—';
 }
 
-function renderPlayerResultCardRow(dataState, player, row) {
+function renderPlayerResultCardRow(dataState, player, row, editMode = false) {
   const { tournament, placement, calculatedPoints } = row;
   const tournamentId = escapeHtml(tournament.id);
   const multiplier = findMultiplier(dataState.multipliers || [], tournament.multiplierId);
@@ -776,14 +776,30 @@ function renderPlayerResultCardRow(dataState, player, row) {
           data-result-placement
           data-player-id="${escapeHtml(player.id)}"
           data-tournament-id="${tournamentId}"
+          ${editMode ? '' : 'readonly aria-readonly="true"'}
         />
         <span class="field-error" id="result-placement-error-${tournamentId}" data-result-placement-error role="alert" hidden></span>
       </td>
       <td data-label="Lasketut pisteet" class="number" data-result-points>${renderPlayerResultPoints(calculatedPoints)}</td>
       <td data-label="Tyhjennä">
-        <button type="button" class="danger-button" data-clear-player-placement="${tournamentId}" data-player-id="${escapeHtml(player.id)}" aria-label="Tyhjennä sijoitus: ${tournamentName}"${placement ? '' : ' disabled'}>Tyhjennä</button>
+        <button type="button" class="danger-button" data-clear-player-placement="${tournamentId}" data-player-id="${escapeHtml(player.id)}" aria-label="Tyhjennä sijoitus: ${tournamentName}"${placement && editMode ? '' : ' disabled'}>Tyhjennä</button>
       </td>
     </tr>
+  `;
+}
+
+function renderPlayerResultCardModeBadge(editMode) {
+  // Tila kerrotaan aina tekstillä ja symbolilla, jotta käyttö ei perustu pelkkään väriin.
+  const mode = editMode
+    ? { key: 'edit', label: 'Muokkaustila', symbol: '✎', chipClass: 'status-chip warning' }
+    : { key: 'read-only', label: 'Lukutila', symbol: '🔒', chipClass: 'status-chip' };
+
+  return `
+    <p class="result-card-mode" id="player-result-card-instructions">
+      <span class="${mode.chipClass}" data-result-card-mode="${mode.key}" role="status">
+        <span aria-hidden="true">${mode.symbol}</span> ${mode.label}
+      </span>
+    </p>
   `;
 }
 
@@ -804,7 +820,14 @@ function renderPlayerResultCardSection(dataState, uiState) {
     `;
   }
 
-  const rows = buildPlayerResultCardRows(dataState, player.id);
+  // Tuloskortti avautuu aina lukutilaan. Muokkaustilassa näytetään kesken olevat
+  // muutokset (luonnos), jotta pisteet lasketaan heti mutta mitään ei tallenneta
+  // ennen Tallenna ja poistu -painiketta.
+  const editMode = Boolean(uiState.resultCardEditMode);
+  const viewState = editMode && uiState.resultCardDraft
+    ? { ...dataState, resultCards: uiState.resultCardDraft }
+    : dataState;
+  const rows = buildPlayerResultCardRows(viewState, player.id);
 
   return `
     <section class="section" id="section-player-result-card" aria-labelledby="player-result-card-title">
@@ -813,15 +836,21 @@ function renderPlayerResultCardSection(dataState, uiState) {
           <h2 id="player-result-card-title">Tuloskortti: ${escapeHtml(player.name)}</h2>
           <p class="section-subtitle">Sarja: ${escapeHtml(player.division)} · PDGA ID: ${renderPdgaPlayerIdLink(player, dataState.settings)}</p>
         </div>
+        ${renderPlayerResultCardModeBadge(editMode)}
       </div>
       ${renderActionBar({
         label: 'Tuloskortin toiminnot',
-        actions: [
-          backButton,
-          '<button type="button" class="button" data-save-player-result-card>Tallenna</button>',
-        ],
+        actions: editMode
+          ? [
+            '<button type="button" class="button" data-save-player-result-card>Tallenna ja poistu</button>',
+            '<button type="button" class="secondary-button" data-exit-player-result-card-edit>Poistu</button>',
+          ]
+          : [
+            backButton,
+            '<button type="button" class="button" data-edit-player-result-card>Muokkaa</button>',
+          ],
       })}
-      <p class="help-hint" id="player-result-card-instructions">Syötä sijoitus muodossa 1 tai tasatuloksena 3T4. Tab siirtää seuraavan turnauksen Sijoitus-kenttään. Muutokset tallentuvat ja pisteet lasketaan automaattisesti.</p>
+      ${renderHelpHint('Pelaajat → Tuloskortti')}
       <p class="result-card-save-status" data-result-card-save-status role="status" aria-live="polite"></p>
       <article class="panel">
         ${
@@ -841,7 +870,7 @@ function renderPlayerResultCardSection(dataState, uiState) {
                     </tr>
                   </thead>
                   <tbody>
-                    ${rows.map((row) => renderPlayerResultCardRow(dataState, player, row)).join('')}
+                    ${rows.map((row) => renderPlayerResultCardRow(viewState, player, row, editMode)).join('')}
                   </tbody>
                 </table>
               </div>
@@ -2341,6 +2370,18 @@ function renderConfirmationDialog(dataState, uiState) {
     });
   }
 
+  if (dialog.type === 'exit-player-result-card-edit') {
+    return renderDangerConfirmDialog({
+      title: 'Tallentamattomia muutoksia',
+      body: `
+        <p>Tuloskortilla on tallentamattomia muutoksia.</p>
+        <p>Haluatko poistua muokkaustilasta tallentamatta muutoksia?</p>
+      `,
+      confirmAttribute: 'data-confirm-exit-player-result-card-edit',
+      confirmLabel: 'Poistu ilman tallennusta',
+    });
+  }
+
   if (dialog.type === 'delete-all-tournaments') {
     const tournamentCount = dataState.tournaments.length;
     const resultCount = countResults(dataState.resultCards);
@@ -2480,8 +2521,11 @@ export function bindUi(root, dataState, uiState, handlers) {
     button.addEventListener('click', () => handlers.openPlayerResultCard(button.dataset.openPlayerResultCard));
   });
   root.querySelector('[data-close-player-result-card]')?.addEventListener('click', () => handlers.closePlayerResultCard());
+  root.querySelector('[data-edit-player-result-card]')?.addEventListener('click', () => handlers.enterPlayerResultCardEdit());
+  root.querySelector('[data-exit-player-result-card-edit]')?.addEventListener('click', () => handlers.exitPlayerResultCardEdit());
 
-  const placementInputs = [...root.querySelectorAll('input[data-result-placement]')];
+  // Sijoituskenttiin ei sidota muokkaustoimintoja lukutilassa, jotta arvoja ei voi muuttaa vahingossa.
+  const placementInputs = uiState.resultCardEditMode ? [...root.querySelectorAll('input[data-result-placement]')] : [];
   placementInputs.forEach((input, index) => {
     input.addEventListener('change', () =>
       handlers.updatePlayerPlacement(input.dataset.playerId, input.dataset.tournamentId, input.value),
@@ -2680,6 +2724,7 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-confirm-delete-multiplier]')?.addEventListener('click', () => handlers.confirmDeleteMultiplier());
   root.querySelector('[data-confirm-delete-points-division]')?.addEventListener('click', () => handlers.confirmDeletePointsDivision());
   root.querySelector('[data-confirm-clear-player-placement]')?.addEventListener('click', () => handlers.confirmClearPlayerPlacement());
+  root.querySelector('[data-confirm-exit-player-result-card-edit]')?.addEventListener('click', () => handlers.confirmExitPlayerResultCardEdit());
 
   if (root.__dialogKeydownHandler) {
     document.removeEventListener('keydown', root.__dialogKeydownHandler);
