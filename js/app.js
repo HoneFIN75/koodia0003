@@ -186,12 +186,16 @@ function hasUnsavedResultCardChanges() {
   ));
 }
 
-function discardPlayerResultCardEdit() {
+function discardPlayerResultCardEdit({ hadChanges = true, rerender = true } = {}) {
   uiState.resultCardEditMode = false;
   uiState.resultCardDraft = null;
-  uiState.feedback = { type: 'warning', text: '⚠ Muokkaustila suljettu ilman tallennusta' };
+  if (hadChanges) {
+    uiState.feedback = { type: 'warning', text: '⚠ Muokkaustila suljettu ilman tallennusta' };
+  }
   uiState.pendingFocusSelector = '[data-edit-player-result-card]';
-  render();
+  if (rerender) {
+    render();
+  }
 }
 
 // Kaikki tallennukset kulkevat saman jonon kautta, jotta automaattitallennukset ja muut
@@ -234,20 +238,27 @@ function formDataToObject(formData) {
 // Keskitetty ilmoituslogiikka: ilmoitus piilotetaan automaattisesti viiden sekunnin kuluttua.
 const FEEDBACK_TIMEOUT_MS = 5000;
 let feedbackTimeoutId = null;
+let scheduledFeedback = null;
 
 function scheduleFeedbackDismissal() {
+  if (uiState.feedback === scheduledFeedback) {
+    return;
+  }
+
   if (feedbackTimeoutId) {
     window.clearTimeout(feedbackTimeoutId);
     feedbackTimeoutId = null;
   }
 
+  scheduledFeedback = uiState.feedback;
   if (!uiState.feedback) {
     return;
   }
 
+  const dismissedFeedback = uiState.feedback;
   feedbackTimeoutId = window.setTimeout(() => {
     feedbackTimeoutId = null;
-    if (!uiState.feedback) {
+    if (uiState.feedback !== dismissedFeedback) {
       return;
     }
 
@@ -329,8 +340,7 @@ const handlers = {
   changeView(view) {
     if (view !== 'player-result-card' && uiState.resultCardEditMode) {
       // Muokkaustila ei jää päälle, jos käyttäjä siirtyy toiselle sivulle navigaatiosta.
-      uiState.resultCardEditMode = false;
-      uiState.resultCardDraft = null;
+      discardPlayerResultCardEdit({ hadChanges: hasUnsavedResultCardChanges(), rerender: false });
     }
 
     uiState.activeView = view;
@@ -1112,7 +1122,7 @@ const handlers = {
       return;
     }
 
-    discardPlayerResultCardEdit();
+    discardPlayerResultCardEdit({ hadChanges: false });
   },
   confirmExitPlayerResultCardEdit() {
     if (uiState.confirmationDialog?.type !== 'exit-player-result-card-edit') {
@@ -1138,17 +1148,17 @@ const handlers = {
       updatePlayerResultRow(root, draftState, playerId, tournamentId, {
         error: error instanceof Error ? error.message : 'Sijoitusta ei voitu tallentaa.',
       });
-      setPlayerResultCardStatus(root, 'error', 'Sijoitusta ei hyväksytty. Korjaa merkityn rivin sijoitus.');
+      setPlayerResultCardStatus(root, 'error', '✕ Sijoitusta ei hyväksytty. Korjaa merkityn rivin sijoitus.');
       return;
     }
 
     uiState.resultCardDraft = outcome.resultCards;
     updatePlayerResultRow(root, { ...dataState, resultCards: outcome.resultCards }, playerId, tournamentId);
-    setPlayerResultCardStatus(
-      root,
-      'pending',
-      hasUnsavedResultCardChanges() ? 'Tallentamattomia muutoksia. Tallenna muutokset Tallenna ja poistu -painikkeella.' : '',
-    );
+    if (hasUnsavedResultCardChanges()) {
+      setPlayerResultCardStatus(root, 'pending', 'Tallentamattomia muutoksia. Tallenna muutokset Tallenna ja poistu -painikkeella.');
+    } else {
+      setPlayerResultCardStatus(root, '', '');
+    }
   },
   // Tallenna ja poistu: kaikki kortin sijoitukset validoidaan ja tallennetaan kerralla,
   // minkä jälkeen kortti palaa lukutilaan.
@@ -1207,11 +1217,18 @@ const handlers = {
       return;
     }
 
+    // Muokkaustilassa tyhjennys koskee vain luonnosta: mitään ei tallenneta ennen
+    // Tallenna ja poistu -painiketta.
+    if (uiState.resultCardEditMode && uiState.resultCardDraft) {
+      uiState.resultCardDraft = clearPlayerPlacement(uiState.resultCardDraft, playerId, tournamentId);
+      uiState.confirmationDialog = null;
+      uiState.pendingFocusSelector = `input[data-result-placement][data-tournament-id="${tournamentId}"]`;
+      render();
+      return;
+    }
+
     try {
       dataState.resultCards = clearPlayerPlacement(dataState.resultCards, playerId, tournamentId);
-      if (uiState.resultCardDraft) {
-        uiState.resultCardDraft = clearPlayerPlacement(uiState.resultCardDraft, playerId, tournamentId);
-      }
       localRevision += 1;
       uiState.confirmationDialog = null;
       uiState.pendingFocusSelector = `input[data-result-placement][data-tournament-id="${tournamentId}"]`;

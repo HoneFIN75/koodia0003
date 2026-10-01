@@ -92,7 +92,7 @@ Tuloskortti avataan Pelaajat-sivulta pelaajan rivin Tuloskortti-painikkeella. Ko
 - Lasketut pisteet
 - Tyhjennä-painike
 
-Tyhjennä poistaa rivin sijoituksen ja samalla lasketut pisteet. Toiminto kysyy aina vahvistuksen.`,
+Tyhjennä poistaa rivin sijoituksen ja samalla lasketut pisteet. Toiminto on käytettävissä vain muokkaustilassa, se kysyy aina vahvistuksen ja tallentuu vasta Tallenna ja poistu -painikkeella.`,
       },
       {
         title: 'Nopea syöttö ja tallennus',
