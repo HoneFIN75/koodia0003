@@ -386,6 +386,65 @@ export function importPlayersFromCsv(players, csvText, division) {
   };
 }
 
+export function parseRatingRankingCsv(csvText) {
+  const records = splitCsvRecords(String(csvText ?? '').replace(/^\uFEFF/, '')).filter((record) => record.value.trim());
+  const header = records.shift();
+  if (!header || parseDelimitedRow(header.value).map(normalizeHeaderToken).join(';') !== 'pdgaid;rating;ranking') {
+    throw new Error('CSV-tiedoston otsikko pitää olla PDGA ID;Rating;Ranking.');
+  }
+  if (!records.length) {
+    throw new Error('CSV-tiedostossa ei ole päivitettäviä pelaajarivejä.');
+  }
+
+  const entries = records.map((record) => {
+    const columns = parseDelimitedRow(record.value);
+    return { rowNumber: record.lineNumber, columns, pdgaId: normalizeText(columns[0]), pdgaNumber: normalizeCsvInteger(columns[0]) };
+  });
+  const counts = new Map();
+  entries.forEach(({ pdgaNumber }) => {
+    if (pdgaNumber !== null) counts.set(pdgaNumber, (counts.get(pdgaNumber) || 0) + 1);
+  });
+
+  const rows = [];
+  const errors = [];
+  entries.forEach(({ rowNumber, columns, pdgaId, pdgaNumber }) => {
+    let reason = '';
+    if (columns.length !== 3) reason = 'CSV-rivin sarakemäärä on virheellinen';
+    else if (!pdgaId) reason = 'PDGA ID puuttuu';
+    else if (pdgaNumber === null) reason = 'Virheellinen PDGA ID';
+    else if (counts.get(pdgaNumber) > 1) reason = 'PDGA ID esiintyy CSV-tiedostossa useammin kuin kerran';
+    const pdgaRating = normalizeCsvInteger(columns[1]);
+    const worldRank = normalizeCsvInteger(columns[2]);
+    if (!reason && pdgaRating === null) reason = 'Virheellinen Rating';
+    if (!reason && worldRank === null) reason = 'Virheellinen Ranking';
+    if (reason) {
+      errors.push({ rowNumber, pdgaId, reason });
+    } else {
+      rows.push({ rowNumber, pdgaNumber, pdgaRating, worldRank });
+    }
+  });
+  return { rows, errors };
+}
+
+export function importRatingRankingFromCsv(players, csvText) {
+  const { rows, errors } = parseRatingRankingCsv(csvText);
+  const byPdgaNumber = new Map(players.map((player) => [normalizeCsvInteger(player.pdgaNumber), player]));
+  const updates = new Map();
+  const observations = [];
+  rows.forEach(({ rowNumber, pdgaNumber, pdgaRating, worldRank }) => {
+    const player = byPdgaNumber.get(pdgaNumber);
+    if (!player) {
+      observations.push({ rowNumber, pdgaId: String(pdgaNumber), reason: 'Pelaajaa ei löydy järjestelmästä' });
+    } else {
+      updates.set(player.id, { pdgaRating, worldRank });
+    }
+  });
+  return {
+    updatedPlayers: players.map((player) => updates.has(player.id) ? { ...player, ...updates.get(player.id) } : player),
+    summary: { updatedCount: updates.size, errors, observations },
+  };
+}
+
 export function updatePlayer(players, playerId, input) {
   const existingPlayer = players.find((player) => player.id === playerId);
   if (!existingPlayer) {
