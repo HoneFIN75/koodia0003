@@ -229,7 +229,8 @@ function renderPlayerName(player) {
 }
 
 // Rankingissa pelaajan nimi on sovelluksen sisäinen painike, joka avaa pelaajan tuloskortin.
-// Painike on näkyvästi alleviivattu ja merkitty aria-labelilla, joten klikattavuus ei perustu väriin.
+// Näkyvä teksti on pelaajan nimi ja aria-label täydentää sen toiminnon kuvauksella. Alleviivaus ja
+// osoitinkursori kertovat klikattavuudesta, joten käyttö ei perustu pelkkään väriin.
 function renderPlayerNameResultCardButton(player, origin) {
   const playerId = player?.id;
   const playerName = String(player?.name || '').trim();

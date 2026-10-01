@@ -1117,7 +1117,8 @@ const handlers = {
     uiState.resultCardOrigin = 'players';
     uiState.resultCardEditMode = false;
     uiState.resultCardDraft = null;
-    uiState.pendingFocusSelector = playerId ? `[data-open-player-result-card="${playerId}"]` : '[data-open-player-dialog]';
+    const fallbackFocusSelector = origin === 'ranking' ? '[data-ranking-filter]' : '[data-open-player-dialog]';
+    uiState.pendingFocusSelector = playerId ? `[data-open-player-result-card="${playerId}"]` : fallbackFocusSelector;
     render();
   },
   enterPlayerResultCardEdit() {
