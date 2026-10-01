@@ -1117,6 +1117,7 @@ function renderPlayerSection(dataState, uiState) {
         actions: [
           '<button type="button" class="button" data-open-player-dialog>Lisää pelaaja</button>',
           '<button type="button" class="secondary-button" data-open-players-import-dialog>Tuo pelaajat</button>',
+          '<button type="button" class="secondary-button" data-open-rating-ranking-dialog>Päivitä Rating ja Ranking</button>',
         ],
         dangerActions: [
           renderDangerActionButton({
@@ -1409,6 +1410,48 @@ function renderPlayersImportDialog(uiState) {
             `
             : ''
         }
+      </div>
+    </div>
+  `;
+}
+
+function renderRatingRankingDialog(uiState) {
+  if (!uiState.ratingRankingDialogOpen) return '';
+  const summary = uiState.ratingRankingSummary;
+  return `
+    <div class="dialog-backdrop" data-close-rating-ranking-dialog>
+      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="rating-ranking-title" aria-describedby="rating-ranking-description" data-rating-ranking-dialog-panel tabindex="-1">
+        <h2 id="rating-ranking-title">Päivitä Rating ja Ranking</h2>
+        <p id="rating-ranking-description">Liitä puolipisteillä eroteltu CSV-data. Vain olemassa olevien pelaajien Rating ja World Ranking päivittyvät.</p>
+        ${renderImportInstructions({
+          id: 'rating-ranking-instructions',
+          format: 'PDGA ID;Rating;Ranking',
+          requirements: ['Otsikkorivi ja molemmat positiiviset kokonaisluvut ovat pakollisia', 'Sama PDGA ID saa esiintyä vain kerran'],
+          example: ['PDGA ID;Rating;Ranking', '12345;998;120', '56789;1021;34'],
+        })}
+        ${summary ? '' : `
+          <form id="rating-ranking-form">
+            <div class="form-field">
+              <label for="rating-ranking-csv">CSV-data *</label>
+              <textarea id="rating-ranking-csv" name="csv" rows="6" required aria-describedby="rating-ranking-description"></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="button">Päivitä</button>
+              <button type="button" class="secondary-button" data-cancel-rating-ranking-dialog>Peruuta</button>
+            </div>
+          </form>
+        `}
+        ${summary ? `
+          <div class="message ${summary.errors.length ? 'warning' : 'success'}" role="status" aria-live="polite">
+            <h3>Importin yhteenveto</h3>
+            <p>Onnistuneesti päivitetyt: ${formatNumber(summary.updatedCount)}</p>
+            <p>Virheet: ${formatNumber(summary.errors.length)}</p>
+            ${summary.errors.length ? `<ul>${summary.errors.map((error) => `<li>Rivi ${formatNumber(error.rowNumber)}, PDGA ID ${escapeHtml(error.pdgaId || 'puuttuu')}: ${escapeHtml(error.reason)}</li>`).join('')}</ul>` : ''}
+            <p>Huomiot: ${formatNumber(summary.observations.length)}</p>
+            ${summary.observations.length ? `<ul>${summary.observations.map((observation) => `<li>Rivi ${formatNumber(observation.rowNumber)}, PDGA ID ${escapeHtml(observation.pdgaId)}: ${escapeHtml(observation.reason)}</li>`).join('')}</ul>` : ''}
+          </div>
+          <div class="form-actions"><button type="button" class="secondary-button" data-cancel-rating-ranking-dialog>Sulje</button></div>
+        ` : ''}
       </div>
     </div>
   `;
@@ -2600,6 +2643,7 @@ export function renderApp(root, dataState, uiState) {
       ${renderTournamentDialog(dataState, uiState)}
       ${renderMultiplierDialog(dataState, uiState)}
       ${renderPlayersImportDialog(uiState)}
+      ${renderRatingRankingDialog(uiState)}
       ${renderTournamentImportDialog(uiState)}
       ${renderPointsDialog(uiState)}
       ${renderPointsImportDialog(uiState)}
@@ -2721,6 +2765,14 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-cancel-players-import]')?.addEventListener('click', () => handlers.closePlayersImportDialog());
   root.querySelector('[data-close-players-import-dialog]')?.addEventListener('click', () => handlers.closePlayersImportDialog());
   root.querySelector('[data-players-import-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
+  root.querySelector('[data-open-rating-ranking-dialog]')?.addEventListener('click', () => handlers.openRatingRankingDialog());
+  root.querySelector('#rating-ranking-form')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handlers.submitRatingRankingImport(new FormData(event.currentTarget));
+  });
+  root.querySelector('[data-cancel-rating-ranking-dialog]')?.addEventListener('click', () => handlers.closeRatingRankingDialog());
+  root.querySelector('[data-close-rating-ranking-dialog]')?.addEventListener('click', () => handlers.closeRatingRankingDialog());
+  root.querySelector('[data-rating-ranking-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
   root.querySelector('[data-request-delete-all-players]')?.addEventListener('click', () => handlers.requestDeleteAllPlayers());
 
   root.querySelector('#player-form')?.addEventListener('submit', (event) => {
@@ -2868,6 +2920,7 @@ export function bindUi(root, dataState, uiState, handlers) {
     uiState.playerDialogOpen ||
     uiState.tournamentImportDialogOpen ||
     uiState.playerImportDialogOpen ||
+    uiState.ratingRankingDialogOpen ||
     uiState.pointsDialogOpen ||
     uiState.pointsImportDialogOpen ||
     uiState.confirmationDialog
@@ -2889,6 +2942,10 @@ export function bindUi(root, dataState, uiState, handlers) {
         }
         if (uiState.playerImportDialogOpen) {
           handlers.closePlayersImportDialog();
+          return;
+        }
+        if (uiState.ratingRankingDialogOpen) {
+          handlers.closeRatingRankingDialog();
           return;
         }
         if (uiState.tournamentImportDialogOpen) {
@@ -2914,6 +2971,7 @@ export function bindUi(root, dataState, uiState, handlers) {
         !uiState.multiplierDialogOpen &&
         !uiState.tournamentImportDialogOpen &&
         !uiState.playerImportDialogOpen &&
+        !uiState.ratingRankingDialogOpen &&
         !uiState.pointsDialogOpen &&
         !uiState.pointsImportDialogOpen
       ) {
@@ -2930,6 +2988,8 @@ export function bindUi(root, dataState, uiState, handlers) {
           ? root.querySelector('[data-points-dialog-panel]')
         : uiState.playerImportDialogOpen
           ? root.querySelector('[data-players-import-dialog-panel]')
+        : uiState.ratingRankingDialogOpen
+          ? root.querySelector('[data-rating-ranking-dialog-panel]')
         : uiState.multiplierDialogOpen
           ? root.querySelector('[data-multiplier-dialog-panel]')
         : uiState.playerDialogOpen
@@ -2964,6 +3024,10 @@ export function bindUi(root, dataState, uiState, handlers) {
     (root.querySelector('#points-place') || root.querySelector('[data-points-dialog-panel]'))?.focus();
   } else if (uiState.playerImportDialogOpen) {
     (root.querySelector('#players-import-division') || root.querySelector('[data-players-import-dialog-panel]'))?.focus();
+  } else if (uiState.ratingRankingDialogOpen) {
+    (uiState.ratingRankingSummary
+      ? root.querySelector('[data-cancel-rating-ranking-dialog]')
+      : root.querySelector('#rating-ranking-csv') || root.querySelector('[data-rating-ranking-dialog-panel]'))?.focus();
   } else if (uiState.playerDialogOpen && uiState.playerDialogFocusTarget) {
     root.querySelector(getPlayerFieldSelector(uiState.playerDialogFocusTarget))?.focus();
     uiState.playerDialogFocusTarget = '';

@@ -555,6 +555,66 @@ test('renderApp shows players CSV import instructions, required fields and summa
   assert.match(root.innerHTML, /Rivi 18 — Syy: PDGA ID puuttuu/);
 });
 
+test('renderApp shows a separate rating and ranking import dialog and escaped summary', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  renderApp(root, dataState, createUiState({ ratingRankingDialogOpen: true }));
+  assert.match(root.innerHTML, /data-open-rating-ranking-dialog>Päivitä Rating ja Ranking<\/button>/);
+  assert.match(root.innerHTML, /role="dialog" aria-modal="true" aria-labelledby="rating-ranking-title"/);
+  assert.match(root.innerHTML, /<code>PDGA ID;Rating;Ranking<\/code>/);
+  assert.match(root.innerHTML, /<textarea id="rating-ranking-csv" name="csv" rows="6" required/);
+
+  renderApp(root, dataState, createUiState({
+    ratingRankingDialogOpen: true,
+    ratingRankingSummary: {
+      updatedCount: 1,
+      errors: [{ rowNumber: 3, pdgaId: '<b>123</b>', reason: 'Duplikaatti' }],
+      observations: [{ rowNumber: 4, pdgaId: '456', reason: 'Pelaajaa ei löydy' }],
+    },
+  }));
+  assert.match(root.innerHTML, /Onnistuneesti päivitetyt: 1/);
+  assert.match(root.innerHTML, /Virheet: 1/);
+  assert.match(root.innerHTML, /Huomiot: 1/);
+  assert.match(root.innerHTML, /&lt;b&gt;123&lt;\/b&gt;/);
+  assert.doesNotMatch(root.innerHTML, /<b>123<\/b>/);
+  assert.doesNotMatch(root.innerHTML, /id="rating-ranking-form"/);
+});
+
+test('bindUi focuses rating and ranking dialog and restores focus to its opener', () => {
+  const restoreDocument = installDocumentStub();
+  try {
+    const csv = createFocusableElement();
+    const closeButton = createFocusableElement();
+    const opener = createFocusableElement();
+    const root = createInteractiveRoot({
+      '#rating-ranking-csv': csv,
+      '[data-cancel-rating-ranking-dialog]': closeButton,
+      '[data-open-rating-ranking-dialog]': opener,
+    });
+    const state = createUiState({ ratingRankingDialogOpen: true, ratingRankingSummary: { updatedCount: 1 } });
+    let closed = false;
+    bindUi(root, createEmptyState(), state, {
+      ...createNoopHandlers(),
+      closeRatingRankingDialog() { closed = true; },
+    });
+    assert.equal(global.document.activeElement, closeButton);
+    const event = { key: 'Escape', preventDefault() { this.prevented = true; } };
+    root.__dialogKeydownHandler(event);
+    assert.equal(closed, true);
+    assert.equal(event.prevented, true);
+    state.ratingRankingSummary = null;
+    const inputRoot = createInteractiveRoot({ '#rating-ranking-csv': csv });
+    bindUi(inputRoot, createEmptyState(), state, createNoopHandlers());
+    assert.equal(global.document.activeElement, csv);
+    state.ratingRankingDialogOpen = false;
+    state.pendingFocusSelector = '[data-open-rating-ranking-dialog]';
+    bindUi(root, createEmptyState(), state, createNoopHandlers());
+    assert.equal(global.document.activeElement, opener);
+  } finally {
+    restoreDocument();
+  }
+});
+
 test('renderApp shows shared add/edit player modal and delete action only in edit mode', () => {
   const root = createRootStub();
   const dataState = createEmptyState();

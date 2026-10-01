@@ -9,7 +9,64 @@ import {
   PlayerValidationError,
   getVisiblePlayers,
   importPlayersFromCsv,
+  parseRatingRankingCsv,
+  importRatingRankingFromCsv,
 } from '../js/players.js';
+
+test('parses rating and ranking CSV with BOM, CRLF and original row numbers', () => {
+  const parsed = parseRatingRankingCsv('\uFEFFPDGA ID;Rating;Ranking\r\n"12345";"998";"120"\r\n\r\n56789;1021;34\r\n');
+  assert.deepEqual(parsed, {
+    rows: [
+      { rowNumber: 2, pdgaNumber: 12345, pdgaRating: 998, worldRank: 120 },
+      { rowNumber: 4, pdgaNumber: 56789, pdgaRating: 1021, worldRank: 34 },
+    ],
+    errors: [],
+  });
+});
+
+test('rating and ranking CSV reports invalid headers, values and duplicate IDs', () => {
+  assert.throws(() => parseRatingRankingCsv('PDGA ID;Ranking;Rating\n123;1;2'), /otsikko/);
+  assert.throws(() => parseRatingRankingCsv('PDGA ID;Rating;Ranking\n'), /pelaajarivejä/);
+  const parsed = parseRatingRankingCsv('PDGA ID;Rating;Ranking\n123;998;120\n123;999;121\n;998;120\n55;0;1\n66;123;1,5\n77;123\n');
+  assert.deepEqual(parsed.rows, []);
+  assert.deepEqual(parsed.errors.map(({ rowNumber, pdgaId }) => [rowNumber, pdgaId]), [
+    [2, '123'], [3, '123'], [4, ''], [5, '55'], [6, '66'], [7, '77'],
+  ]);
+  assert.deepEqual(
+    parseRatingRankingCsv('PDGA ID;Rating;Ranking\n9007199254740993;998;120\n88;9007199254740993;1').errors.map(({ rowNumber }) => rowNumber),
+    [2, 3],
+  );
+});
+
+test('rating and ranking import only updates two fields on existing PDGA matches', () => {
+  const player = {
+    ...createPlayer([], { firstName: 'Matti', lastName: 'Meikäläinen', division: 'MPO', pdgaNumber: '12345' }),
+    pdgaRating: 900, worldRank: 200, notes: 'Säilyy', rankingPoints: 72,
+  };
+  const other = createPlayer([], { firstName: 'Maija', lastName: 'Mallikas', division: 'FPO', pdgaNumber: '98765' });
+  const players = [player, other];
+  const { updatedPlayers, summary } = importRatingRankingFromCsv(
+    players,
+    'PDGA ID;Rating;Ranking\n12345;998;120\n56789;1021;34\n12345;1000;1\n',
+  );
+  assert.deepEqual(updatedPlayers, players);
+  assert.equal(summary.updatedCount, 0);
+  assert.equal(summary.errors.length, 2);
+  assert.equal(summary.observations.length, 1);
+  assert.match(summary.observations[0].reason, /ei löydy/);
+
+  const imported = importRatingRankingFromCsv(players, 'PDGA ID;Rating;Ranking\n12345;998;120\n56789;1021;34');
+  assert.deepEqual(imported.updatedPlayers[0], { ...player, pdgaRating: 998, worldRank: 120 });
+  assert.strictEqual(imported.updatedPlayers[1], other);
+  assert.deepEqual(players, [player, other]);
+  assert.equal(imported.summary.updatedCount, 1);
+  assert.equal(imported.summary.errors.length, 0);
+  assert.equal(imported.summary.observations.length, 1);
+  assert.deepEqual(
+    importRatingRankingFromCsv(players, 'PDGA ID;Rating;Ranking\n12345;998;120\n98765;0;22').updatedPlayers[0],
+    { ...player, pdgaRating: 998, worldRank: 120 },
+  );
+});
 
 test('creates an MPO player', () => {
   const player = createPlayer([], {
