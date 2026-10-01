@@ -368,19 +368,14 @@ function renderNav(activeView, resultCardOrigin = 'players') {
   `;
 }
 
-function renderHelpHint(sectionTitle, { showLink = true } = {}) {
-  return `
-    <p class="help-hint">
-      <span>Tarkemmat ohjeet löytyvät Ohjeet-osion kohdasta ${escapeHtml(sectionTitle)}.</span>
-      ${showLink ? '<button type="button" class="secondary-button" data-view-target="help">Avaa Ohjeet</button>' : ''}
-    </p>
-  `;
+function renderHelpButton(sectionId) {
+  return `<button type="button" class="secondary-button" data-view-target="help" data-help-target="${escapeHtml(sectionId)}">Ohjeet</button>`;
 }
 
-function renderActionBar({ label, actions = [], dangerActions = [] }) {
+function renderActionBar({ label, actions = [], dangerActions = [], helpSection }) {
   const normalActions = actions.filter(Boolean);
   const destructiveActions = dangerActions.filter(Boolean);
-  if (!normalActions.length && !destructiveActions.length) {
+  if (!normalActions.length && !destructiveActions.length && !helpSection) {
     return '';
   }
 
@@ -392,6 +387,7 @@ function renderActionBar({ label, actions = [], dangerActions = [] }) {
           ? `<div class="action-bar-group action-bar-danger" role="group" aria-label="Vaaralliset toiminnot">${destructiveActions.join('')}</div>`
           : ''
       }
+      ${helpSection ? `<div class="action-bar-group action-bar-help">${renderHelpButton(helpSection)}</div>` : ''}
     </div>
   `;
 }
@@ -435,34 +431,6 @@ function renderTableToolbar({ label, search = '', filters = '', meta = '' }) {
       ${filters}
       ${meta ? `<div class="table-toolbar-meta">${meta}</div>` : ''}
     </div>
-  `;
-}
-
-function renderImportInstructions({ id, format, requirements = [], example = [] }) {
-  return `
-    <section class="import-instructions" aria-labelledby="${escapeHtml(id)}-title">
-      <h3 id="${escapeHtml(id)}-title"><span class="import-icon" aria-hidden="true">📄</span> Tuettu CSV-muoto</h3>
-      <p class="import-format"><code>${escapeHtml(format)}</code></p>
-      <p class="import-delimiter"><strong>Erotin:</strong> puolipiste <code>;</code></p>
-      ${
-        requirements.length
-          ? `
-            <h4>Vaatimukset</h4>
-            <ul class="import-requirements">
-              ${requirements.map((requirement) => `<li><span aria-hidden="true">✓</span> ${escapeHtml(requirement)}</li>`).join('')}
-            </ul>
-          `
-          : ''
-      }
-      ${
-        example.length
-          ? `
-            <h4>Esimerkki</h4>
-            <pre class="import-example"><code>${example.map((line) => escapeHtml(line)).join('\n')}</code></pre>
-          `
-          : ''
-      }
-    </section>
   `;
 }
 
@@ -544,6 +512,7 @@ function renderSummarySection(dataState, uiState) {
   return `
     <section class="section" id="section-summary" ${uiState.activeView === 'summary' ? '' : 'hidden'} aria-labelledby="summary-title">
       <h1 id="summary-title">Yhteenveto</h1>
+      ${renderActionBar({ label: 'Yhteenvedon toiminnot', helpSection: 'summary' })}
       ${renderStats(dataState)}
       <div class="two-column">
         ${renderTopTenCard('TOP 10 MPO', mpoRanking, 'MPO', dataState)}
@@ -580,9 +549,9 @@ function renderRankingSection(dataState, uiState) {
       <div class="section-heading">
         <div>
           <h2 id="ranking-title">Ranking</h2>
-          <p class="section-subtitle">Kokonaispisteet lasketaan kaikista pelaajan turnaustuloksista.</p>
         </div>
       </div>
+      ${renderActionBar({ label: 'Rankingin toiminnot', helpSection: 'ranking' })}
       <article class="card">
         ${renderTableToolbar({
           label: 'Ranking-taulukon suodatus',
@@ -717,10 +686,9 @@ function renderResultsSection(dataState, uiState) {
       <div class="section-heading">
         <div>
           <h2 id="results-title">Tulokset</h2>
-          <p class="section-subtitle">Turnausten tulosyhteenveto. Sijoitukset syötetään pelaajakohtaisesti Pelaajat-sivun Tuloskortti-painikkeella.</p>
         </div>
       </div>
-      ${renderHelpHint('Tulokset')}
+      ${renderActionBar({ label: 'Tulosten toiminnot', helpSection: 'results' })}
       <article class="panel">
         ${
           tournaments.length
@@ -833,7 +801,7 @@ function renderTournamentResultCardSection(dataState, uiState) {
       <section class="section" id="section-tournament-result-card" aria-labelledby="tournament-result-card-title">
         <h2 id="tournament-result-card-title">Turnauksen tulokset</h2>
         ${renderEmptyState('Turnausta ei löytynyt.')}
-        ${renderActionBar({ label: 'Turnauksen tuloskortin toiminnot', actions: [backButton] })}
+        ${renderActionBar({ label: 'Turnauksen tuloskortin toiminnot', actions: [backButton], helpSection: 'results' })}
       </section>
     `;
   }
@@ -844,8 +812,7 @@ function renderTournamentResultCardSection(dataState, uiState) {
 
   return `
     <section class="section" id="section-tournament-result-card" aria-labelledby="tournament-result-card-title">
-      ${renderActionBar({ label: 'Turnauksen tuloskortin toiminnot', actions: [backButton] })}
-      ${renderHelpHint('Tulokset → Turnauksen tulokset')}
+      ${renderActionBar({ label: 'Turnauksen tuloskortin toiminnot', actions: [backButton], helpSection: 'results' })}
       <article class="panel tournament-result-card" data-tournament-result-card="${escapeHtml(tournament.id)}">
         <header class="tournament-result-card-header">
           <p class="eyebrow">Turnauksen tuloskortti</p>
@@ -941,7 +908,7 @@ function renderPlayerResultCardSection(dataState, uiState) {
       <section class="section" id="section-player-result-card" aria-labelledby="player-result-card-title">
         <h2 id="player-result-card-title">Tuloskortti</h2>
         ${renderEmptyState('Pelaajaa ei löytynyt.')}
-        ${renderActionBar({ label: 'Tuloskortin toiminnot', actions: [backButton] })}
+        ${renderActionBar({ label: 'Tuloskortin toiminnot', actions: [backButton], helpSection: 'players' })}
       </section>
     `;
   }
@@ -966,6 +933,7 @@ function renderPlayerResultCardSection(dataState, uiState) {
       </div>
       ${renderActionBar({
         label: 'Tuloskortin toiminnot',
+        helpSection: 'players',
         actions: editMode
           ? [
             '<button type="button" class="button" data-save-player-result-card>Tallenna ja poistu</button>',
@@ -976,7 +944,6 @@ function renderPlayerResultCardSection(dataState, uiState) {
             '<button type="button" class="button" data-edit-player-result-card>Muokkaa</button>',
           ],
       })}
-      ${renderHelpHint('Pelaajat → Tuloskortti')}
       <p class="result-card-save-status" data-result-card-save-status role="status" aria-live="polite"></p>
       <article class="panel">
         ${
@@ -1109,11 +1076,11 @@ function renderPlayerSection(dataState, uiState) {
       <div class="section-heading">
         <div>
           <h2 id="players-title">Pelaajat</h2>
-          <p class="section-subtitle">Pelaajalista on tämän sivun pääsisältö. Hae nimellä tai PDGA-tunnuksella ja lajittele sarakeotsikoista.</p>
         </div>
       </div>
       ${renderActionBar({
         label: 'Pelaajien toiminnot',
+        helpSection: 'players',
         actions: [
           '<button type="button" class="button" data-open-player-dialog>Lisää pelaaja</button>',
           '<button type="button" class="secondary-button" data-open-players-import-dialog>Tuo pelaajat</button>',
@@ -1127,7 +1094,6 @@ function renderPlayerSection(dataState, uiState) {
           }),
         ],
       })}
-      ${renderHelpHint('Pelaajat')}
       <article class="panel">
         ${renderTableToolbar({
           label: 'Pelaajalistan haku ja suodatus',
@@ -1248,7 +1214,6 @@ function renderPlayerDialog(dataState, uiState) {
         <div class="section-heading">
           <div>
             <h2 id="player-dialog-title">${editingPlayer ? 'Muokkaa pelaajaa' : 'Lisää pelaaja'}</h2>
-            <p class="section-subtitle">Täytä pelaajan tiedot. Pakolliset kentät on merkitty tähdellä.</p>
           </div>
         </div>
         <form id="player-form">
@@ -1342,25 +1307,13 @@ function renderPlayersImportDialog(uiState) {
 
   return `
     <div class="dialog-backdrop" data-close-players-import-dialog>
-      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="players-import-dialog-title" aria-describedby="players-import-dialog-description" data-players-import-dialog-panel tabindex="-1">
+      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="players-import-dialog-title" data-players-import-dialog-panel tabindex="-1">
         <form id="players-import-form">
           <div class="section-heading">
             <div>
               <h2 id="players-import-dialog-title">Tuo pelaajat</h2>
-              <p id="players-import-dialog-description" class="section-subtitle">Tuo uusia pelaajia CSV-tiedostosta valittuun divisioonaan. Olemassa olevia pelaajia ei ylikirjoiteta.</p>
             </div>
           </div>
-          ${renderImportInstructions({
-            id: 'players-import-instructions',
-            format: 'Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking',
-            requirements: [
-              'PDGA ID on pakollinen ja yksilöllinen',
-              'Muut kentät voivat olla tyhjiä',
-              'Divisioona valitaan alla olevasta valikosta',
-              'Otsikkorivi on sallittu, UTF-8-koodaus suositeltu',
-            ],
-            example: ['Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking', 'Matti;Meikäläinen;12345;950;1250'],
-          })}
           <div class="form-grid">
             <div class="form-field">
               <label for="players-import-division">Divisioona *</label>
@@ -1377,7 +1330,6 @@ function renderPlayersImportDialog(uiState) {
               <input id="players-import-file" name="file" type="file" accept=".csv,text/csv" required />
             </div>
           </div>
-          ${renderHelpHint('Pelaajat', { showLink: false })}
           <div class="form-actions">
             ${importSummary ? '' : '<button type="submit" class="button">Tuo</button>'}
             <button type="button" class="secondary-button" data-cancel-players-import>${importSummary ? 'Sulje' : 'Peruuta'}</button>
@@ -1420,20 +1372,13 @@ function renderRatingRankingDialog(uiState) {
   const summary = uiState.ratingRankingSummary;
   return `
     <div class="dialog-backdrop" data-close-rating-ranking-dialog>
-      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="rating-ranking-title" aria-describedby="rating-ranking-description" data-rating-ranking-dialog-panel tabindex="-1">
+      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="rating-ranking-title" data-rating-ranking-dialog-panel tabindex="-1">
         <h2 id="rating-ranking-title">Päivitä Rating ja Ranking</h2>
-        <p id="rating-ranking-description">Liitä puolipisteillä eroteltu CSV-data. Vain olemassa olevien pelaajien Rating ja World Ranking päivittyvät.</p>
-        ${renderImportInstructions({
-          id: 'rating-ranking-instructions',
-          format: 'PDGA ID;Rating;Ranking',
-          requirements: ['Otsikkorivi ja molemmat positiiviset kokonaisluvut ovat pakollisia', 'Sama PDGA ID saa esiintyä vain kerran'],
-          example: ['PDGA ID;Rating;Ranking', '12345;998;120', '56789;1021;34'],
-        })}
         ${summary ? '' : `
           <form id="rating-ranking-form">
             <div class="form-field">
               <label for="rating-ranking-csv">CSV-data *</label>
-              <textarea id="rating-ranking-csv" name="csv" rows="6" required aria-describedby="rating-ranking-description"></textarea>
+              <textarea id="rating-ranking-csv" name="csv" rows="6" required></textarea>
             </div>
             <div class="form-actions">
               <button type="submit" class="button">Päivitä</button>
@@ -1489,11 +1434,11 @@ function renderTournamentSection(dataState, uiState) {
       <div class="section-heading">
         <div>
           <h2 id="tournaments-title">Turnaukset</h2>
-          <p class="section-subtitle">Hallinnoi turnauksia, suodata listaa ja pidä turnaustiedot ajan tasalla.</p>
         </div>
       </div>
       ${renderActionBar({
         label: 'Turnausten toiminnot',
+        helpSection: 'tournaments',
         actions: [
           '<button type="button" class="button" data-open-tournament-dialog>Lisää turnaus</button>',
           '<button type="button" class="secondary-button" data-open-tournament-import-dialog>Tuo turnaukset</button>',
@@ -1506,12 +1451,10 @@ function renderTournamentSection(dataState, uiState) {
           }),
         ],
       })}
-      ${renderHelpHint('Turnaukset')}
       <article class="panel">
         <div class="section-heading">
           <div>
             <h3>Turnauslista</h3>
-            <p class="section-subtitle">Listaa voi hakea nimen, paikkakunnan ja radan perusteella sekä suodattaa tilan mukaan.</p>
           </div>
         </div>
         ${renderTableToolbar({
@@ -1649,37 +1592,24 @@ function renderTournamentImportDialog(uiState) {
 
   return `
     <div class="dialog-backdrop" data-close-tournament-import-dialog>
-      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="tournament-import-dialog-title" aria-describedby="tournament-import-dialog-description" data-tournament-import-dialog-panel tabindex="-1">
+      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="tournament-import-dialog-title" data-tournament-import-dialog-panel tabindex="-1">
         <form id="tournament-import-form">
           <div class="section-heading">
             <div>
               <h2 id="tournament-import-dialog-title">Tuo turnaukset</h2>
-              <p id="tournament-import-dialog-description" class="section-subtitle">Tuonti luo vain uusia turnauksia eikä koskaan ylikirjoita olemassa olevia.</p>
             </div>
           </div>
-          ${renderImportInstructions({
-            id: 'tournament-import-instructions',
-            format: 'Järjestysnumero;PDGA Event ID;Turnauksen nimi',
-            requirements: [
-              'Kaikki kolme kenttää ovat pakollisia',
-              'PDGA Event ID on yksilöllinen: jo olemassa olevat turnaukset ohitetaan',
-              'Otsikkorivi on sallittu, UTF-8-koodaus suositeltu',
-            ],
-            example: ['Järjestysnumero;PDGA Event ID;Turnauksen nimi', '1;123456;European Open 2027'],
-          })}
           <div class="form-grid">
             <div class="form-field full-width">
               <label for="tournament-import-file">CSV-tiedosto *</label>
               <input id="tournament-import-file" name="file" type="file" accept=".csv,text/csv" required />
-              <p id="tournament-import-file-hint" class="form-help">Valitse tiedosto, niin Tuo-painike aktivoituu.</p>
             </div>
           </div>
-          ${renderHelpHint('Turnaukset', { showLink: false })}
           <div class="form-actions">
             ${
               importSummary
                 ? ''
-                : '<button type="submit" class="button" data-submit-tournament-import disabled aria-describedby="tournament-import-file-hint">Tuo</button>'
+                : '<button type="submit" class="button" data-submit-tournament-import disabled>Tuo</button>'
             }
             <button type="button" class="secondary-button" data-cancel-tournament-import>${importSummary ? 'Sulje' : 'Peruuta'}</button>
           </div>
@@ -1734,14 +1664,10 @@ function renderTournamentDialog(dataState, uiState) {
         aria-modal="true"
         tabindex="-1"
         aria-labelledby="tournament-dialog-title"
-        aria-describedby="tournament-dialog-description"
       >
         <div class="section-heading">
           <div>
             <h2 id="tournament-dialog-title">${editingTournament ? 'Muokkaa turnausta' : 'Lisää turnaus'}</h2>
-            <p id="tournament-dialog-description" class="section-subtitle">
-              Syötä turnauksen perustiedot. Järjestys määräytyy järjestysnumeron mukaan nousevasti.
-            </p>
           </div>
         </div>
         <form id="tournament-form">
@@ -1795,7 +1721,6 @@ function renderTournamentDialog(dataState, uiState) {
                 )}
               </select>
               ${renderFieldError(fieldErrors, 'multiplierId')}
-              ${orderedMultipliers.length ? '' : '<span class="help-text">Lisää ensin vähintään yksi tila Kertoimet-välilehdellä.</span>'}
             </div>
             <div class="form-field">
               <label for="tournament-location">Paikkakunta</label>
@@ -1847,7 +1772,6 @@ function renderTournamentDialog(dataState, uiState) {
                 ${getFieldAttributes(fieldErrors, 'pdgaEventId')}
                 value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'pdgaEventId'))}"
               />
-              <span class="help-text">Syötä vain tunnus. PDGA-linkki muodostetaan keskitetysti asetuksista.</span>
               ${renderFieldError(fieldErrors, 'pdgaEventId')}
             </div>
             <div class="form-field full-width">
@@ -1895,11 +1819,11 @@ function renderMultipliersSection(dataState, uiState) {
       <div class="section-heading">
         <div>
           <h2 id="multipliers-title">Kertoimet</h2>
-          <p class="section-subtitle">Hallinnoi turnausten tilat ja pistekertoimet keskitetysti yhdestä paikasta.</p>
         </div>
       </div>
       ${renderActionBar({
         label: 'Kertoimien toiminnot',
+        helpSection: 'multipliers',
         actions: ['<button type="button" class="button" data-open-multiplier-dialog>Lisää kerroin</button>'],
       })}
       <article class="panel">
@@ -2084,13 +2008,13 @@ function renderHelpTopic(sectionId, topic, topicIndex) {
   const topicId = `help-topic-${escapeHtml(sectionId)}-${topicIndex + 1}`;
 
   return `
-    <details class="help-topic">
-      <summary class="help-topic-summary">
+    <div class="help-topic">
+      <button type="button" class="help-topic-summary" data-help-toggle aria-expanded="false" aria-controls="${topicId}">
         <span class="help-marker" aria-hidden="true"></span>
         <span class="help-topic-title">${escapeHtml(topic.title)}</span>
-      </summary>
-      <div class="help-topic-content" id="${topicId}">${escapeHtml(topic.content)}</div>
-    </details>
+      </button>
+      <div class="help-topic-content" id="${topicId}" hidden>${escapeHtml(topic.content)}</div>
+    </div>
   `;
 }
 
@@ -2108,20 +2032,20 @@ function renderHelpSection(uiState) {
           ? `<div class="help-sections">
               ${HELP_SECTIONS.map(
                 (section) => `
-                  <details class="help-section" data-help-section="${escapeHtml(section.id)}">
-                    <summary class="help-section-summary">
+                  <div class="help-section" data-help-section="${escapeHtml(section.id)}">
+                    <button type="button" class="help-section-summary" data-help-toggle aria-expanded="${uiState.helpSectionId === section.id}" aria-controls="help-topics-${escapeHtml(section.id)}">
                       <span class="help-marker" aria-hidden="true"></span>
                       <span class="help-section-title">${escapeHtml(section.title)}</span>
                       <span class="help-topic-count">${renderHelpTopicCount(section.topics.length)}</span>
-                    </summary>
+                    </button>
                     ${
                       section.topics.length
-                        ? `<div class="help-topics">
+                        ? `<div class="help-topics" id="help-topics-${escapeHtml(section.id)}" ${uiState.helpSectionId === section.id ? '' : 'hidden'}>
                             ${section.topics.map((topic, topicIndex) => renderHelpTopic(section.id, topic, topicIndex)).join('')}
                           </div>`
                         : renderEmptyState('Tälle osiolle ei ole vielä lisätty ohjeita.')
                     }
-                  </details>
+                  </div>
                 `,
               ).join('')}
             </div>`
@@ -2135,7 +2059,7 @@ function renderSecuritySettingsPanel(uiState) {
   const fieldErrors = uiState.sitePasswordFormError ? { sitePassword: uiState.sitePasswordFormError } : {};
 
   return `
-      <div class="two-column security-settings">
+      <div class="security-settings">
         <form id="site-password-form" class="panel" aria-labelledby="security-settings-title" novalidate>
           <h3 id="security-settings-title">Turvallisuus</h3>
           <div class="form-grid">
@@ -2150,9 +2074,8 @@ function renderSecuritySettingsPanel(uiState) {
                 maxlength="200"
                 required
                 ${fieldErrors.sitePassword ? 'aria-invalid="true"' : ''}
-                aria-describedby="settings-site-password-help${fieldErrors.sitePassword ? ' sitePassword-error' : ''}"
+                ${fieldErrors.sitePassword ? 'aria-describedby="sitePassword-error"' : ''}
               />
-              <span class="help-text" id="settings-site-password-help">Syötä uusi jaettu salasana (vähintään 8 merkkiä). Nykyistä salasanaa ei näytetä.</span>
               ${renderFieldError(fieldErrors, 'sitePassword')}
             </div>
           </div>
@@ -2160,15 +2083,6 @@ function renderSecuritySettingsPanel(uiState) {
             <button type="submit" class="button">Tallenna salasana</button>
           </div>
         </form>
-        <article class="panel">
-          <h3>Miten salasanasuojaus toimii?</h3>
-          <ul>
-            <li>Sovellukseen kirjaudutaan yhteisellä sivuston salasanalla.</li>
-            <li>Salasana tarkistetaan palvelimella, eikä sitä tallenneta selaimeen.</li>
-            <li>Uusi salasana otetaan käyttöön heti seuraavissa kirjautumisissa. Jo kirjautuneet käyttäjät pysyvät kirjautuneina.</li>
-            <li>Kirjaudu ulos -painike poistaa kirjautumisen tästä selaimesta.</li>
-          </ul>
-        </article>
       </div>
   `;
 }
@@ -2186,11 +2100,10 @@ function renderSettingsSection(dataState, uiState) {
       <div class="section-heading">
         <div>
           <h2 id="settings-title">Asetukset</h2>
-          <p class="section-subtitle">Yhteiset asetukset vaikuttavat kaikkiin nykyisiin ja tuleviin PDGA-linkkeihin.</p>
         </div>
+        ${renderActionBar({ label: 'Asetusten ohjeet', helpSection: 'settings' })}
       </div>
-      <div class="two-column">
-        <form id="settings-form" class="panel">
+      <form id="settings-form" class="panel">
           <h3>PDGA-linkkien perusosoitteet</h3>
           <div class="form-grid">
             <div class="form-field full-width">
@@ -2203,7 +2116,6 @@ function renderSettingsSection(dataState, uiState) {
                 ${getFieldAttributes(fieldErrors, 'playerBaseUrl')}
                 value="${escapeHtml(formValues.playerBaseUrl)}"
               />
-              <span class="help-text">Oletus: ${escapeHtml(DEFAULT_PDGA_SETTINGS.playerBaseUrl)}</span>
               ${renderFieldError(fieldErrors, 'playerBaseUrl')}
             </div>
             <div class="form-field full-width">
@@ -2216,7 +2128,6 @@ function renderSettingsSection(dataState, uiState) {
                 ${getFieldAttributes(fieldErrors, 'eventBaseUrl')}
                 value="${escapeHtml(formValues.eventBaseUrl)}"
               />
-              <span class="help-text">Oletus: ${escapeHtml(DEFAULT_PDGA_SETTINGS.eventBaseUrl)}</span>
               ${renderFieldError(fieldErrors, 'eventBaseUrl')}
             </div>
           </div>
@@ -2235,7 +2146,6 @@ function renderSettingsSection(dataState, uiState) {
                     `<option value="${option}" ${sanitizePointDecimals(formValues.pointDecimals) === option ? 'selected' : ''}>${option}</option>`,
                 ).join('')}
               </select>
-              <span class="help-text">Näytettävien desimaalien määrä ranking- ja yhteenvetopisteissä. Oletus: ${DEFAULT_PDGA_SETTINGS.pointDecimals}. Pyöristys vaikuttaa vain näyttöön, ei laskentaan tai tallennettuihin arvoihin.</span>
               ${renderFieldError(fieldErrors, 'pointDecimals')}
             </div>
           </div>
@@ -2243,18 +2153,7 @@ function renderSettingsSection(dataState, uiState) {
             <button type="submit" class="button">Tallenna asetukset</button>
             <button type="button" class="secondary-button" data-reset-settings-form>Palauta tallennetut arvot</button>
           </div>
-        </form>
-        <article class="panel">
-          <h3>Miten PDGA-linkit toimivat?</h3>
-          <ul>
-            <li>Pelaajille tallennetaan vain PDGA-pelaajatunnus.</li>
-            <li>Turnauksille tallennetaan vain PDGA-kilpailutunnus.</li>
-            <li>Linkit muodostetaan automaattisesti muodossa perusosoite + tunnus.</li>
-            <li>Pelaajan PDGA-profiili avautuu uuteen välilehteen PDGA ID -kentästä, ei pelaajan nimestä.</li>
-            <li>Vanhoista täydellisistä PDGA-osoitteista poimitaan tunnus automaattisesti latauksen yhteydessä.</li>
-          </ul>
-        </article>
-      </div>
+      </form>
       ${renderSecuritySettingsPanel(uiState)}
     </section>
   `;
@@ -2278,11 +2177,11 @@ function renderPointsSection(dataState, uiState) {
       <div class="section-heading">
         <div>
           <h2 id="points-title">Pistetaulukot</h2>
-          <p class="section-subtitle">Pisteet tallennetaan keskitettyyn pointsTable-rakenteeseen sarjan ja sijoituksen perusteella.</p>
         </div>
       </div>
       ${renderActionBar({
         label: 'Pistetaulukoiden toiminnot',
+        helpSection: 'points',
         actions: [
           '<button type="button" class="button" data-open-points-dialog>Lisää rivi</button>',
           '<button type="button" class="secondary-button" data-open-points-import>Tuo pistetaulukko</button>',
@@ -2296,7 +2195,6 @@ function renderPointsSection(dataState, uiState) {
           }),
         ),
       })}
-      ${renderHelpHint('Pistetaulukot')}
       <div class="two-column">
         ${DIVISIONS.map((division) => {
           const entries = entriesByDivision[division];
@@ -2373,12 +2271,11 @@ function renderPointsDialog(uiState) {
 
   return `
     <div class="dialog-backdrop" data-points-dialog-backdrop>
-      <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="points-dialog-title" aria-describedby="points-dialog-description" data-points-dialog-panel tabindex="-1">
+      <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="points-dialog-title" data-points-dialog-panel tabindex="-1">
         <form id="points-form">
           <div class="section-heading">
             <div>
               <h2 id="points-dialog-title">${isEditing ? 'Muokkaa pistetaulukon riviä' : 'Lisää pistetaulukon rivi'}</h2>
-              <p id="points-dialog-description" class="section-subtitle">Pakolliset kentät on merkitty tähdellä. 1x-peruspisteet voivat olla desimaalilukuja (esim. 10,5).</p>
             </div>
           </div>
           <input type="hidden" name="editingKey" value="${escapeHtml(editingPoint.editingKey || '')}" />
@@ -2419,25 +2316,13 @@ function renderPointsImportDialog(uiState) {
 
   return `
     <div class="dialog-backdrop" data-close-points-import-dialog>
-      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="points-import-dialog-title" aria-describedby="points-import-dialog-description" data-points-import-dialog-panel tabindex="-1">
+      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="points-import-dialog-title" data-points-import-dialog-panel tabindex="-1">
         <form id="points-import-form">
           <div class="section-heading">
             <div>
               <h2 id="points-import-dialog-title">Tuo pistetaulukko</h2>
-              <p id="points-import-dialog-description" class="section-subtitle">Valitse kohdesarja ja tuotava CSV-tiedosto. Tuonti sallitaan vain tyhjään pistetaulukkoon.</p>
             </div>
           </div>
-          ${renderImportInstructions({
-            id: 'points-import-instructions',
-            format: 'Sijoitus;Pisteet',
-            requirements: [
-              'Sijoitusten tulee alkaa 1:stä ja edetä peräkkäin ilman aukkoja',
-              'Pisteet voivat olla desimaalilukuja (esim. 10,5)',
-              'Kohdesarjan pistetaulukon pitää olla tyhjä',
-              'Otsikkorivi on sallittu, UTF-8-koodaus suositeltu',
-            ],
-            example: ['Sijoitus;Pisteet', '1;100', '2;85', '3;10,5'],
-          })}
           <div class="form-grid">
             <div class="form-field">
               <label for="points-import-division">Divisioona *</label>
@@ -2452,7 +2337,6 @@ function renderPointsImportDialog(uiState) {
               <input id="points-import-file" name="file" type="file" accept=".csv,text/csv" required />
             </div>
           </div>
-          ${renderHelpHint('Pistetaulukot', { showLink: false })}
           <div class="form-actions">
             <button type="submit" class="button">Tuo</button>
             <button type="button" class="secondary-button" data-cancel-points-import>Peruuta</button>
@@ -2654,7 +2538,16 @@ export function renderApp(root, dataState, uiState) {
 
 export function bindUi(root, dataState, uiState, handlers) {
   root.querySelectorAll('[data-view-target]').forEach((button) => {
-    button.addEventListener('click', () => handlers.changeView(button.dataset.viewTarget));
+    button.addEventListener('click', () => handlers.changeView(button.dataset.viewTarget, button.dataset.helpTarget));
+  });
+
+  root.querySelectorAll('[data-help-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const panel = root.querySelector(`#${button.getAttribute('aria-controls')}`);
+      if (!panel) return;
+      panel.hidden = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', String(!panel.hidden));
+    });
   });
 
   root.querySelectorAll('[data-sort-table][data-sort-field]').forEach((button) => {

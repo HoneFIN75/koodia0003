@@ -604,6 +604,14 @@ button.danger-button.danger-action-button:focus-visible {
   border-left: 2px dashed rgba(161, 52, 52, 0.35);
 }
 
+.action-bar-help {
+  margin-left: 0;
+}
+
+.action-bar-help {
+  margin-left: auto;
+}
+
 .table-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -997,12 +1005,13 @@ button.player-name-button:focus-visible {
   align-items: center;
   gap: var(--spacing-sm);
   cursor: pointer;
-  list-style: none;
-}
-
-.help-section-summary::-webkit-details-marker,
-.help-topic-summary::-webkit-details-marker {
-  display: none;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  font: inherit;
 }
 
 .help-section-summary {
@@ -1011,7 +1020,7 @@ button.player-name-button:focus-visible {
   font-weight: 700;
 }
 
-.help-section[open] > .help-section-summary {
+.help-section-summary[aria-expanded="true"] {
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -1033,7 +1042,8 @@ button.player-name-button:focus-visible {
   color: var(--color-primary);
 }
 
-details[open] > summary > .help-marker::before {
+.help-section-summary[aria-expanded="true"] .help-marker::before,
+.help-topic-summary[aria-expanded="true"] .help-marker::before {
   content: '▼';
 }
 
@@ -1052,6 +1062,11 @@ details[open] > summary > .help-marker::before {
   display: grid;
   gap: var(--spacing-xs);
   padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.help-topics[hidden],
+.help-topic-content[hidden] {
+  display: none;
 }
 
 .help-topic {
