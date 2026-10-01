@@ -26,6 +26,7 @@ import {
 } from './multipliers.js';
 import { SettingsValidationError, validateSettingsInput } from './pdga.js';
 import { toggleSortState } from './table-sorting.js';
+import { getSummarySortableFields, isSummaryTable, toggleSummarySort } from './summary.js';
 import {
   DIVISIONS,
   upsertPointsTableEntry,
@@ -93,6 +94,7 @@ let uiState = {
   tournamentSortDirection: 'asc',
   rankingSortField: 'totalPoints',
   rankingSortDirection: 'desc',
+  summarySort: {},
   multipliersSortField: 'orderNumber',
   multipliersSortDirection: 'asc',
   pointsSortField: 'place',
@@ -893,6 +895,9 @@ const handlers = {
         'totalPoints',
         'desc',
       );
+    } else if (isSummaryTable(table) && getSummarySortableFields(table).includes(field)) {
+      uiState.summarySort = toggleSummarySort(uiState.summarySort, table, field);
+      uiState.pendingFocusSelector = `[data-sort-table="${table}"][data-sort-field="${field}"]`;
     } else if (table === 'multipliers') {
       applySort('multipliersSortField', 'multipliersSortDirection', ['orderNumber', 'name', 'abbreviation', 'multiplier'], 'orderNumber');
     } else if (table === 'points') {
@@ -1190,8 +1195,14 @@ const handlers = {
     uiState.resultCardOrigin = 'players';
     uiState.resultCardEditMode = false;
     uiState.resultCardDraft = null;
-    const fallbackFocusSelector = origin === 'ranking' ? '[data-ranking-filter]' : '[data-open-player-dialog]';
-    uiState.pendingFocusSelector = playerId ? `[data-open-player-result-card="${playerId}"]` : fallbackFocusSelector;
+    const fallbackFocusSelectors = {
+      ranking: '[data-ranking-filter]',
+      summary: '[data-view-target="summary"]',
+      players: '[data-open-player-dialog]',
+    };
+    const fallbackFocusSelector = fallbackFocusSelectors[origin];
+    // Sama pelaaja voi esiintyä usean näkymän painikkeissa, joten fokus rajataan lähtönäkymän osioon.
+    uiState.pendingFocusSelector = playerId ? `#section-${origin} [data-open-player-result-card="${playerId}"]` : fallbackFocusSelector;
     render();
   },
   enterPlayerResultCardEdit() {

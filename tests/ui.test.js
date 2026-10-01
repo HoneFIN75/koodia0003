@@ -71,6 +71,10 @@ function createNoopHandlers() {
   );
 }
 
+function getSummarySectionHtml(html) {
+  return html.match(/id="section-summary"[\s\S]*?<\/section>/)?.[0] || '';
+}
+
 function createUiState(overrides = {}) {
   return {
     activeView: 'players',
@@ -270,9 +274,10 @@ test('renderApp renders PDGA ID as the PDGA profile link and keeps player names 
   renderApp(root, dataState, createUiState({ activeView: 'summary' }));
 
   assert.match(
-    root.innerHTML,
-    /id="section-summary"[\s\S]*<span class="player-name-text">Linkki Pelaaja<\/span>[\s\S]*<span class="player-name-text">Teksti Pelaaja<\/span>/,
+    getSummarySectionHtml(root.innerHTML),
+    /<button type="button" class="player-name-button" data-open-player-result-card="player-1" data-result-card-origin="summary" title="Avaa tuloskortti" aria-label="Avaa pelaajan Linkki Pelaaja tuloskortti">Linkki Pelaaja<\/button>/,
   );
+  assert.doesNotMatch(getSummarySectionHtml(root.innerHTML), /pdga-id-link/);
   assert.match(
     root.innerHTML,
     /id="section-ranking"[\s\S]*<button type="button" class="player-name-button" data-open-player-result-card="player-1" data-result-card-origin="ranking" title="Avaa tuloskortti" aria-label="Avaa pelaajan Linkki Pelaaja tuloskortti">Linkki Pelaaja<\/button>[\s\S]*<a class="pdga-id-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan Linkki Pelaaja PDGA-profiili">12345<\/a>/,
@@ -1357,6 +1362,78 @@ test('renderApp näyttää Rankingista avatun tuloskortin lukutilassa ja paluun 
   assert.doesNotMatch(root.innerHTML, /data-view-target="players" aria-current="page"/);
 });
 
+test('renderApp näyttää Yhteenvedosta avatun tuloskortin lukutilassa ja paluun yhteenvetoon', () => {
+  const root = createRootStub();
+  const dataState = createResultsDataState();
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({ activeView: 'player-result-card', resultCardPlayerId: 'mpo-1', resultCardOrigin: 'summary' }),
+  );
+
+  assert.match(root.innerHTML, /data-result-card-mode="read-only"/);
+  assert.match(root.innerHTML, /data-close-player-result-card>← Takaisin yhteenvetoon<\/button>/);
+  assert.match(root.innerHTML, /data-view-target="summary" aria-current="page"/);
+});
+
+test('renderApp näyttää Yhteenvedossa World Ranking -taulukot TOP 10 -taulukoiden yläpuolella', () => {
+  const root = createRootStub();
+  const dataState = createResultsDataState();
+  dataState.players = [
+    { id: 'mpo-1', name: 'Niklas Anttila', division: 'MPO', pdgaNumber: 100, pdgaRating: 1045, worldRank: 2 },
+    { id: 'mpo-2', name: 'Aapo Aalto', division: 'MPO', pdgaNumber: 101, pdgaRating: 1025, worldRank: 1 },
+    { id: 'mpo-3', name: 'Ilman Rankingia', division: 'MPO', pdgaNumber: 102, pdgaRating: 990, worldRank: '' },
+    { id: 'fpo-1', name: 'Eveliina Salonen', division: 'FPO', pdgaNumber: 200, pdgaRating: 950, worldRank: null },
+  ];
+
+  renderApp(root, dataState, createUiState({ activeView: 'summary' }));
+  const html = getSummarySectionHtml(root.innerHTML);
+
+  assert.match(html, /World Ranking MPO[\s\S]*World Ranking FPO[\s\S]*TOP 10 MPO[\s\S]*TOP 10 FPO/);
+  const worldRankingMpo = html.match(/data-summary-table="summary-world-ranking-mpo"[\s\S]*?<\/article>/)[0];
+  assert.match(worldRankingMpo, /<th scope="col">Nimi<\/th>/);
+  assert.match(worldRankingMpo, /aria-sort="ascending">\s*<button type="button" class="table-sort-button is-active" data-sort-table="summary-world-ranking-mpo" data-sort-field="worldRank" aria-label="World Ranking -sijoitus">\s*<span>#<\/span>\s*<span class="table-sort-indicator" aria-hidden="true">▲<\/span>/);
+  assert.match(worldRankingMpo, /data-sort-field="pdgaRating"[\s\S]*<span>Rating<\/span>/);
+  assert.match(worldRankingMpo, /data-sort-field="totalPoints"[\s\S]*<span>Kokonaispisteet<\/span>/);
+  assert.match(worldRankingMpo, /<td>1<\/td>[\s\S]*Aapo Aalto[\s\S]*<td>2<\/td>[\s\S]*Niklas Anttila/);
+  assert.match(worldRankingMpo, /data-open-player-result-card="mpo-1" data-result-card-origin="summary"/);
+  assert.doesNotMatch(worldRankingMpo, /Ilman Rankingia/);
+
+  const worldRankingFpo = html.match(/data-summary-table="summary-world-ranking-fpo"[\s\S]*?<\/article>/)[0];
+  assert.match(worldRankingFpo, /Sarjassa FPO ei ole pelaajia, joilla on World Ranking -sijoitus\./);
+
+  const topMpo = html.match(/data-summary-table="summary-top-mpo"[\s\S]*?<\/article>/)[0];
+  assert.match(topMpo, /data-sort-table="summary-top-mpo" data-sort-field="rankPosition" aria-label="Sijoitus"/);
+  assert.match(topMpo, /Ilman Rankingia/);
+  assert.match(topMpo, /<td class="number">1025<\/td>/);
+});
+
+test('renderApp käyttää Yhteenvedon taulukoissa toisistaan riippumatonta lajittelua', () => {
+  const root = createRootStub();
+  const dataState = createResultsDataState();
+  dataState.players = [
+    { id: 'mpo-1', name: 'Niklas Anttila', division: 'MPO', pdgaNumber: 100, pdgaRating: 1045, worldRank: 2 },
+    { id: 'mpo-2', name: 'Aapo Aalto', division: 'MPO', pdgaNumber: 101, pdgaRating: 1025, worldRank: 1 },
+    { id: 'fpo-1', name: 'Eveliina Salonen', division: 'FPO', pdgaNumber: 200, pdgaRating: 950, worldRank: 5 },
+    { id: 'fpo-2', name: 'Henna Blomroos', division: 'FPO', pdgaNumber: 201, pdgaRating: 960, worldRank: 3 },
+  ];
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({ activeView: 'summary', summarySort: { 'summary-world-ranking-mpo': { field: 'pdgaRating', direction: 'desc' } } }),
+  );
+  const html = getSummarySectionHtml(root.innerHTML);
+  const worldRankingMpo = html.match(/data-summary-table="summary-world-ranking-mpo"[\s\S]*?<\/article>/)[0];
+  const worldRankingFpo = html.match(/data-summary-table="summary-world-ranking-fpo"[\s\S]*?<\/article>/)[0];
+
+  assert.match(worldRankingMpo, /Niklas Anttila[\s\S]*Aapo Aalto/);
+  assert.match(worldRankingMpo, /aria-sort="descending">\s*<button[^>]*data-sort-field="pdgaRating"[\s\S]*?▼/);
+  assert.match(worldRankingFpo, /Henna Blomroos[\s\S]*Eveliina Salonen/);
+  assert.match(worldRankingFpo, /aria-sort="ascending">\s*<button[^>]*data-sort-field="worldRank"/);
+});
+
 test('renderApp avaa tuloskortin lukutilaan, jossa sijoituksia ei voi muokata', () => {
   const root = createRootStub();
   const dataState = createResultsDataState();
@@ -2098,7 +2175,7 @@ test('renderApp pyöristää näytettävät pisteet asetuksen mukaan suomalaises
 
     const summaryRoot = createRootStub();
     renderApp(summaryRoot, dataState, createUiState({ activeView: 'summary' }));
-    assert.ok(summaryRoot.innerHTML.includes(`<span>${expected}</span>`), `Yhteenveto: ${expected}`);
+    assert.ok(getSummarySectionHtml(summaryRoot.innerHTML).includes(`<td class="number">${expected}</td>`), `Yhteenveto: ${expected}`);
 
     const rankingRoot = createRootStub();
     renderApp(rankingRoot, dataState, createUiState({ activeView: 'ranking' }));
@@ -2143,8 +2220,8 @@ test('Ranking, Yhteenveto ja Tulokset käyttävät samaa tuloksista laskettua pi
     return root.innerHTML;
   };
 
-  assert.ok(render('summary').includes('<span>200,00 p</span>'));
-  assert.ok(render('summary').includes('<span>180,00 p</span>'));
+  assert.ok(getSummarySectionHtml(render('summary')).includes('<td class="number">200,00 p</td>'));
+  assert.ok(getSummarySectionHtml(render('summary')).includes('<td class="number">180,00 p</td>'));
   assert.ok(render('ranking').includes('<td class="number">200,00 p</td>'));
   assert.match(render('player-result-card'), /data-result-points>200 p</);
   assert.match(render('results'), /<td data-label="Paras MPO">1 Matti Meikäläinen<\/td>/);
@@ -2154,7 +2231,7 @@ test('Ranking, Yhteenveto ja Tulokset käyttävät samaa tuloksista laskettua pi
     entry.id === 'multiplier-major' ? { ...entry, multiplier: 3 } : entry
   ));
 
-  assert.ok(render('summary').includes('<span>150,00 p</span>'));
+  assert.ok(getSummarySectionHtml(render('summary')).includes('<td class="number">150,00 p</td>'));
   assert.ok(render('ranking').includes('<td class="number">150,00 p</td>'));
   assert.match(render('player-result-card'), /data-result-points>150 p</);
   assert.match(render('player-result-card'), /<td data-label="Kerroin" class="number">3,00<\/td>/);
