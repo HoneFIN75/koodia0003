@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createTournament,
   filterAndSortTournaments,
+  formatTournamentDateRange,
   importTournamentsFromCsv,
   sortTournaments,
   TournamentValidationError,
@@ -300,3 +301,10 @@ test('imports multiple tournaments with 000000 without treating them as duplicat
   assert.equal(importedTournaments[1].pdgaEventId, '000000');
 });
 
+
+test('formatTournamentDateRange näyttää välin vain monipäiväiselle turnaukselle', () => {
+  assert.equal(formatTournamentDateRange('2026-07-17', '2026-07-20'), '17.07.2026 - 20.07.2026');
+  assert.equal(formatTournamentDateRange('2026-07-17', '2026-07-17'), '17.07.2026');
+  assert.equal(formatTournamentDateRange('2026-07-17', ''), '17.07.2026');
+  assert.equal(formatTournamentDateRange('', ''), '');
+});

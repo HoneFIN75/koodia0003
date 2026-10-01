@@ -183,6 +183,63 @@ export function getBestTournamentResults(dataState, tournamentId) {
   return best;
 }
 
+const PODIUM_MEDALS = { 1: 'gold', 2: 'silver', 3: 'bronze' };
+
+// Mitali määräytyy näytettävän sijoituksen ensimmäisestä numerosta: 1T2 → kulta, 3T4 → pronssi.
+export function getPlacementMedal(placement) {
+  let parsed;
+  try {
+    parsed = parsePlacement(placement);
+  } catch {
+    return null;
+  }
+
+  return parsed ? PODIUM_MEDALS[parsed.place] || null : null;
+}
+
+// Turnauksen tuloskortin sarjakohtaiset tulokset kilpailujärjestyksessä (sijoitus nousevasti,
+// tasatuloksissa nimen mukaan). Palauttaa vain sarjat, joilla on vähintään yksi tulos.
+export function buildTournamentStandings(dataState, tournamentId) {
+  const playerById = new Map((dataState.players || []).map((player) => [player.id, player]));
+  const standings = Object.fromEntries(DIVISIONS.map((division) => [division, []]));
+
+  listResultEntries(dataState.resultCards || [])
+    .filter((entry) => entry.tournamentId === tournamentId)
+    .forEach((entry) => {
+      const player = playerById.get(entry.playerId);
+      if (!player || !DIVISIONS.includes(player.division)) {
+        return;
+      }
+
+      let parsed;
+      try {
+        parsed = parsePlacement(entry.placement);
+      } catch {
+        return;
+      }
+      if (!parsed) {
+        return;
+      }
+
+      standings[player.division].push({
+        playerId: player.id,
+        name: player.name,
+        placement: parsed.raw,
+        place: parsed.place,
+        medal: PODIUM_MEDALS[parsed.place] || null,
+      });
+    });
+
+  return DIVISIONS
+    .map((division) => ({
+      division,
+      rows: standings[division].sort(
+        (left, right) => left.place - right.place || left.name.localeCompare(right.name, 'fi'),
+      ),
+    }))
+    .filter((entry) => entry.rows.length > 0);
+}
+
 export function formatBestResult(bestResult) {
   if (!bestResult) {
     return '-';

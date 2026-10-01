@@ -91,8 +91,31 @@ Jokaisesta turnauksesta näytetään:
 - Tila ja kerroin Kertoimet-sivulta
 - Alku- ja loppupäivä
 - Paras MPO ja Paras FPO muodossa sijoitus ja pelaajan nimi, esimerkiksi 1 Niklas Anttila
+- Tulokset-painike, joka avaa turnauksen tuloskortin (katso Turnauksen tulokset)
 
 Jos turnaukseen ei ole vielä syötetty kyseisen sarjan tuloksia, sarakkeessa näytetään viiva (-). Yhteenveto on lukunäkymä: sijoitukset syötetään pelaajien tuloskorteille.`,
+      },
+      {
+        title: 'Turnauksen tulokset',
+        content: `Tulokset-painike: jokaisen turnausrivin lopussa on Tulokset-painike, joka avaa turnauksen tuloskortin sovelluksen sisällä. Tulokset-sivulle palataan Takaisin tuloksiin -painikkeella tai päänavigaation Tulokset-kohdasta.
+
+Turnauksen tuloskortti: kortti näyttää turnauksen viralliset tulokset yhdellä silmäyksellä ilman, että pelaajien tuloskortteja tarvitsee avata. Kortti on lukunäkymä: siinä ei voi muokata sijoituksia tai pisteitä eikä tehdä hallintatoimintoja. Sijoituksia muokataan vain pelaajan tuloskortilla.
+
+Turnauksen tiedot: kortin yläosassa näkyy turnauksen nimi ja sen alla päivämäärä, paikkakunta, tila (esimerkiksi MAJ) ja PDGA Event ID. Jos turnauksen alkamis- ja päättymispäivä ovat eri päiviä, näytetään väli, esimerkiksi 17.07.2026 - 20.07.2026. Yksipäiväisestä turnauksesta näytetään vain yksi päivämäärä, esimerkiksi 17.07.2026.
+
+MPO-tulokset ja FPO-tulokset: kummallakin sarjalla on oma taulukkonsa sarakkeilla Sijoitus ja Kilpailija.
+
+Lajittelu: tulokset näytetään kilpailujärjestyksessä syötetyn sijoituksen mukaan, esimerkiksi 1, 2, 3T4, 3T4, 7. Saman tasatuloksen pelaajat näytetään nimen mukaan aakkosjärjestyksessä.
+
+Tyhjät sarjat: sarjaa ei näytetä, jos sille ei ole syötetty tuloksia. Jos turnauksessa on vain MPO-tuloksia, näytetään vain MPO. Jos tuloksia ei ole lainkaan, kortilla kerrotaan, ettei tuloksia ole vielä syötetty.
+
+Mitalikorostukset: palkintosijat korostetaan molemmissa sarjoissa mitalikuvakkeella, hillityllä taustasävyllä ja lihavoinnilla:
+- 🥇 sijoitus 1 (kultamitali)
+- 🥈 sijoitus 2 (hopeamitali)
+- 🥉 sijoitus 3 (pronssimitali)
+Tasatuloksissa mitali määräytyy näytetyn sijoituksen ensimmäisestä numerosta: esimerkiksi molemmat 1T2-rivit saavat kultamitalin ja kaikki neljä 3T4-riviä pronssimitalin.
+
+PDGA Event ID -linkit: PDGA Event ID avaa turnauksen PDGA-sivun uuteen välilehteen. Osoite muodostetaan Asetukset-sivun PDGA-kilpailuosoitteen perus-URL -asetuksesta ja tunnuksesta, esimerkiksi https://www.pdga.com/tour/event/97339. Tunnus 000000 tarkoittaa, ettei PDGA Event ID:tä ole vielä määritetty: se näytetään varoitustyylisenä tekstinä vaaleanpunaisella taustalla eikä se ole linkki.`,
       },
       {
         title: 'Pelaajan tuloskortti',

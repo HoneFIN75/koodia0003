@@ -1,9 +1,10 @@
 import { DIVISIONS, getVisiblePlayers } from './players.js';
-import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, sortTournaments, filterAndSortTournaments } from './tournaments.js';
+import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, sortTournaments, filterAndSortTournaments, formatTournamentDateRange } from './tournaments.js';
 import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS, isUnassignedPdgaEventId, POINT_DECIMALS_OPTIONS, sanitizePointDecimals } from './pdga.js';
 import { listPointsTableEntries } from './scoring.js';
 import {
   buildPlayerResultCardRows,
+  buildTournamentStandings,
   countResults,
   formatBestResult,
   getBestTournamentResults,
@@ -332,9 +333,10 @@ export function resolveResultCardOriginView(origin) {
 
 function renderNav(activeView, resultCardOrigin = 'players') {
   // Tuloskortti on alanäkymä: aktiivinen navigaatiokohta säilyy siinä näkymässä, josta kortti avattiin.
+  // Turnauksen tuloskortti avataan aina Tulokset-sivulta.
   const currentView = activeView === 'player-result-card'
     ? resolveResultCardOriginView(resultCardOrigin)
-    : activeView;
+    : activeView === 'tournament-result-card' ? 'results' : activeView;
   const items = [
     { id: 'summary', label: 'Yhteenveto' },
     { id: 'ranking', label: 'Ranking' },
@@ -735,6 +737,7 @@ function renderResultsSection(dataState, uiState) {
                       <th scope="col">Loppupäivä</th>
                       <th scope="col">Paras MPO</th>
                       <th scope="col">Paras FPO</th>
+                      <th scope="col"><span class="visually-hidden">Turnauksen tulokset</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -752,6 +755,7 @@ function renderResultsSection(dataState, uiState) {
                             <td data-label="Loppupäivä">${formatDate(tournament.endDate)}</td>
                             <td data-label="Paras MPO">${escapeHtml(formatBestResult(best.MPO))}</td>
                             <td data-label="Paras FPO">${escapeHtml(formatBestResult(best.FPO))}</td>
+                            <td data-label="Turnauksen tulokset"><button type="button" class="secondary-button" data-open-tournament-result-card="${escapeHtml(tournament.id)}" aria-label="Avaa turnauksen ${escapeHtml(tournament.name || 'Nimetön turnaus')} tulokset">Tulokset</button></td>
                           </tr>
                         `;
                       })
@@ -761,6 +765,102 @@ function renderResultsSection(dataState, uiState) {
               </div>
             `
             : renderEmptyState('Turnauksia ei ole vielä lisätty.')
+        }
+      </article>
+    </section>
+  `;
+}
+
+const MEDAL_DETAILS = {
+  gold: { icon: '🥇', label: 'Kultamitali' },
+  silver: { icon: '🥈', label: 'Hopeamitali' },
+  bronze: { icon: '🥉', label: 'Pronssimitali' },
+};
+
+function renderTournamentStandingsRow(row) {
+  const medal = MEDAL_DETAILS[row.medal];
+  // Mitali kerrotaan kuvakkeella ja tekstivastineella, jotta korostus ei perustu pelkkään väriin.
+  const medalIcon = medal
+    ? `<span class="medal-icon" role="img" aria-label="${medal.label}">${medal.icon}</span>`
+    : '<span class="medal-icon medal-icon-empty" aria-hidden="true"></span>';
+
+  return `
+    <tr class="standings-row${medal ? ` medal-${row.medal}` : ''}"${medal ? ` data-medal="${row.medal}"` : ''}>
+      <td data-label="Sijoitus" class="standings-placement">${medalIcon}<span class="standings-placement-value">${escapeHtml(row.placement)}</span></td>
+      <td data-label="Kilpailija" class="standings-player">${escapeHtml(row.name)}</td>
+    </tr>
+  `;
+}
+
+function renderTournamentStandingsDivision(tournamentId, { division, rows }) {
+  const headingId = `tournament-standings-${escapeHtml(tournamentId)}-${division}`;
+
+  return `
+    <section class="tournament-standings-division" aria-labelledby="${headingId}" data-tournament-standings-division="${division}">
+      <h3 id="${headingId}" class="tournament-standings-title">${division}</h3>
+      <table class="table standings-table">
+        <thead>
+          <tr>
+            <th scope="col">Sijoitus</th>
+            <th scope="col">Kilpailija</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(renderTournamentStandingsRow).join('')}
+        </tbody>
+      </table>
+    </section>
+  `;
+}
+
+function renderTournamentResultCardEventId(tournament, settings) {
+  if (isUnassignedPdgaEventId(tournament?.pdgaEventId)) {
+    return `<span class="pdga-id-unassigned pdga-id-warning" title="PDGA Event ID:tä ei ole vielä määritetty"><span aria-hidden="true">⚠</span> ${renderPdgaEventIdLink(tournament, settings)}</span>`;
+  }
+
+  return renderPdgaEventIdLink(tournament, settings);
+}
+
+function renderTournamentResultCardSection(dataState, uiState) {
+  if (uiState.activeView !== 'tournament-result-card') {
+    return '';
+  }
+
+  const backButton = '<button type="button" class="secondary-button" data-close-tournament-result-card>← Takaisin tuloksiin</button>';
+  const tournament = (dataState.tournaments || []).find((entry) => entry.id === uiState.tournamentResultCardId);
+  if (!tournament) {
+    return `
+      <section class="section" id="section-tournament-result-card" aria-labelledby="tournament-result-card-title">
+        <h2 id="tournament-result-card-title">Turnauksen tulokset</h2>
+        ${renderEmptyState('Turnausta ei löytynyt.')}
+        ${renderActionBar({ label: 'Turnauksen tuloskortin toiminnot', actions: [backButton] })}
+      </section>
+    `;
+  }
+
+  const multiplier = findMultiplier(dataState.multipliers || [], tournament.multiplierId);
+  const standings = buildTournamentStandings(dataState, tournament.id);
+  const dateRange = formatTournamentDateRange(tournament.startDate, tournament.endDate);
+
+  return `
+    <section class="section" id="section-tournament-result-card" aria-labelledby="tournament-result-card-title">
+      ${renderActionBar({ label: 'Turnauksen tuloskortin toiminnot', actions: [backButton] })}
+      ${renderHelpHint('Tulokset → Turnauksen tulokset')}
+      <article class="panel tournament-result-card" data-tournament-result-card="${escapeHtml(tournament.id)}">
+        <header class="tournament-result-card-header">
+          <p class="eyebrow">Turnauksen tuloskortti</p>
+          <h2 id="tournament-result-card-title" class="tournament-result-card-title">${escapeHtml(tournament.name || 'Nimetön turnaus')}</h2>
+          <dl class="tournament-result-card-meta">
+            <div><dt>Päivämäärä</dt><dd data-tournament-result-card-date>${escapeHtml(dateRange || '—')}</dd></div>
+            <div><dt>Paikkakunta</dt><dd>${escapeHtml(renderValueOrDash(tournament.location))}</dd></div>
+            <div><dt>Tila</dt><dd><span class="status-chip tournament-result-card-status">${escapeHtml(renderValueOrDash(multiplier?.abbreviation))}</span></dd></div>
+            <div><dt>PDGA Event ID</dt><dd>${renderTournamentResultCardEventId(tournament, dataState.settings)}</dd></div>
+          </dl>
+        </header>
+        ${
+          standings.length
+            ? `<div class="tournament-standings">${standings.map((entry) => renderTournamentStandingsDivision(tournament.id, entry)).join('')}</div>`
+            : renderEmptyState('Turnaukseen ei ole vielä syötetty tuloksia.')
         }
       </article>
     </section>
@@ -2481,6 +2581,7 @@ export function renderApp(root, dataState, uiState) {
         ${renderSummarySection(dataState, uiState)}
         ${renderRankingSection(dataState, uiState)}
         ${renderResultsSection(dataState, uiState)}
+        ${renderTournamentResultCardSection(dataState, uiState)}
         ${renderPlayerResultCardSection(dataState, uiState)}
         ${renderPlayerSection(dataState, uiState)}
         ${renderTournamentSection(dataState, uiState)}
@@ -2547,6 +2648,10 @@ export function bindUi(root, dataState, uiState, handlers) {
     button.addEventListener('click', () => handlers.openPlayerResultCard(button.dataset.openPlayerResultCard, button.dataset.resultCardOrigin || 'players'));
   });
   root.querySelector('[data-close-player-result-card]')?.addEventListener('click', () => handlers.closePlayerResultCard());
+  root.querySelectorAll('[data-open-tournament-result-card]').forEach((button) => {
+    button.addEventListener('click', () => handlers.openTournamentResultCard(button.dataset.openTournamentResultCard));
+  });
+  root.querySelector('[data-close-tournament-result-card]')?.addEventListener('click', () => handlers.closeTournamentResultCard());
   root.querySelector('[data-edit-player-result-card]')?.addEventListener('click', () => handlers.enterPlayerResultCardEdit());
   root.querySelector('[data-exit-player-result-card-edit]')?.addEventListener('click', () => handlers.exitPlayerResultCardEdit());
 

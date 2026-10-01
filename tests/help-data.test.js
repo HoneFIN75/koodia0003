@@ -67,6 +67,15 @@ test('pelaajan tuloskortin avaaminen Rankingista on dokumentoitu Ranking-osiossa
   });
 });
 
+test('turnauksen tulokset on dokumentoitu Tulokset-osiossa', () => {
+  const results = findHelpSection('results');
+  const topic = results.topics.find((entry) => entry.title === 'Turnauksen tulokset');
+  assert.ok(topic, 'Tulokset-osiosta puuttuu Turnauksen tulokset -ohje.');
+  ['Tulokset-painike', 'Turnauksen tuloskortti', 'Turnauksen tiedot', 'MPO-tulokset', 'FPO-tulokset', 'Mitalikorostukset', 'Lajittelu', 'Tyhjät sarjat', 'PDGA Event ID -linkit', '000000'].forEach((part) => {
+    assert.ok(topic.content.includes(part), `Ohjeesta puuttuu kohta ${part}.`);
+  });
+});
+
 test('findHelpSection returns null for unknown sections and listHelpSections exposes the data', () => {
   assert.equal(findHelpSection('unknown'), null);
   assert.equal(listHelpSections(), HELP_SECTIONS);
