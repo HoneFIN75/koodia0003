@@ -343,10 +343,10 @@ function renderNav(activeView, resultCardOrigin = 'players') {
     { id: 'results', label: 'Tulokset' },
     { id: 'players', label: 'Pelaajat' },
     { id: 'tournaments', label: 'Turnaukset' },
-    { id: 'points', label: 'Pistetaulukot' },
     { id: 'multipliers', label: 'Kertoimet' },
-    { id: 'help', label: 'Ohjeet' },
+    { id: 'points', label: 'Pistetaulukot' },
     { id: 'settings', label: 'Asetukset' },
+    { id: 'help', label: 'Ohjeet' },
   ];
 
   return `
@@ -2614,7 +2614,6 @@ export function renderApp(root, dataState, uiState) {
               ${renderDeploymentInfo(uiState.deploymentInfo)}
             </div>
           </div>
-          <button class="nav-toggle" type="button" data-toggle-nav aria-expanded="${uiState.navOpen}" aria-controls="main-nav">Valikko</button>
           ${renderNav(uiState.activeView, uiState.resultCardOrigin)}
           <button class="secondary-button logout-button" type="button" data-logout>Kirjaudu ulos</button>
         </div>
@@ -2651,15 +2650,9 @@ export function renderApp(root, dataState, uiState) {
     </div>
   `;
 
-  const navElement = root.querySelector('#main-nav');
-  if (navElement && window.innerWidth <= 780) {
-    navElement.hidden = !uiState.navOpen;
-  }
 }
 
 export function bindUi(root, dataState, uiState, handlers) {
-  root.querySelector('[data-toggle-nav]')?.addEventListener('click', () => handlers.toggleNav());
-
   root.querySelectorAll('[data-view-target]').forEach((button) => {
     button.addEventListener('click', () => handlers.changeView(button.dataset.viewTarget));
   });
