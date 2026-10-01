@@ -58,6 +58,15 @@ test('tuloskortin lukutila ja muokkaustila on dokumentoitu Pelaajat-osiossa', ()
   assert.match(topic.content, /Poistu ilman tallennusta/);
 });
 
+test('pelaajan tuloskortin avaaminen Rankingista on dokumentoitu Ranking-osiossa', () => {
+  const ranking = findHelpSection('ranking');
+  const topic = ranking.topics.find((entry) => entry.title === 'Pelaajan Tuloskortin avaaminen');
+  assert.ok(topic, 'Ranking-osiosta puuttuu tuloskortin avausohje.');
+  ['pelaajan nimi on painike', 'lukutilaan', 'Muokkaa', 'Tallenna ja poistu', 'Takaisin Rankingiin', 'PDGA-profiiliin'].forEach((part) => {
+    assert.ok(topic.content.includes(part), `Ohjeesta puuttuu kohta ${part}.`);
+  });
+});
+
 test('findHelpSection returns null for unknown sections and listHelpSections exposes the data', () => {
   assert.equal(findHelpSection('unknown'), null);
   assert.equal(listHelpSections(), HELP_SECTIONS);
