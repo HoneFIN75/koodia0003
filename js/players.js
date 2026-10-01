@@ -398,7 +398,13 @@ export function parseRatingRankingCsv(csvText) {
 
   const entries = records.map((record) => {
     const columns = parseDelimitedRow(record.value);
-    return { rowNumber: record.lineNumber, columns, pdgaId: normalizeText(columns[0]), pdgaNumber: normalizeCsvInteger(columns[0]) };
+    const pdgaNumber = normalizeCsvInteger(columns[0]);
+    return {
+      rowNumber: record.lineNumber,
+      columns,
+      pdgaId: normalizeText(columns[0]),
+      pdgaNumber: Number.isSafeInteger(pdgaNumber) ? pdgaNumber : null,
+    };
   });
   const counts = new Map();
   entries.forEach(({ pdgaNumber }) => {
@@ -415,8 +421,8 @@ export function parseRatingRankingCsv(csvText) {
     else if (counts.get(pdgaNumber) > 1) reason = 'PDGA ID esiintyy CSV-tiedostossa useammin kuin kerran';
     const pdgaRating = normalizeCsvInteger(columns[1]);
     const worldRank = normalizeCsvInteger(columns[2]);
-    if (!reason && pdgaRating === null) reason = 'Virheellinen Rating';
-    if (!reason && worldRank === null) reason = 'Virheellinen Ranking';
+    if (!reason && !Number.isSafeInteger(pdgaRating)) reason = 'Virheellinen Rating';
+    if (!reason && !Number.isSafeInteger(worldRank)) reason = 'Virheellinen Ranking';
     if (reason) {
       errors.push({ rowNumber, pdgaId, reason });
     } else {

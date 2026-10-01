@@ -6,6 +6,7 @@ import {
   removePlayer,
   canRequestPlayerDeletion,
   importPlayersFromCsv,
+  importRatingRankingFromCsv,
 } from './players.js';
 import {
   createTournament,
@@ -75,6 +76,8 @@ let uiState = {
   playerImportDialogOpen: false,
   playerImportDivision: '',
   playerImportSummary: null,
+  ratingRankingDialogOpen: false,
+  ratingRankingSummary: null,
   playersStatus: 'loading',
   playersError: '',
   tournamentDialogOpen: false,
@@ -472,6 +475,33 @@ const handlers = {
   closePlayersImportDialog() {
     closePlayersImportDialogState();
     render();
+  },
+  openRatingRankingDialog() {
+    uiState.activeView = 'players';
+    uiState.ratingRankingDialogOpen = true;
+    uiState.ratingRankingSummary = null;
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  closeRatingRankingDialog() {
+    uiState.ratingRankingDialogOpen = false;
+    uiState.ratingRankingSummary = null;
+    uiState.pendingFocusSelector = '[data-open-rating-ranking-dialog]';
+    render();
+  },
+  async submitRatingRankingImport(formData) {
+    try {
+      const { updatedPlayers, summary } = importRatingRankingFromCsv(dataState.players, formData.get('csv'));
+      if (summary.updatedCount) {
+        dataState = await saveState({ ...dataState, players: updatedPlayers });
+      }
+      uiState.ratingRankingSummary = summary;
+      uiState.feedback = null;
+      render();
+    } catch (error) {
+      setError(error);
+    }
   },
   requestDeleteAllPlayers() {
     if (!dataState.players.length) {

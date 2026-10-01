@@ -32,6 +32,10 @@ test('rating and ranking CSV reports invalid headers, values and duplicate IDs',
   assert.deepEqual(parsed.errors.map(({ rowNumber, pdgaId }) => [rowNumber, pdgaId]), [
     [2, '123'], [3, '123'], [4, ''], [5, '55'], [6, '66'], [7, '77'],
   ]);
+  assert.deepEqual(
+    parseRatingRankingCsv('PDGA ID;Rating;Ranking\n9007199254740993;998;120\n88;9007199254740993;1').errors.map(({ rowNumber }) => rowNumber),
+    [2, 3],
+  );
 });
 
 test('rating and ranking import only updates two fields on existing PDGA matches', () => {
@@ -58,6 +62,10 @@ test('rating and ranking import only updates two fields on existing PDGA matches
   assert.equal(imported.summary.updatedCount, 1);
   assert.equal(imported.summary.errors.length, 0);
   assert.equal(imported.summary.observations.length, 1);
+  assert.deepEqual(
+    importRatingRankingFromCsv(players, 'PDGA ID;Rating;Ranking\n12345;998;120\n98765;0;22').updatedPlayers[0],
+    { ...player, pdgaRating: 998, worldRank: 120 },
+  );
 });
 
 test('creates an MPO player', () => {
