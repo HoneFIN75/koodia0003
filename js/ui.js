@@ -796,7 +796,7 @@ function renderPlayerResultCardModeBadge(editMode) {
 
   return `
     <p class="result-card-mode" id="player-result-card-mode">
-      <span class="${mode.chipClass}" data-result-card-mode="${mode.key}" role="status">
+      <span class="${mode.chipClass}" data-result-card-mode="${mode.key}">
         <span aria-hidden="true">${mode.symbol}</span> ${mode.label}
       </span>
     </p>

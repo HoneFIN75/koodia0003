@@ -1202,7 +1202,6 @@ const handlers = {
       // Tallennus epäonnistui: palautetaan tallennettu tila ja jäädään muokkaustilaan,
       // jotta käyttäjä voi yrittää tallennusta uudelleen samoilla muutoksilla.
       dataState.resultCards = previousResultCards;
-      localRevision += 1;
       uiState.resultCardEditMode = true;
       uiState.resultCardDraft = nextState.resultCards;
       uiState.feedback = {
