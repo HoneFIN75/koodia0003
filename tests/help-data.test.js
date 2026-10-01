@@ -51,6 +51,13 @@ test('migrated import instructions are available in the help data', () => {
   assert.ok(settings.topics.some((topic) => /vähintään 8 merkkiä/.test(topic.content)));
 });
 
+test('rating ja ranking -ohje kuvaa tyhjien arvojen käsittelyn', () => {
+  const topic = findHelpSection('players').topics.find((entry) => entry.title === 'Rating ja Ranking -päivitysimportti');
+  assert.match(topic.content, /Puuttuva Rating.*sallittu.*tallennetaan tyhjänä/);
+  assert.match(topic.content, /Puuttuva World Ranking.*sallittu.*tallennetaan tyhjänä/);
+  assert.match(topic.content, /tyhjät Rating-arvot korostetaan hillityllä varoitusvärillä/);
+});
+
 test('tuloskortin lukutila ja muokkaustila on dokumentoitu Pelaajat-osiossa', () => {
   const players = findHelpSection('players');
   const topic = players.topics.find((entry) => entry.title === 'Tuloskortti: lukutila ja muokkaustila');
