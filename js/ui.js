@@ -106,12 +106,13 @@ function renderDeploymentInfo(deploymentInfo) {
     return '';
   }
 
+  const versionTitle = versionIdentifier ? ` title="Versio ${escapeHtml(versionIdentifier)}"` : '';
   return `
-    <dl class="deployment-meta" aria-label="Julkaisun versiotiedot">
-      ${versionIdentifier ? `<div><dt>Versio:</dt><dd>${escapeHtml(versionIdentifier)}</dd></div>` : ''}
-      <div><dt>Koonti:</dt><dd>${escapeHtml(buildIdentifier)}</dd></div>
-      <div><dt>Päivitetty:</dt><dd>${formatDeploymentTimestamp(deploymentInfo.deployedAt)}</dd></div>
-    </dl>
+    <p class="build-info"${versionTitle}>
+      <span class="visually-hidden">Julkaisun koontitiedot: </span>Build <span class="build-info-id">${escapeHtml(buildIdentifier)}</span>
+      <span class="build-info-separator" aria-hidden="true">•</span><span class="visually-hidden">, päivitetty</span>
+      <time datetime="${escapeHtml(deploymentInfo.deployedAt)}">${formatDeploymentTimestamp(deploymentInfo.deployedAt)}</time>
+    </p>
   `;
 }
 
@@ -2667,8 +2668,8 @@ export function renderApp(root, dataState, uiState) {
           <div class="brand" aria-label="Sovelluksen tunniste">
             <div class="brand-mark" aria-hidden="true">SFL</div>
             <div class="brand-copy">
-              <span>Suomen frisbeegolfliitto</span>
-              <strong>SFL Pisteytystyökalu</strong>
+              <span class="visually-hidden">Suomen frisbeegolfliitto</span>
+              <strong class="brand-title">SFL Pisteytystyökalu</strong>
               ${renderDeploymentInfo(uiState.deploymentInfo)}
             </div>
           </div>
