@@ -19,7 +19,7 @@ test('navigation stays sticky and uses the specified SFL states', async () => {
   assert.match(css, /\.main-nav button:not\(\[aria-current="page"\]\):hover\s*\{[^}]*var\(--color-sfl-light-gray\)/s);
 });
 
-test('mobile navigation always lays out all nine buttons in two rows', async () => {
+test('mobile navigation always lays out all ten buttons in two rows', async () => {
   const css = await readFile(path.join(rootDir, 'css/styles.css'), 'utf8');
   const mobileRules = css.slice(css.indexOf('@media (max-width: 780px)'));
 

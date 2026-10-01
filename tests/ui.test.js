@@ -77,6 +77,9 @@ function createUiState(overrides = {}) {
     rankingFilter: 'ALL',
     summaryFilter: 'ALL',
     summaryPlayerId: '',
+    comparePlayerIds: [],
+    compareSearch: '',
+    compareHideEmptyTournaments: true,
     selectedPlayerId: '',
     playerSearch: '',
     playerDivisionFilter: 'ALL',
@@ -723,7 +726,6 @@ test('renderApp shows tournament table with required column order and PDGA event
 
   assert.match(root.innerHTML, /data-open-tournament-dialog>Lisää turnaus<\/button>/);
   assert.match(root.innerHTML, /data-open-tournament-import-dialog>Tuo turnaukset<\/button>/);
-  assert.match(root.innerHTML, /data-help-target="tournaments">Ohjeet<\/button>/);
   assert.match(root.innerHTML, /data-request-delete-all-tournaments/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="name"/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="displayOrder"/);
@@ -994,7 +996,6 @@ test('renderApp shows score table division actions and Finnish decimals', () => 
 
   renderApp(root, dataState, createUiState({ activeView: 'points' }));
 
-  assert.match(root.innerHTML, /data-help-target="points">Ohjeet<\/button>/);
   assert.match(root.innerHTML, /data-open-points-dialog>Lisää rivi<\/button>/);
   assert.match(root.innerHTML, /data-open-points-import>Tuo pistetaulukko<\/button>/);
   assert.match(root.innerHTML, /data-request-delete-points="MPO">.*Poista kaikki MPO-pisteet<\/button>/);
@@ -1737,8 +1738,9 @@ test('renderApp shows every navigation tab in the required fixed order', () => {
 
   const navOrder = [...root.innerHTML.matchAll(/data-view-target="([a-z]+)"/g)].map((match) => match[1]);
 
-  assert.deepEqual(navOrder.slice(0, 9), [
+  assert.deepEqual(navOrder.slice(0, 10), [
     'summary',
+    'compare',
     'ranking',
     'results',
     'players',
@@ -1774,14 +1776,14 @@ test('renderApp renders collapsible help sections and topics from help data', ()
   assert.match(root.innerHTML, /class="help-topic-content" id="help-topic-players-1" hidden/);
 });
 
-test('each operational page has a rightmost Help action targeting its own section', () => {
+test('the only Help entry point is the navigation item', () => {
   const root = createRootStub();
   renderApp(root, createEmptyState(), createUiState({ activeView: 'players' }));
 
-  for (const id of ['summary', 'ranking', 'results', 'players', 'tournaments', 'multipliers', 'points', 'settings']) {
-    const section = root.innerHTML.split(`id="section-${id}"`)[1].split('</section>')[0];
-    assert.match(section, new RegExp(`class="action-bar-group action-bar-help"><button type="button" class="secondary-button" data-view-target="help" data-help-target="${id}">Ohjeet</button></div>\\s*</div>`));
-  }
+  const helpTargets = [...root.innerHTML.matchAll(/data-view-target="help"/g)];
+  assert.equal(helpTargets.length, 1);
+  assert.match(root.innerHTML, /<nav class="main-nav"[\s\S]*data-view-target="help"[\s\S]*<\/nav>/);
+  assert.doesNotMatch(root.innerHTML, /data-help-target=|action-bar-help/);
   assert.doesNotMatch(root.innerHTML, /class="help-hint"|class="import-instructions"/);
 });
 
@@ -2144,4 +2146,133 @@ test('Ranking, Yhteenveto ja Tulokset käyttävät samaa tuloksista laskettua pi
   dataState.resultCards[0].results[0].placement = '';
   assert.ok(render('ranking').includes('<td class="number">0,00 p</td>'));
   assert.match(render('results'), /<td data-label="Paras MPO">-<\/td>/);
+});
+
+function createCompareDataState() {
+  const dataState = createEmptyState();
+  dataState.players = [
+    { id: 'player-1', name: 'Tuomo Rikman', division: 'MPO', pdgaNumber: '12345', pdgaRating: '998', worldRank: '120' },
+    { id: 'player-2', name: 'Leo Piironen', division: 'MPO', pdgaNumber: '54321', pdgaRating: '960', worldRank: '300' },
+    { id: 'player-3', name: 'Tuomas Example', division: 'MPO', pdgaNumber: '12367' },
+  ];
+  dataState.multipliers = [
+    { id: 'multiplier-major', name: 'Major', abbreviation: 'MAJ', multiplier: 2, orderNumber: 1 },
+  ];
+  dataState.tournaments = [
+    { id: 'tournament-2', name: 'Tampere Open', startDate: '2026-06-01', displayOrder: 2, multiplierId: 'multiplier-major' },
+    { id: 'tournament-1', name: 'European Open', startDate: '2026-07-17', displayOrder: 1, multiplierId: 'multiplier-major' },
+  ];
+  dataState.pointsTable.MPO = { 1: 100, 2: 90, 4: 70, 12: 20 };
+  dataState.resultCards = [
+    { id: 'result-card-player-1', playerId: 'player-1', results: [{ tournamentId: 'tournament-1', placement: '4' }] },
+    { id: 'result-card-player-2', playerId: 'player-2', results: [{ tournamentId: 'tournament-1', placement: '12' }] },
+  ];
+
+  return dataState;
+}
+
+test('renderApp näyttää Vertaile-sivun pelaajahaun, yhteenvetokortit ja parhaan sijoituksen korostuksen', () => {
+  const root = createRootStub();
+  const dataState = createCompareDataState();
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({
+      activeView: 'compare',
+      comparePlayerIds: ['player-1', 'player-2'],
+      compareHideEmptyTournaments: true,
+    }),
+  );
+
+  const compareSection = root.innerHTML.split('id="section-compare"')[1].split('</section>')[0];
+
+  assert.match(root.innerHTML, /<section class="section" id="section-compare"  aria-labelledby="compare-title">/);
+  assert.match(compareSection, /<h2 id="compare-title">Vertaile<\/h2>/);
+  assert.match(compareSection, /id="compare-player-search"[\s\S]*?role="combobox"/);
+  assert.match(compareSection, /aria-autocomplete="list"/);
+  assert.match(compareSection, /data-remove-compare-player="player-1"/);
+  assert.match(compareSection, /<dt>Maailmanranking<\/dt><dd>120<\/dd>/);
+  assert.match(compareSection, /<dt>Turnauksia<\/dt><dd>1<\/dd>/);
+  assert.match(compareSection, /data-compare-hide-empty checked/);
+  assert.match(compareSection, /Piilota turnaukset joissa kukaan vertailtavista pelaajista ei ole pelannut/);
+  assert.match(
+    compareSection,
+    /<td data-label="Tuomo Rikman" class="compare-placement is-best" data-compare-best="true">4<span class="visually-hidden"> \(paras sijoitus\)<\/span><\/td>/,
+  );
+  assert.match(compareSection, /<td data-label="Leo Piironen" class="compare-placement">12<\/td>/);
+  // Suodatin piilottaa turnauksen, jossa kummallakaan pelaajalla ei ole tulosta.
+  assert.doesNotMatch(compareSection, /data-compare-tournament="tournament-2"/);
+  // Vertaile on lukunäkymä: sivulla ei ole muokkaus- tai syöttötoimintoja.
+  assert.doesNotMatch(compareSection, /data-result-placement|data-edit-player|<input type="text"/);
+});
+
+test('renderApp näyttää Vertaile-sivun ehdotukset vasta kolmen merkin jälkeen ja piilotuksen poiston jälkeen kaikki turnaukset', () => {
+  const dataState = createCompareDataState();
+
+  const shortQueryRoot = createRootStub();
+  renderApp(shortQueryRoot, dataState, createUiState({ activeView: 'compare', compareSearch: 'Tu' }));
+  assert.doesNotMatch(shortQueryRoot.innerHTML, /data-add-compare-player/);
+  assert.match(shortQueryRoot.innerHTML, /id="compare-player-search"[\s\S]*?aria-expanded="false"/);
+
+  const suggestionRoot = createRootStub();
+  renderApp(
+    suggestionRoot,
+    dataState,
+    createUiState({ activeView: 'compare', compareSearch: 'Tuo', comparePlayerIds: ['player-1'] }),
+  );
+  assert.match(suggestionRoot.innerHTML, /aria-expanded="true"/);
+  assert.match(suggestionRoot.innerHTML, /role="listbox" aria-label="Pelaajaehdotukset"/);
+  assert.match(suggestionRoot.innerHTML, /data-add-compare-player="player-3"/);
+  assert.doesNotMatch(suggestionRoot.innerHTML, /data-add-compare-player="player-1"/);
+
+  const allTournamentsRoot = createRootStub();
+  renderApp(
+    allTournamentsRoot,
+    dataState,
+    createUiState({ activeView: 'compare', comparePlayerIds: ['player-1'], compareHideEmptyTournaments: false }),
+  );
+  const compareSection = allTournamentsRoot.innerHTML.split('id="section-compare"')[1].split('</section>')[0];
+  assert.deepEqual(
+    [...compareSection.matchAll(/data-compare-tournament="([a-z0-9-]+)"/g)].map((match) => match[1]),
+    ['tournament-1', 'tournament-2'],
+  );
+  assert.match(compareSection, /<td data-label="Tuomo Rikman" class="compare-placement">—<\/td>/);
+});
+
+test('bindUi kutsuu Vertaile-sivun haku-, lisäys-, poisto- ja suodatinkäsittelijöitä', () => {
+  const calls = [];
+  const searchInput = { addEventListener(name, listener) { this.listener = listener; } };
+  const hideEmptyCheckbox = { addEventListener(name, listener) { this.listener = listener; } };
+  const addButton = { dataset: { addComparePlayer: 'player-3' }, addEventListener(name, listener) { this.listener = listener; } };
+  const removeButton = { dataset: { removeComparePlayer: 'player-1' }, addEventListener(name, listener) { this.listener = listener; } };
+  const root = {
+    querySelector(selector) {
+      if (selector === '[data-compare-player-search]') return searchInput;
+      if (selector === '[data-compare-hide-empty]') return hideEmptyCheckbox;
+      return null;
+    },
+    querySelectorAll(selector) {
+      if (selector === '[data-add-compare-player]') return [addButton];
+      if (selector === '[data-remove-compare-player]') return [removeButton];
+      return [];
+    },
+  };
+
+  const handlers = {
+    ...createNoopHandlers(),
+    setCompareSearch: (value) => calls.push(['search', value]),
+    addComparePlayer: (playerId) => calls.push(['add', playerId]),
+    removeComparePlayer: (playerId) => calls.push(['remove', playerId]),
+    setCompareHideEmptyTournaments: (value) => calls.push(['hideEmpty', value]),
+  };
+
+  bindUi(root, createEmptyState(), createUiState({ activeView: 'compare' }), handlers);
+
+  searchInput.listener({ target: { value: 'Tuo' } });
+  addButton.listener();
+  removeButton.listener();
+  hideEmptyCheckbox.listener({ target: { checked: false } });
+
+  assert.deepEqual(calls, [['search', 'Tuo'], ['add', 'player-3'], ['remove', 'player-1'], ['hideEmpty', false]]);
 });

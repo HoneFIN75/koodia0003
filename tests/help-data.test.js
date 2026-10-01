@@ -5,11 +5,11 @@ import { HELP_SECTIONS, findHelpSection, listHelpSections } from '../js/helpData
 test('help data covers the documented sections in navigation order', () => {
   assert.deepEqual(
     HELP_SECTIONS.map((section) => section.id),
-    ['summary', 'ranking', 'results', 'players', 'tournaments', 'points', 'multipliers', 'settings'],
+    ['summary', 'compare', 'ranking', 'results', 'players', 'tournaments', 'points', 'multipliers', 'settings'],
   );
   assert.deepEqual(
     HELP_SECTIONS.map((section) => section.title),
-    ['Yhteenveto', 'Ranking', 'Tulokset', 'Pelaajat', 'Turnaukset', 'Pistetaulukot', 'Kertoimet', 'Asetukset'],
+    ['Yhteenveto', 'Vertaile', 'Ranking', 'Tulokset', 'Pelaajat', 'Turnaukset', 'Pistetaulukot', 'Kertoimet', 'Asetukset'],
   );
 });
 
