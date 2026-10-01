@@ -41,7 +41,7 @@ Sarakkeet:
 
 Lajittelu: oletuksena taulukko on lajiteltu World Rankingin mukaan nousevasti, eli paras sijoitus on ensimmäisenä. Sarakkeiden #, Rating ja Kokonaispisteet otsikot ovat painikkeita: valinta lajittelee sarakkeen mukaan ja uusi valinta vaihtaa nousevan (▲) ja laskevan (▼) järjestyksen. Jokaisella Yhteenvedon taulukolla on oma lajittelunsa, joten World Ranking MPO -taulukon lajittelu ei muuta muiden taulukoiden järjestystä.
 
-Puuttuva ranking: pelaajat, joilla ei ole World Ranking -sijoitusta (kenttä on tyhjä), eivät näy taulukossa. Sijoituksen voi lisätä pelaajan tietoihin Pelaajat-sivulla tai Rating ja Ranking -päivitysimportilla.
+Puuttuva ranking: pelaajat, joilla ei ole World Ranking -sijoitusta (kenttä on tyhjä), eivät näy taulukossa. Taulukossa näytetään vain positiiviset kokonaislukusijoitukset. Sijoituksen voi lisätä pelaajan tietoihin Pelaajat-sivulla tai Rating ja Ranking -päivitysimportilla.
 
 Tuloskortti: pelaajan nimi on painike, joka avaa pelaajan tuloskortin lukutilaan samalla tavalla kuin Ranking-sivulla. Yhteenvetoon palataan Takaisin yhteenvetoon -painikkeella tai päänavigaation Yhteenveto-kohdasta.`,
       },
@@ -57,7 +57,7 @@ Sarakkeet:
 
 Lajittelu: oletuksena taulukko on lajiteltu World Rankingin mukaan nousevasti, eli paras sijoitus on ensimmäisenä. Sarakkeiden #, Rating ja Kokonaispisteet otsikot ovat painikkeita: valinta lajittelee sarakkeen mukaan ja uusi valinta vaihtaa nousevan (▲) ja laskevan (▼) järjestyksen. Jokaisella Yhteenvedon taulukolla on oma lajittelunsa, joten World Ranking FPO -taulukon lajittelu ei muuta muiden taulukoiden järjestystä.
 
-Puuttuva ranking: pelaajat, joilla ei ole World Ranking -sijoitusta (kenttä on tyhjä), eivät näy taulukossa. Sijoituksen voi lisätä pelaajan tietoihin Pelaajat-sivulla tai Rating ja Ranking -päivitysimportilla.
+Puuttuva ranking: pelaajat, joilla ei ole World Ranking -sijoitusta (kenttä on tyhjä), eivät näy taulukossa. Taulukossa näytetään vain positiiviset kokonaislukusijoitukset. Sijoituksen voi lisätä pelaajan tietoihin Pelaajat-sivulla tai Rating ja Ranking -päivitysimportilla.
 
 Tuloskortti: pelaajan nimi on painike, joka avaa pelaajan tuloskortin lukutilaan samalla tavalla kuin Ranking-sivulla. Yhteenvetoon palataan Takaisin yhteenvetoon -painikkeella tai päänavigaation Yhteenveto-kohdasta.`,
       },
