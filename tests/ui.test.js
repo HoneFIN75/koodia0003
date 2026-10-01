@@ -1114,10 +1114,59 @@ test('renderApp näyttää pelaajan tuloskortin sarakkeet, PDGA Event -linkin, s
   assert.doesNotMatch(root.innerHTML, /href="[^"]*000000"/);
   assert.match(root.innerHTML, /value="1"[\s\S]*?data-result-placement\s*data-player-id="mpo-1"\s*data-tournament-id="t-european"/);
   assert.match(root.innerHTML, /data-result-points>200 p<\/td>/);
-  assert.match(root.innerHTML, /data-clear-player-placement="t-european" data-player-id="mpo-1" aria-label="Tyhjennä sijoitus: European Open">Tyhjennä<\/button>/);
+  assert.match(root.innerHTML, /data-clear-player-placement="t-european" data-player-id="mpo-1" aria-label="Tyhjennä sijoitus: European Open" disabled>Tyhjennä<\/button>/);
   assert.match(root.innerHTML, /data-clear-player-placement="t-tampere" data-player-id="mpo-1" aria-label="Tyhjennä sijoitus: Tampere Open" disabled>Tyhjennä<\/button>/);
-  assert.match(root.innerHTML, /data-save-player-result-card>Tallenna<\/button>/);
+  assert.match(root.innerHTML, /data-edit-player-result-card>Muokkaa<\/button>/);
   assert.match(root.innerHTML, /data-close-player-result-card/);
+});
+
+test('renderApp avaa tuloskortin lukutilaan, jossa sijoituksia ei voi muokata', () => {
+  const root = createRootStub();
+  const dataState = createResultsDataState();
+
+  renderApp(root, dataState, createUiState({ activeView: 'player-result-card', resultCardPlayerId: 'mpo-1' }));
+
+  assert.match(root.innerHTML, /data-result-card-mode="read-only"[^>]*>\s*<span aria-hidden="true">🔒<\/span> Lukutila/);
+  assert.doesNotMatch(root.innerHTML, /data-result-card-mode="edit"/);
+  assert.match(root.innerHTML, /data-tournament-id="t-european"\s*readonly aria-readonly="true"/);
+  assert.doesNotMatch(root.innerHTML, /data-save-player-result-card|data-exit-player-result-card-edit/);
+});
+
+test('renderApp näyttää muokkaustilan painikkeet, luonnoksen sijoitukset ja muokattavat kentät', () => {
+  const root = createRootStub();
+  const dataState = createResultsDataState();
+
+  renderApp(root, dataState, createUiState({
+    activeView: 'player-result-card',
+    resultCardPlayerId: 'mpo-1',
+    resultCardEditMode: true,
+    resultCardDraft: [
+      { id: 'result-card-mpo-1', playerId: 'mpo-1', results: [{ tournamentId: 't-european', placement: '2' }] },
+    ],
+  }));
+
+  assert.match(root.innerHTML, /data-result-card-mode="edit"[^>]*>\s*<span aria-hidden="true">✎<\/span> Muokkaustila/);
+  assert.match(root.innerHTML, /data-save-player-result-card>Tallenna ja poistu<\/button>/);
+  assert.match(root.innerHTML, /data-exit-player-result-card-edit>Poistu<\/button>/);
+  assert.doesNotMatch(root.innerHTML, /readonly aria-readonly="true"/);
+  assert.match(root.innerHTML, /value="2"[\s\S]*?data-tournament-id="t-european"/);
+  assert.match(root.innerHTML, /data-clear-player-placement="t-european" data-player-id="mpo-1" aria-label="Tyhjennä sijoitus: European Open">Tyhjennä<\/button>/);
+});
+
+test('renderApp näyttää vahvistuksen muokkaustilasta poistumiselle tallentamatta', () => {
+  const root = createRootStub();
+  const dataState = createResultsDataState();
+
+  renderApp(root, dataState, createUiState({
+    activeView: 'player-result-card',
+    resultCardPlayerId: 'mpo-1',
+    resultCardEditMode: true,
+    confirmationDialog: { type: 'exit-player-result-card-edit' },
+  }));
+
+  assert.match(root.innerHTML, /Tuloskortilla on tallentamattomia muutoksia\./);
+  assert.match(root.innerHTML, /data-confirm-exit-player-result-card-edit[^>]*>Poistu ilman tallennusta<\/button>/);
+  assert.match(root.innerHTML, /data-cancel-confirm-dialog[^>]*>Peruuta<\/button>/);
 });
 
 test('renderApp näyttää sijoituksen tyhjennyksen vahvistusdialogin', () => {
@@ -1183,7 +1232,12 @@ test('bindUi siirtää Tab-näppäimellä kohdistuksen seuraavan turnauksen sijo
   );
 
   try {
-    bindUi(root, createResultsDataState(), createUiState({ activeView: 'player-result-card', resultCardPlayerId: 'mpo-1' }), handlers);
+    bindUi(
+      root,
+      createResultsDataState(),
+      createUiState({ activeView: 'player-result-card', resultCardPlayerId: 'mpo-1', resultCardEditMode: true }),
+      handlers,
+    );
 
     let prevented = false;
     firstInput.listeners.keydown({ key: 'Tab', shiftKey: false, preventDefault() { prevented = true; } });
@@ -1198,6 +1252,81 @@ test('bindUi siirtää Tab-näppäimellä kohdistuksen seuraavan turnauksen sijo
     saveButton.listeners.click();
     assert.equal(calls.at(-1)[0], 'save');
     assert.equal(calls.at(-1)[1], 'mpo-1');
+  } finally {
+    restoreDocument();
+  }
+});
+
+test('bindUi ei sido sijoituskenttien muokkaustoimintoja lukutilassa', () => {
+  const restoreDocument = installDocumentStub();
+  const firstInput = createPlacementInput('t-european', '1');
+  const root = {
+    __dialogKeydownHandler: null,
+    querySelector() {
+      return null;
+    },
+    querySelectorAll(selector) {
+      return selector.includes('data-result-placement') ? [firstInput] : [];
+    },
+  };
+
+  try {
+    bindUi(
+      root,
+      createResultsDataState(),
+      createUiState({ activeView: 'player-result-card', resultCardPlayerId: 'mpo-1' }),
+      createNoopHandlers(),
+    );
+
+    assert.equal(firstInput.listeners.change, undefined);
+    assert.equal(firstInput.listeners.keydown, undefined);
+  } finally {
+    restoreDocument();
+  }
+});
+
+test('bindUi kutsuu tuloskortin muokkaustilan avaus- ja poistumiskäsittelijöitä', () => {
+  const restoreDocument = installDocumentStub();
+  const editButton = createFocusableElement();
+  const exitButton = createFocusableElement();
+  const confirmExitButton = createFocusableElement();
+  const calls = [];
+  const root = createInteractiveRoot({
+    '[data-edit-player-result-card]': editButton,
+    '[data-exit-player-result-card-edit]': exitButton,
+    '[data-confirm-exit-player-result-card-edit]': confirmExitButton,
+  });
+  const handlers = new Proxy(
+    {
+      enterPlayerResultCardEdit() {
+        calls.push('enter');
+      },
+      exitPlayerResultCardEdit() {
+        calls.push('exit');
+      },
+      confirmExitPlayerResultCardEdit() {
+        calls.push('confirm-exit');
+      },
+    },
+    {
+      get(target, property) {
+        return property in target ? target[property] : () => {};
+      },
+    },
+  );
+
+  try {
+    bindUi(
+      root,
+      createResultsDataState(),
+      createUiState({ activeView: 'player-result-card', resultCardPlayerId: 'mpo-1' }),
+      handlers,
+    );
+
+    editButton.listeners.click();
+    exitButton.listeners.click();
+    confirmExitButton.listeners.click();
+    assert.deepEqual(calls, ['enter', 'exit', 'confirm-exit']);
   } finally {
     restoreDocument();
   }

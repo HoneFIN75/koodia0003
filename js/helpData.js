@@ -92,17 +92,19 @@ Tuloskortti avataan Pelaajat-sivulta pelaajan rivin Tuloskortti-painikkeella. Ko
 - Lasketut pisteet
 - Tyhjennä-painike
 
-Tyhjennä poistaa rivin sijoituksen ja samalla lasketut pisteet. Toiminto kysyy aina vahvistuksen.`,
+Tyhjennä poistaa rivin sijoituksen ja samalla lasketut pisteet. Toiminto on käytettävissä vain muokkaustilassa, se kysyy aina vahvistuksen ja tallentuu vasta Tallenna ja poistu -painikkeella.`,
       },
       {
         title: 'Nopea syöttö ja tallennus',
-        content: `Sijoitukset syötetään suoraan Sijoitus-kenttään. Tab-näppäin (tai Enter) siirtää kohdistuksen seuraavan turnauksen Sijoitus-kenttään kuten taulukkolaskennassa. Siirtyminen ei muuta eikä ylikirjoita kentissä jo olevia arvoja.
+        content: `Sijoitukset syötetään muokkaustilassa suoraan Sijoitus-kenttään. Tab-näppäin (tai Enter) siirtää kohdistuksen seuraavan turnauksen Sijoitus-kenttään kuten taulukkolaskennassa. Siirtyminen ei muuta eikä ylikirjoita kentissä jo olevia arvoja, ja kohdistus näkyy aina selvästi.
 
 Tallennus:
-- Automaattinen tallennus: kun sijoitus muuttuu, se tallennetaan ja pisteet lasketaan heti uudelleen.
-- Tallenna-painike: tallentaa kaikki kortin sijoitukset kerralla lisävarmistuksena.
+- Muutokset jäävät voimaan vasta, kun ne tallennetaan Tallenna ja poistu -painikkeella.
+- Pisteet lasketaan uudelleen heti jokaisen sijoitusmuutoksen jälkeen.
 
-Jos sijoitus on virheellinen tai sille ei voida laskea pisteitä, rivillä näytetään virhe eikä sijoitusta tallenneta.`,
+Jos sijoitus on virheellinen tai sille ei voida laskea pisteitä, rivillä näytetään virhe eikä sijoitusta tallenneta.
+
+Tarkemmat ohjeet lukutilasta ja muokkaustilasta ovat Ohjeet-osion kohdassa Pelaajat.`,
       },
       {
         title: 'Sijoituksen muoto',
@@ -177,6 +179,37 @@ Vapaaehtoiset tiedot: PDGA ID, PDGA-rating, maailmanranking ja muistiinpanot.`,
 Pelaajan poistaminen vaatii aina erillisen vahvistuksen. Poistettua pelaajaa ei voi palauttaa, ja samalla poistetaan pelaajan tuloskortti ja sijoitukset.
 
 Toimintopalkin ⚠ Poista kaikki pelaajat -toiminto poistaa kaikki pelaajat kerralla. Myös se vaatii erillisen vahvistuksen.`,
+      },
+      {
+        title: 'Tuloskortti: lukutila ja muokkaustila',
+        content: `Tuloskortti avautuu aina lukutilaan, jotta sijoituksia ja pisteitä ei muuteta vahingossa. Voimassa oleva tila näkyy kortin otsikon vieressä tekstinä ja symbolina: Lukutila (🔒) tai Muokkaustila (✎).
+
+Lukutila:
+- Sijoituskenttiä ei voi muokata eikä Tyhjennä-painike ole käytettävissä.
+- Tiedot näkyvät normaalisti ja PDGA Event ID -linkit toimivat.
+
+Muokkaa-painike:
+- Siirtää kortin muokkaustilaan, jolloin kaikkien turnausten sijoituskentät ovat muokattavissa.
+- Lasketut pisteet pysyvät aina järjestelmän laskemina: niitä ei voi syöttää käsin.
+
+Sijoitusten muuttaminen:
+- Sijoitus syötetään muodossa 1 tai tasatuloksena 3T4. Samat validoinnit ovat voimassa kuin ennen.
+- Tab siirtää seuraavan turnauksen sijoituskenttään.
+
+Pisteiden automaattinen laskenta:
+- Pisteet lasketaan heti uudelleen sijoituksen, sarjan pistetaulukon ja turnauksen kertoimen perusteella.
+
+Tallenna ja poistu:
+- Tallentaa kaikki kortin sijoitukset, päivittää pisteet ja palaa lukutilaan samalle kortille.
+- Onnistuneesta tallennuksesta näytetään ilmoitus ✓ Tuloskortti tallennettu onnistuneesti.
+
+Poistu:
+- Palaa lukutilaan tallentamatta muutoksia.
+- Jos muutoksia ei ole tehty, kortti palaa lukutilaan heti.
+- Jos tallentamattomia muutoksia on, näytetään vahvistus, jossa voi valita Poistu ilman tallennusta tai Peruuta.
+- Sama vahvistus näytetään, jos siirryt muokkaustilasta toiselle sivulle navigaatiosta.
+
+Ilmoitukset näkyvät sivun yläreunassa ja ne piilotetaan automaattisesti viiden sekunnin kuluttua.`,
       },
       {
         title: 'PDGA ID',

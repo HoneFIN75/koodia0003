@@ -47,6 +47,17 @@ test('migrated import instructions are available in the help data', () => {
   assert.ok(points.topics.some((topic) => /Sijoitus;Pisteet/.test(topic.content)));
 });
 
+test('tuloskortin lukutila ja muokkaustila on dokumentoitu Pelaajat-osiossa', () => {
+  const players = findHelpSection('players');
+  const topic = players.topics.find((entry) => entry.title === 'Tuloskortti: lukutila ja muokkaustila');
+  assert.ok(topic, 'Pelaajat-osiosta puuttuu tuloskortin tilaohje.');
+  ['Lukutila', 'Muokkaustila', 'Muokkaa-painike', 'Tallenna ja poistu', 'Poistu', 'Sijoitusten muuttaminen', 'Pisteiden automaattinen laskenta'].forEach((heading) => {
+    assert.ok(topic.content.includes(heading), `Ohjeesta puuttuu kohta ${heading}.`);
+  });
+  assert.match(topic.content, /✓ Tuloskortti tallennettu onnistuneesti/);
+  assert.match(topic.content, /Poistu ilman tallennusta/);
+});
+
 test('findHelpSection returns null for unknown sections and listHelpSections exposes the data', () => {
   assert.equal(findHelpSection('unknown'), null);
   assert.equal(listHelpSections(), HELP_SECTIONS);
