@@ -29,6 +29,46 @@ Yhteenveto on vain lukunäkymä: tietoja muokataan aina niiden omilla sivuilla.`
     ],
   },
   {
+    id: 'compare',
+    title: 'Vertaile',
+    topics: [
+      {
+        title: 'Pelaajahaku',
+        content: `Vertaile-sivulla pelaajat haetaan hakukentällä, ei pitkästä valikosta.
+
+Kirjoita hakukenttään vähintään 3 merkkiä pelaajan nimestä tai PDGA ID:stä. Hakukenttä ehdottaa osumia, esimerkiksi hakusana "Tuo" löytää pelaajan Tuomo Rikman ja hakusana "123" löytää pelaajan, jonka PDGA ID alkaa numeroilla 123.`,
+      },
+      {
+        title: 'Pelaajien lisääminen ja poistaminen',
+        content: `Lisää pelaaja vertailuun valitsemalla hänet hakuehdotuksista. Valitut pelaajat näkyvät vertailutaulukon yläpuolella omina kortteinaan, joissa kerrotaan PDGA-rating, maailmanranking, kokonaispisteet ja turnausten määrä.
+
+Poista pelaaja vertailusta kortin − -painikkeella. Poistaminen koskee vain tätä vertailua: pelaajan tietoja tai tuloksia ei poisteta.`,
+      },
+      {
+        title: 'Tyhjien turnausten piilotus',
+        content: `Valinta "Piilota turnaukset joissa kukaan vertailtavista pelaajista ei ole pelannut" rajaa taulukosta pois ne turnaukset, joissa yhdelläkään valitulla pelaajalla ei ole sijoitusta.
+
+Poista valinta, kun haluat nähdä kaikki turnaukset.`,
+      },
+      {
+        title: 'Sijoitusten vertailu',
+        content: `Taulukossa on yksi rivi jokaista turnausta kohti. Turnaukset ovat samassa järjestyksessä kuin Turnaukset-sivulla: ensin järjestysnumeron ja sitten alkamispäivän mukaan.
+
+Kiinteät sarakkeet ovat Turnauksen nimi, Tila ja Kerroin. Niiden jälkeen on yksi sarake jokaiselle valitulle pelaajalle.
+
+Sijoitus näytetään täsmälleen siinä muodossa kuin se on tallennettu, myös tasatulokset (esimerkiksi 3T4). Jos pelaaja ei ole pelannut turnauksessa, sarakkeessa näkyy viiva.`,
+      },
+      {
+        title: 'Parhaan sijoituksen korostus',
+        content: `Jokaisella turnausrivillä korostetaan valittujen pelaajien paras sijoitus vaalealla taustalla ja lihavoinnilla. Ruudunlukija kertoo korostuksen tekstillä "paras sijoitus", joten korostus ei perustu pelkkään väriin.
+
+Jos useampi pelaaja on jakanut saman parhaan sijoituksen, kaikki heidän sijoituksensa korostetaan.
+
+Vertaile-sivu on lukunäkymä: sijoituksia, pisteitä tai pelaajatietoja ei voi muokata täällä.`,
+      },
+    ],
+  },
+  {
     id: 'ranking',
     title: 'Ranking',
     topics: [
