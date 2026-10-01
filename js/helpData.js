@@ -309,6 +309,14 @@ Pelaajan poistaminen vaatii aina erillisen vahvistuksen. Poistettua pelaajaa ei 
 Toimintopalkin ⚠ Poista kaikki pelaajat -toiminto poistaa kaikki pelaajat kerralla. Myös se vaatii erillisen vahvistuksen.`,
       },
       {
+        title: 'Poista kaikki tulokset',
+        content: `Toimintopalkin ⚠ Poista kaikki tulokset -toiminnolla voit nollata kaikkien pelaajien turnaussijoitukset esimerkiksi uuden kauden alussa.
+
+Toiminto tyhjentää kaikkien pelaajien tuloskortit ja poistaa sijoitusten perusteella lasketut pisteet. Pelaajien tiedot, turnaukset, kertoimet, pistetaulukot, Rating ja World Ranking säilyvät ennallaan. Toiminto vaatii vahvistuksen, eikä sitä voi perua.
+
+Tyypillisiä käyttötarkoituksia ovat uuden kauden aloittaminen, tulosten rakentaminen uudelleen tuonneista ja laajamittaiset korjaukset.`,
+      },
+      {
         title: 'Tuloskortti: lukutila ja muokkaustila',
         content: `Tuloskortti avautuu aina lukutilaan, jotta sijoituksia ja pisteitä ei muuteta vahingossa. Voimassa oleva tila näkyy kortin otsikon vieressä tekstinä ja symbolina: Lukutila (🔒) tai Muokkaustila (✎).
 
