@@ -115,7 +115,7 @@ Mitalikorostukset: palkintosijat korostetaan molemmissa sarjoissa mitalikuvakkee
 - 🥉 sijoitus 3 (pronssimitali)
 Tasatuloksissa mitali määräytyy näytetyn sijoituksen ensimmäisestä numerosta: esimerkiksi molemmat 1T2-rivit saavat kultamitalin ja kaikki neljä 3T4-riviä pronssimitalin.
 
-PDGA Event ID -linkit: PDGA Event ID avaa turnauksen PDGA-sivun uuteen välilehteen. Osoite muodostetaan Asetukset-sivun PDGA-kilpailuosoitteen perus-URL -asetuksesta ja tunnuksesta, esimerkiksi https://www.pdga.com/tour/event/97339. Tunnus 000000 tarkoittaa, ettei PDGA Event ID:tä ole vielä määritetty: se näytetään varoitustyylisenä tekstinä vaaleanpunaisella taustalla eikä se ole linkki.`,
+PDGA Event ID -linkit: PDGA Event ID avaa turnauksen PDGA-sivun uuteen välilehteen. Osoite muodostetaan Asetukset-sivun PDGA-kilpailuosoitteen perus-URL -asetuksesta ja tunnuksesta, esimerkiksi https://www.pdga.com/tour/event/97339. Tunnus 000000 tarkoittaa, ettei PDGA Event ID:tä ole vielä määritetty: se näytetään varoitustyylisenä tekstinä ⚠-varoitusmerkin kanssa vaaleanpunaisella taustalla eikä se ole linkki.`,
       },
       {
         title: 'Pelaajan tuloskortti',

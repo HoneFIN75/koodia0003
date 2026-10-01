@@ -1168,7 +1168,7 @@ test('renderApp näyttää yksipäiväisen turnauksen yhden päivän, piilottaa 
   assert.match(html, /data-tournament-standings-division="FPO"/);
   assert.doesNotMatch(html, /data-tournament-standings-division="MPO"/);
   assert.match(html, /data-medal="gold"[\s\S]*?🥇<\/span><span class="standings-placement-value">1T2</);
-  assert.match(html, /<span class="pdga-id-unassigned pdga-id-warning"[^>]*><span aria-hidden="true">⚠<\/span> <span class="pdga-id-unassigned">000000<\/span><\/span>/);
+  assert.match(html, /<span class="pdga-id-unassigned pdga-id-warning"[^>]*><span aria-hidden="true">⚠<\/span> <span class="pdga-id-unassigned">000000<\/span><span class="visually-hidden"> \(PDGA Event ID:tä ei ole vielä määritetty\)<\/span><\/span>/);
   assert.doesNotMatch(html, /href="[^"]*000000"/);
 });
 

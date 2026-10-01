@@ -792,8 +792,8 @@ function renderTournamentStandingsRow(row) {
   `;
 }
 
-function renderTournamentStandingsDivision(tournamentId, { division, rows }) {
-  const headingId = `tournament-standings-${escapeHtml(tournamentId)}-${division}`;
+function renderTournamentStandingsDivision({ division, rows }) {
+  const headingId = `tournament-standings-${division}`;
 
   return `
     <section class="tournament-standings-division" aria-labelledby="${headingId}" data-tournament-standings-division="${division}">
@@ -815,7 +815,7 @@ function renderTournamentStandingsDivision(tournamentId, { division, rows }) {
 
 function renderTournamentResultCardEventId(tournament, settings) {
   if (isUnassignedPdgaEventId(tournament?.pdgaEventId)) {
-    return `<span class="pdga-id-unassigned pdga-id-warning" title="PDGA Event ID:tä ei ole vielä määritetty"><span aria-hidden="true">⚠</span> ${renderPdgaEventIdLink(tournament, settings)}</span>`;
+    return `<span class="pdga-id-unassigned pdga-id-warning" title="PDGA Event ID:tä ei ole vielä määritetty"><span aria-hidden="true">⚠</span> ${renderPdgaEventIdLink(tournament, settings)}<span class="visually-hidden"> (PDGA Event ID:tä ei ole vielä määritetty)</span></span>`;
   }
 
   return renderPdgaEventIdLink(tournament, settings);
@@ -859,7 +859,7 @@ function renderTournamentResultCardSection(dataState, uiState) {
         </header>
         ${
           standings.length
-            ? `<div class="tournament-standings">${standings.map((entry) => renderTournamentStandingsDivision(tournament.id, entry)).join('')}</div>`
+            ? `<div class="tournament-standings">${standings.map(renderTournamentStandingsDivision).join('')}</div>`
             : renderEmptyState('Turnaukseen ei ole vielä syötetty tuloksia.')
         }
       </article>
