@@ -380,6 +380,16 @@ a {
   max-width: 18rem;
 }
 
+.placement-input:read-only {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.result-card-mode {
+  margin: 0;
+}
+
 .result-card-save-status {
   min-height: 1.5em;
   margin: 0 0 var(--spacing-sm);
@@ -397,10 +407,6 @@ a {
 
 .result-card-save-status[data-status-type="error"] {
   color: var(--color-error);
-}
-
-.result-card-save-status[data-status-type="error"]::before {
-  content: "⚠ ";
 }
 
 .badge,

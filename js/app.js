@@ -36,6 +36,7 @@ import {
 } from './scoring.js';
 import {
   clearPlayerPlacement,
+  getPlayerPlacement,
   removePlayerResultCard,
   removeTournamentFromResultCards,
   setPlayerPlacement,
@@ -106,6 +107,8 @@ let uiState = {
   pointsImportDivision: 'MPO',
   pointsImportFocusTarget: '',
   resultCardPlayerId: '',
+  resultCardEditMode: false,
+  resultCardDraft: null,
   confirmationDialog: null,
   feedback: null,
   settingsFormErrors: {},
@@ -166,6 +169,41 @@ function closeTournamentImportDialogState() {
 let saveQueue = Promise.resolve();
 let localRevision = 0;
 
+function cloneResultCards(resultCards = []) {
+  return resultCards.map((card) => ({ ...card, results: (card.results || []).map((entry) => ({ ...entry })) }));
+}
+
+// Muokkaustilan luonnokseen tallennetaan vain sijoitukset. Pisteet lasketaan aina scoring.js:ssä.
+function hasUnsavedResultCardChanges() {
+  if (!uiState.resultCardEditMode || !uiState.resultCardDraft) {
+    return false;
+  }
+
+  const playerId = uiState.resultCardPlayerId;
+  return (dataState.tournaments || []).some((tournament) => (
+    getPlayerPlacement(uiState.resultCardDraft, playerId, tournament.id)
+      !== getPlayerPlacement(dataState.resultCards, playerId, tournament.id)
+  ));
+}
+
+function discardPlayerResultCardEdit({ hadChanges = true, nextView = '' } = {}) {
+  uiState.resultCardEditMode = false;
+  uiState.resultCardDraft = null;
+  if (hadChanges) {
+    uiState.feedback = { type: 'warning', text: '⚠ Muokkaustila suljettu ilman tallennusta' };
+  }
+
+  if (nextView) {
+    uiState.activeView = nextView;
+    uiState.navOpen = false;
+    uiState.pendingFocusSelector = '';
+  } else {
+    uiState.pendingFocusSelector = '[data-edit-player-result-card]';
+  }
+
+  render();
+}
+
 // Kaikki tallennukset kulkevat saman jonon kautta, jotta automaattitallennukset ja muut
 // tallennukset lähtevät palvelimelle järjestyksessä ja aina uusimmalla tilalla.
 function enqueueSave() {
@@ -203,6 +241,38 @@ function formDataToObject(formData) {
   return Object.fromEntries(formData.entries());
 }
 
+// Keskitetty ilmoituslogiikka: ilmoitus piilotetaan automaattisesti viiden sekunnin kuluttua.
+const FEEDBACK_TIMEOUT_MS = 5000;
+let feedbackTimeoutId = null;
+let scheduledFeedback = null;
+
+function scheduleFeedbackDismissal() {
+  if (uiState.feedback === scheduledFeedback) {
+    return;
+  }
+
+  if (feedbackTimeoutId) {
+    window.clearTimeout(feedbackTimeoutId);
+    feedbackTimeoutId = null;
+  }
+
+  scheduledFeedback = uiState.feedback;
+  if (!uiState.feedback) {
+    return;
+  }
+
+  const dismissedFeedback = uiState.feedback;
+  feedbackTimeoutId = window.setTimeout(() => {
+    feedbackTimeoutId = null;
+    if (uiState.feedback !== dismissedFeedback) {
+      return;
+    }
+
+    uiState.feedback = null;
+    render();
+  }, FEEDBACK_TIMEOUT_MS);
+}
+
 function render() {
   if (!authState.authenticated) {
     renderLoginView(root, authState);
@@ -212,6 +282,7 @@ function render() {
 
   renderApp(root, dataState, uiState);
   bindUi(root, dataState, uiState, handlers);
+  scheduleFeedbackDismissal();
 }
 
 const handlers = {
@@ -273,6 +344,22 @@ const handlers = {
     render();
   },
   changeView(view) {
+    // Muokkaustila ei jää päälle, jos käyttäjä siirtyy toiselle sivulle. Tallentamattomista
+    // muutoksista kysytään sama vahvistus kuin Poistu-painikkeessa.
+    if (view !== 'player-result-card' && uiState.resultCardEditMode) {
+      if (hasUnsavedResultCardChanges()) {
+        uiState.confirmationDialog = { type: 'exit-player-result-card-edit', nextView: view };
+        uiState.pendingFocusSelector = '';
+        uiState.feedback = null;
+        uiState.navOpen = false;
+        render();
+        return;
+      }
+
+      discardPlayerResultCardEdit({ hadChanges: false, nextView: view });
+      return;
+    }
+
     uiState.activeView = view;
     uiState.navOpen = false;
     render();
@@ -1004,6 +1091,7 @@ const handlers = {
       setError(error);
     }
   },
+  // Tuloskortti avataan aina lukutilaan, jotta sijoituksia ei muuteta vahingossa.
   openPlayerResultCard(playerId) {
     if (!findPlayer(dataState.players, playerId)) {
       return;
@@ -1011,64 +1099,92 @@ const handlers = {
 
     uiState.activeView = 'player-result-card';
     uiState.resultCardPlayerId = playerId;
+    uiState.resultCardEditMode = false;
+    uiState.resultCardDraft = null;
     uiState.navOpen = false;
     uiState.feedback = null;
-    uiState.pendingFocusSelector = 'input[data-result-placement]';
+    uiState.pendingFocusSelector = '[data-edit-player-result-card]';
     render();
   },
   closePlayerResultCard() {
     const playerId = uiState.resultCardPlayerId;
     uiState.activeView = 'players';
     uiState.resultCardPlayerId = '';
+    uiState.resultCardEditMode = false;
+    uiState.resultCardDraft = null;
     uiState.pendingFocusSelector = playerId ? `[data-open-player-result-card="${playerId}"]` : '[data-open-player-dialog]';
     render();
   },
-  // Automaattitallennus: sijoitus validoidaan, pisteet lasketaan heti ja rivi päivitetään paikallaan
-  // ilman koko näkymän uudelleenpiirtoa, jotta Tab-siirtymä seuraavaan kenttään ei katkea.
+  enterPlayerResultCardEdit() {
+    if (!uiState.resultCardPlayerId || uiState.resultCardEditMode) {
+      return;
+    }
+
+    uiState.resultCardEditMode = true;
+    uiState.resultCardDraft = cloneResultCards(dataState.resultCards);
+    uiState.feedback = null;
+    uiState.pendingFocusSelector = 'input[data-result-placement]';
+    render();
+  },
+  exitPlayerResultCardEdit() {
+    if (!uiState.resultCardEditMode) {
+      return;
+    }
+
+    if (hasUnsavedResultCardChanges()) {
+      uiState.confirmationDialog = { type: 'exit-player-result-card-edit' };
+      uiState.pendingFocusSelector = '';
+      uiState.feedback = null;
+      render();
+      return;
+    }
+
+    discardPlayerResultCardEdit({ hadChanges: false });
+  },
+  confirmExitPlayerResultCardEdit() {
+    if (uiState.confirmationDialog?.type !== 'exit-player-result-card-edit') {
+      return;
+    }
+
+    const nextView = uiState.confirmationDialog.nextView || '';
+    uiState.confirmationDialog = null;
+    discardPlayerResultCardEdit({ nextView });
+  },
+  // Muokkaustilassa sijoitus validoidaan ja pisteet lasketaan heti luonnokseen, mutta mitään ei
+  // tallenneta ennen Tallenna ja poistu -painiketta. Rivi päivitetään paikallaan, jotta
+  // Tab-siirtymä seuraavaan kenttään ei katkea.
   updatePlayerPlacement(playerId, tournamentId, placement) {
+    if (!uiState.resultCardEditMode || !uiState.resultCardDraft) {
+      return;
+    }
+
+    const draftState = { ...dataState, resultCards: uiState.resultCardDraft };
     let outcome;
     try {
-      outcome = setPlayerPlacement(dataState, { playerId, tournamentId, placement });
+      outcome = setPlayerPlacement(draftState, { playerId, tournamentId, placement });
     } catch (error) {
-      updatePlayerResultRow(root, dataState, playerId, tournamentId, {
+      updatePlayerResultRow(root, draftState, playerId, tournamentId, {
         error: error instanceof Error ? error.message : 'Sijoitusta ei voitu tallentaa.',
       });
-      setPlayerResultCardStatus(root, 'error', 'Sijoitusta ei tallennettu. Korjaa merkityn rivin sijoitus.');
+      setPlayerResultCardStatus(root, 'error', '✕ Sijoitusta ei hyväksytty. Korjaa merkityn rivin sijoitus.');
       return;
     }
 
-    if (!outcome.changed) {
-      updatePlayerResultRow(root, dataState, playerId, tournamentId);
-      return;
+    if (outcome.changed) {
+      uiState.resultCardDraft = outcome.resultCards;
     }
 
-    dataState.resultCards = outcome.resultCards;
-    localRevision += 1;
-    updatePlayerResultRow(root, dataState, playerId, tournamentId);
-    setPlayerResultCardStatus(root, 'pending', 'Tallennetaan…');
-    enqueueSave()
-      .then(() => {
-        setPlayerResultCardStatus(
-          root,
-          'success',
-          outcome.placement ? 'Sijoitus tallennettiin automaattisesti.' : 'Sijoitus tyhjennettiin ja tallennettiin automaattisesti.',
-        );
-      })
-      .catch((error) => {
-        if (error instanceof AuthRequiredError) {
-          setError(error);
-          return;
-        }
-
-        setPlayerResultCardStatus(
-          root,
-          'error',
-          `Automaattinen tallennus epäonnistui: ${error instanceof Error ? error.message : 'Tuntematon virhe.'} Yritä uudelleen Tallenna-painikkeella.`,
-        );
-      });
+    updatePlayerResultRow(root, { ...dataState, resultCards: uiState.resultCardDraft }, playerId, tournamentId);
+    if (hasUnsavedResultCardChanges()) {
+      setPlayerResultCardStatus(root, 'pending', 'Tallentamattomia muutoksia. Tallenna muutokset Tallenna ja poistu -painikkeella.');
+    } else {
+      setPlayerResultCardStatus(root, 'none', '');
+    }
   },
+  // Tallenna ja poistu: kaikki kortin sijoitukset validoidaan ja tallennetaan kerralla,
+  // minkä jälkeen kortti palaa lukutilaan.
   async savePlayerResultCard(playerId, entries = []) {
-    let nextState = dataState;
+    let nextState = { ...dataState, resultCards: cloneResultCards(dataState.resultCards) };
     const failedTournamentIds = [];
 
     entries.forEach(({ tournamentId, placement }) => {
@@ -1085,18 +1201,37 @@ const handlers = {
     });
 
     if (failedTournamentIds.length) {
-      setPlayerResultCardStatus(root, 'error', 'Tuloskorttia ei tallennettu. Korjaa merkityt sijoitukset ja yritä uudelleen.');
+      setPlayerResultCardStatus(root, 'error', '✕ Tallennus epäonnistui. Korjaa merkityt sijoitukset ja yritä uudelleen.');
       root.querySelector(`input[data-result-placement][data-tournament-id="${failedTournamentIds[0]}"]`)?.focus();
       return;
     }
 
+    const previousResultCards = dataState.resultCards;
+    const previousRevision = localRevision;
     try {
       dataState.resultCards = nextState.resultCards;
       localRevision += 1;
-      uiState.pendingFocusSelector = '[data-save-player-result-card]';
-      await persistAndRender('Tuloskortti tallennettiin.');
+      uiState.resultCardEditMode = false;
+      uiState.resultCardDraft = null;
+      uiState.pendingFocusSelector = '[data-edit-player-result-card]';
+      await persistAndRender('✓ Tuloskortti tallennettu onnistuneesti');
     } catch (error) {
-      setError(error);
+      if (error instanceof AuthRequiredError) {
+        setError(error);
+        return;
+      }
+
+      // Tallennus epäonnistui: palautetaan tallennettu tila ja jäädään muokkaustilaan,
+      // jotta käyttäjä voi yrittää tallennusta uudelleen samoilla muutoksilla.
+      dataState.resultCards = previousResultCards;
+      localRevision = previousRevision;
+      uiState.resultCardEditMode = true;
+      uiState.resultCardDraft = nextState.resultCards;
+      uiState.feedback = {
+        type: 'error',
+        text: `✕ Tallennus epäonnistui: ${error instanceof Error ? error.message : 'Tuntematon virhe.'}`,
+      };
+      render();
     }
   },
   requestClearPlayerPlacement(playerId, tournamentId) {
@@ -1108,6 +1243,16 @@ const handlers = {
   async confirmClearPlayerPlacement() {
     const { type, playerId, tournamentId } = uiState.confirmationDialog || {};
     if (type !== 'clear-player-placement' || !playerId || !tournamentId) {
+      return;
+    }
+
+    // Muokkaustilassa tyhjennys koskee vain luonnosta: mitään ei tallenneta ennen
+    // Tallenna ja poistu -painiketta.
+    if (uiState.resultCardEditMode && uiState.resultCardDraft) {
+      uiState.resultCardDraft = clearPlayerPlacement(uiState.resultCardDraft, playerId, tournamentId);
+      uiState.confirmationDialog = null;
+      uiState.pendingFocusSelector = `input[data-result-placement][data-tournament-id="${tournamentId}"]`;
+      render();
       return;
     }
 

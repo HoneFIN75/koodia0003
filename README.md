@@ -24,7 +24,7 @@ Ratkaisu säilyy kevyenä, mutta data kulkee nyt selaimesta REST API:n kautta pa
 - asetussivu yhteisille PDGA-linkkiasetuksille
 - keskitetty MPO/FPO-pistetaulukkonäkymä ja ylläpito
 - Tulokset-sivun turnausyhteenveto (Paras MPO / Paras FPO) turnausten järjestysnumeron mukaisessa järjestyksessä
-- pelaajakohtaiset tuloskortit (Pelaajat → Tuloskortti): sijoitusten syöttö turnauksittain, automaattitallennus, Tallenna-painike ja Tab-siirtymä seuraavalle riville
+- pelaajakohtaiset tuloskortit (Pelaajat → Tuloskortti): avautuvat lukutilaan, muokkaus Muokkaa-painikkeella, tallennus Tallenna ja poistu -painikkeella sekä Tab-siirtymä seuraavalle riville
 - tuloskortit ovat ainoa pistelähde: turnaus- ja kokonaispisteet lasketaan aina dynaamisesti sijoituksista, pistetaulukoista ja kertoimista
 - ranking kaikille, MPO:lle ja FPO:lle
 - yhteenvetonäkymä tilastokorteilla, top 10 -pylväillä ja pelaajakohtaisella tulostaulukolla
