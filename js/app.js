@@ -59,7 +59,6 @@ const root = document.querySelector('#app');
 let dataState = createEmptyState();
 let uiState = {
   activeView: 'summary',
-  navOpen: false,
   rankingFilter: 'ALL',
   summaryFilter: 'ALL',
   summaryPlayerId: '',
@@ -200,7 +199,6 @@ function discardPlayerResultCardEdit({ hadChanges = true, nextView = '' } = {}) 
 
   if (nextView) {
     uiState.activeView = nextView;
-    uiState.navOpen = false;
     uiState.pendingFocusSelector = '';
   } else {
     uiState.pendingFocusSelector = '[data-edit-player-result-card]';
@@ -344,10 +342,6 @@ const handlers = {
       render();
     }
   },
-  toggleNav() {
-    uiState.navOpen = !uiState.navOpen;
-    render();
-  },
   changeView(view) {
     // Muokkaustila ei jää päälle, jos käyttäjä siirtyy toiselle sivulle. Tallentamattomista
     // muutoksista kysytään sama vahvistus kuin Poistu-painikkeessa.
@@ -356,7 +350,6 @@ const handlers = {
         uiState.confirmationDialog = { type: 'exit-player-result-card-edit', nextView: view };
         uiState.pendingFocusSelector = '';
         uiState.feedback = null;
-        uiState.navOpen = false;
         render();
         return;
       }
@@ -364,9 +357,7 @@ const handlers = {
       discardPlayerResultCardEdit({ hadChanges: false, nextView: view });
       return;
     }
-
     uiState.activeView = view;
-    uiState.navOpen = false;
     render();
   },
   async submitSettings(formData) {
@@ -1131,7 +1122,6 @@ const handlers = {
 
     uiState.activeView = 'tournament-result-card';
     uiState.tournamentResultCardId = tournamentId;
-    uiState.navOpen = false;
     uiState.feedback = null;
     uiState.pendingFocusSelector = '[data-close-tournament-result-card]';
     render();
@@ -1157,7 +1147,6 @@ const handlers = {
     uiState.resultCardOrigin = resolveResultCardOriginView(origin);
     uiState.resultCardEditMode = false;
     uiState.resultCardDraft = null;
-    uiState.navOpen = false;
     uiState.feedback = null;
     uiState.pendingFocusSelector = '[data-edit-player-result-card]';
     render();
@@ -1350,12 +1339,6 @@ function initializeDataState() {
     render();
   }, 0);
 }
-
-window.addEventListener('resize', () => {
-  if (authState.authenticated && window.innerWidth > 780 && !uiState.navOpen) {
-    render();
-  }
-});
 
 if (authState.authenticated) {
   initializeDataState();
