@@ -207,6 +207,7 @@ Poistu:
 - Palaa lukutilaan tallentamatta muutoksia.
 - Jos muutoksia ei ole tehty, kortti palaa lukutilaan heti.
 - Jos tallentamattomia muutoksia on, näytetään vahvistus, jossa voi valita Poistu ilman tallennusta tai Peruuta.
+- Sama vahvistus näytetään, jos siirryt muokkaustilasta toiselle sivulle navigaatiosta.
 
 Ilmoitukset näkyvät sivun yläreunassa ja ne piilotetaan automaattisesti viiden sekunnin kuluttua.`,
       },

@@ -186,16 +186,22 @@ function hasUnsavedResultCardChanges() {
   ));
 }
 
-function discardPlayerResultCardEdit({ hadChanges = true, rerender = true } = {}) {
+function discardPlayerResultCardEdit({ hadChanges = true, nextView = '' } = {}) {
   uiState.resultCardEditMode = false;
   uiState.resultCardDraft = null;
   if (hadChanges) {
     uiState.feedback = { type: 'warning', text: '⚠ Muokkaustila suljettu ilman tallennusta' };
   }
-  uiState.pendingFocusSelector = '[data-edit-player-result-card]';
-  if (rerender) {
-    render();
+
+  if (nextView) {
+    uiState.activeView = nextView;
+    uiState.navOpen = false;
+    uiState.pendingFocusSelector = '';
+  } else {
+    uiState.pendingFocusSelector = '[data-edit-player-result-card]';
   }
+
+  render();
 }
 
 // Kaikki tallennukset kulkevat saman jonon kautta, jotta automaattitallennukset ja muut
@@ -338,9 +344,20 @@ const handlers = {
     render();
   },
   changeView(view) {
+    // Muokkaustila ei jää päälle, jos käyttäjä siirtyy toiselle sivulle. Tallentamattomista
+    // muutoksista kysytään sama vahvistus kuin Poistu-painikkeessa.
     if (view !== 'player-result-card' && uiState.resultCardEditMode) {
-      // Muokkaustila ei jää päälle, jos käyttäjä siirtyy toiselle sivulle navigaatiosta.
-      discardPlayerResultCardEdit({ hadChanges: hasUnsavedResultCardChanges(), rerender: false });
+      if (hasUnsavedResultCardChanges()) {
+        uiState.confirmationDialog = { type: 'exit-player-result-card-edit', nextView: view };
+        uiState.pendingFocusSelector = '';
+        uiState.feedback = null;
+        uiState.navOpen = false;
+        render();
+        return;
+      }
+
+      discardPlayerResultCardEdit({ hadChanges: false, nextView: view });
+      return;
     }
 
     uiState.activeView = view;
@@ -1129,8 +1146,9 @@ const handlers = {
       return;
     }
 
+    const nextView = uiState.confirmationDialog.nextView || '';
     uiState.confirmationDialog = null;
-    discardPlayerResultCardEdit();
+    discardPlayerResultCardEdit({ nextView });
   },
   // Muokkaustilassa sijoitus validoidaan ja pisteet lasketaan heti luonnokseen, mutta mitään ei
   // tallenneta ennen Tallenna ja poistu -painiketta. Rivi päivitetään paikallaan, jotta
@@ -1152,8 +1170,11 @@ const handlers = {
       return;
     }
 
-    uiState.resultCardDraft = outcome.resultCards;
-    updatePlayerResultRow(root, { ...dataState, resultCards: outcome.resultCards }, playerId, tournamentId);
+    if (outcome.changed) {
+      uiState.resultCardDraft = outcome.resultCards;
+    }
+
+    updatePlayerResultRow(root, { ...dataState, resultCards: uiState.resultCardDraft }, playerId, tournamentId);
     if (hasUnsavedResultCardChanges()) {
       setPlayerResultCardStatus(root, 'pending', 'Tallentamattomia muutoksia. Tallenna muutokset Tallenna ja poistu -painikkeella.');
     } else {
@@ -1186,6 +1207,7 @@ const handlers = {
     }
 
     const previousResultCards = dataState.resultCards;
+    const previousRevision = localRevision;
     try {
       dataState.resultCards = nextState.resultCards;
       localRevision += 1;
@@ -1202,6 +1224,7 @@ const handlers = {
       // Tallennus epäonnistui: palautetaan tallennettu tila ja jäädään muokkaustilaan,
       // jotta käyttäjä voi yrittää tallennusta uudelleen samoilla muutoksilla.
       dataState.resultCards = previousResultCards;
+      localRevision = previousRevision;
       uiState.resultCardEditMode = true;
       uiState.resultCardDraft = nextState.resultCards;
       uiState.feedback = {
