@@ -107,6 +107,7 @@ let uiState = {
   pointsImportDivision: 'MPO',
   pointsImportFocusTarget: '',
   resultCardPlayerId: '',
+  resultCardOrigin: 'players',
   resultCardEditMode: false,
   resultCardDraft: null,
   confirmationDialog: null,
@@ -1092,13 +1093,15 @@ const handlers = {
     }
   },
   // Tuloskortti avataan aina lukutilaan, jotta sijoituksia ei muuteta vahingossa.
-  openPlayerResultCard(playerId) {
+  // origin kertoo, mistä näkymästä kortti avattiin, jotta paluu onnistuu samaan paikkaan.
+  openPlayerResultCard(playerId, origin = 'players') {
     if (!findPlayer(dataState.players, playerId)) {
       return;
     }
 
     uiState.activeView = 'player-result-card';
     uiState.resultCardPlayerId = playerId;
+    uiState.resultCardOrigin = origin === 'ranking' ? 'ranking' : 'players';
     uiState.resultCardEditMode = false;
     uiState.resultCardDraft = null;
     uiState.navOpen = false;
@@ -1108,8 +1111,10 @@ const handlers = {
   },
   closePlayerResultCard() {
     const playerId = uiState.resultCardPlayerId;
-    uiState.activeView = 'players';
+    const origin = uiState.resultCardOrigin === 'ranking' ? 'ranking' : 'players';
+    uiState.activeView = origin;
     uiState.resultCardPlayerId = '';
+    uiState.resultCardOrigin = 'players';
     uiState.resultCardEditMode = false;
     uiState.resultCardDraft = null;
     uiState.pendingFocusSelector = playerId ? `[data-open-player-result-card="${playerId}"]` : '[data-open-player-dialog]';

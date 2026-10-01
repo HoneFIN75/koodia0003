@@ -816,10 +816,40 @@ textarea {
 
 .pdga-id-link,
 .player-name-text,
+.player-name-button,
 .tournament-name-link,
 .tournament-name-text,
 .pdga-id-unassigned {
   font-weight: 700;
+}
+
+/* Rankingin pelaajan nimi on sovelluksen sisäinen painike. Alleviivaus ja osoitinkursori
+   kertovat klikattavuudesta ilman, että käyttö perustuu pelkkään väriin. */
+button.player-name-button {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+button.player-name-button:hover {
+  color: var(--color-primary);
+  text-decoration-thickness: 0.15em;
+}
+
+button.player-name-button:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: 0.2rem;
+  text-decoration-thickness: 0.15em;
 }
 
 .pdga-id-unassigned {

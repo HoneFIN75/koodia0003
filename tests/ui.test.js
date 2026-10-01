@@ -122,6 +122,7 @@ function createUiState(overrides = {}) {
     pointsImportDivision: 'MPO',
     pointsImportFocusTarget: '',
     resultCardPlayerId: '',
+    resultCardOrigin: 'players',
     confirmationDialog: null,
     feedback: null,
     settingsFormErrors: {},
@@ -272,7 +273,7 @@ test('renderApp renders PDGA ID as the PDGA profile link and keeps player names 
   );
   assert.match(
     root.innerHTML,
-    /id="section-ranking"[\s\S]*<span class="player-name-text">Linkki Pelaaja<\/span>[\s\S]*<a class="pdga-id-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan Linkki Pelaaja PDGA-profiili">12345<\/a>/,
+    /id="section-ranking"[\s\S]*<button type="button" class="player-name-button" data-open-player-result-card="player-1" data-result-card-origin="ranking" title="Avaa tuloskortti" aria-label="Avaa pelaajan Linkki Pelaaja tuloskortti">Linkki Pelaaja<\/button>[\s\S]*<a class="pdga-id-link" href="https:\/\/example\.com\/player\/12345" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan Linkki Pelaaja PDGA-profiili">12345<\/a>/,
   );
   assert.match(
     root.innerHTML,
@@ -1120,6 +1121,41 @@ test('renderApp näyttää pelaajan tuloskortin sarakkeet, PDGA Event -linkin, s
   assert.match(root.innerHTML, /data-close-player-result-card/);
 });
 
+test('renderApp näyttää Ranking-sivun pelaajan nimen tuloskortin avaavana painikkeena', () => {
+  const root = createRootStub();
+  const dataState = createResultsDataState();
+
+  renderApp(root, dataState, createUiState({ activeView: 'ranking' }));
+
+  const section = root.innerHTML.slice(root.innerHTML.indexOf('id="section-ranking"'));
+  assert.match(
+    section,
+    /<button type="button" class="player-name-button" data-open-player-result-card="mpo-1" data-result-card-origin="ranking" title="Avaa tuloskortti" aria-label="Avaa pelaajan Niklas Anttila tuloskortti">Niklas Anttila<\/button>/,
+  );
+  assert.match(
+    section,
+    /<a class="pdga-id-link" href="https:\/\/example\.com\/player\/100" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-profiili" aria-label="Avaa pelaajan Niklas Anttila PDGA-profiili">100<\/a>/,
+  );
+  assert.doesNotMatch(section, /target="_blank"[^>]*>Niklas Anttila</);
+});
+
+test('renderApp näyttää Rankingista avatun tuloskortin lukutilassa ja paluun Rankingiin', () => {
+  const root = createRootStub();
+  const dataState = createResultsDataState();
+
+  renderApp(
+    root,
+    dataState,
+    createUiState({ activeView: 'player-result-card', resultCardPlayerId: 'mpo-1', resultCardOrigin: 'ranking' }),
+  );
+
+  assert.match(root.innerHTML, /data-result-card-mode="read-only"/);
+  assert.match(root.innerHTML, /data-close-player-result-card>← Takaisin Rankingiin<\/button>/);
+  assert.match(root.innerHTML, /data-edit-player-result-card>Muokkaa<\/button>/);
+  assert.match(root.innerHTML, /data-view-target="ranking" aria-current="page"/);
+  assert.doesNotMatch(root.innerHTML, /data-view-target="players" aria-current="page"/);
+});
+
 test('renderApp avaa tuloskortin lukutilaan, jossa sijoituksia ei voi muokata', () => {
   const root = createRootStub();
   const dataState = createResultsDataState();
@@ -1327,6 +1363,54 @@ test('bindUi kutsuu tuloskortin muokkaustilan avaus- ja poistumiskäsittelijöit
     exitButton.listeners.click();
     confirmExitButton.listeners.click();
     assert.deepEqual(calls, ['enter', 'exit', 'confirm-exit']);
+  } finally {
+    restoreDocument();
+  }
+});
+
+test('bindUi välittää tuloskortin avauksen lähtönäkymän käsittelijälle', () => {
+  const restoreDocument = installDocumentStub();
+  const rankingNameButton = createFocusableElement();
+  rankingNameButton.dataset = { openPlayerResultCard: 'player-1', resultCardOrigin: 'ranking' };
+  const playersButton = createFocusableElement();
+  playersButton.dataset = { openPlayerResultCard: 'player-2' };
+  const root = {
+    __dialogKeydownHandler: null,
+    querySelector() {
+      return null;
+    },
+    querySelectorAll(selector) {
+      if (selector === '[data-open-player-result-card]') {
+        return [rankingNameButton, playersButton];
+      }
+      return [];
+    },
+  };
+  const calls = [];
+  const handlers = new Proxy(
+    {
+      openPlayerResultCard(playerId, origin) {
+        calls.push({ playerId, origin });
+      },
+    },
+    {
+      get(target, property) {
+        if (property in target) {
+          return target[property];
+        }
+        return () => {};
+      },
+    },
+  );
+
+  try {
+    bindUi(root, createEmptyState(), createUiState(), handlers);
+    rankingNameButton.listeners.click();
+    playersButton.listeners.click();
+    assert.deepEqual(calls, [
+      { playerId: 'player-1', origin: 'ranking' },
+      { playerId: 'player-2', origin: 'players' },
+    ]);
   } finally {
     restoreDocument();
   }
