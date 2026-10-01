@@ -619,7 +619,7 @@ test('renderApp shows required player delete confirmation dialog copy', () => {
   assert.match(root.innerHTML, /data-confirm-delete-player="player-1">Poista pelaaja<\/button>/);
 });
 
-test('renderApp shows tournament table with required column order and PDGA name link', () => {
+test('renderApp shows tournament table with required column order and PDGA event id link', () => {
   const root = createRootStub();
   const dataState = createEmptyState();
   dataState.settings = {
@@ -637,6 +637,22 @@ test('renderApp shows tournament table with required column order and PDGA name 
       location: 'Lahti',
       venue: 'Mukkula',
       multiplierId: 'multiplier-major',
+      division: '',
+      externalUrl: '',
+      notes: '',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    },
+    {
+      id: 'tournament-2',
+      name: 'TBA Open 2027',
+      pdgaEventId: '000000',
+      startDate: '2027-08-01',
+      endDate: '2027-08-03',
+      displayOrder: 2,
+      location: 'Helsinki',
+      venue: 'Tali',
+      multiplierId: 'multiplier-c-tier',
       division: '',
       externalUrl: '',
       notes: '',
@@ -662,9 +678,15 @@ test('renderApp shows tournament table with required column order and PDGA name 
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="venue"/);
   assert.match(root.innerHTML, /data-label="Järjestysnumero">1<\/td>/);
   assert.match(root.innerHTML, /<th>Muokkaa<\/th>/);
-  assert.match(root.innerHTML, /href="https:\/\/example\.com\/event\/123456"/);
-  assert.match(root.innerHTML, /target="_blank"/);
-  assert.match(root.innerHTML, /rel="noopener noreferrer"/);
+  assert.match(root.innerHTML, /<span class="tournament-name-text">Finnish Nationals 2027<\/span>/);
+  assert.match(root.innerHTML, /<span class="tournament-name-text">TBA Open 2027<\/span>/);
+  assert.doesNotMatch(root.innerHTML, /class="tournament-name-link"/);
+  assert.match(
+    root.innerHTML,
+    /<a class="pdga-id-link" href="https:\/\/example\.com\/event\/123456" target="_blank" rel="noopener noreferrer"[^>]*>123456<\/a>/,
+  );
+  assert.match(root.innerHTML, /<span class="pdga-id-unassigned">000000<\/span>/);
+  assert.doesNotMatch(root.innerHTML, /href="[^"]*000000"/);
   assert.match(root.innerHTML, /data-edit-tournament="tournament-1">Muokkaa<\/button>/);
   assert.match(root.innerHTML, /Hae nimellä, paikkakunnalla tai radalla/);
   assert.doesNotMatch(root.innerHTML, /Turnaustulokset/);
@@ -1032,7 +1054,7 @@ function createResultsDataState() {
     { id: 'fpo-1', name: 'Eveliina Salonen', division: 'FPO', pdgaNumber: 200 },
   ];
   dataState.tournaments = [
-    { id: 't-tampere', name: 'Tampere Open', pdgaEventId: '', startDate: '2026-08-01', endDate: '', displayOrder: 2, multiplierId: 'multiplier-c-tier' },
+    { id: 't-tampere', name: 'Tampere Open', pdgaEventId: '000000', startDate: '2026-08-01', endDate: '', displayOrder: 2, multiplierId: 'multiplier-c-tier' },
     { id: 't-european', name: 'European Open', pdgaEventId: 97339, startDate: '2026-07-17', endDate: '2026-07-20', displayOrder: 1, multiplierId: 'multiplier-major' },
   ];
   dataState.pointsTable = { MPO: { 1: 100, 2: 90 }, FPO: { 1: 60 } };
@@ -1053,9 +1075,18 @@ test('renderApp näyttää Tulokset-sivulla turnausyhteenvedon järjestysnumeron
   const section = root.innerHTML.slice(root.innerHTML.indexOf('id="section-results"'));
   assert.match(
     section,
-    /<th scope="col">Turnauksen nimi<\/th>\s*<th scope="col">Tila<\/th>\s*<th scope="col" class="number">Kerroin<\/th>\s*<th scope="col">Alkupäivä<\/th>\s*<th scope="col">Loppupäivä<\/th>\s*<th scope="col">Paras MPO<\/th>\s*<th scope="col">Paras FPO<\/th>/,
+    /<th scope="col">Turnauksen nimi<\/th>\s*<th scope="col">Tila<\/th>\s*<th scope="col" class="number">Kerroin<\/th>\s*<th scope="col">PDGA Event ID<\/th>\s*<th scope="col">Alkupäivä<\/th>\s*<th scope="col">Loppupäivä<\/th>\s*<th scope="col">Paras MPO<\/th>\s*<th scope="col">Paras FPO<\/th>/,
   );
   assert.match(section, /European Open[\s\S]*Tampere Open/);
+  assert.match(section, /<span class="tournament-name-text">European Open<\/span>/);
+  assert.match(section, /<span class="tournament-name-text">Tampere Open<\/span>/);
+  assert.doesNotMatch(section, /class="tournament-name-link"/);
+  assert.match(
+    section,
+    /<a class="pdga-id-link" href="https:\/\/www\.pdga\.com\/tour\/event\/97339" target="_blank" rel="noopener noreferrer"[^>]*>97339<\/a>/,
+  );
+  assert.match(section, /<span class="pdga-id-unassigned">000000<\/span>/);
+  assert.doesNotMatch(section, /href="[^"]*000000"/);
   assert.match(section, /<td data-label="Tila">MAJ<\/td>/);
   assert.match(section, /<td data-label="Paras MPO">1 Niklas Anttila<\/td>\s*<td data-label="Paras FPO">1 Eveliina Salonen<\/td>/);
   assert.match(section, /<td data-label="Paras MPO">-<\/td>\s*<td data-label="Paras FPO">-<\/td>/);
@@ -1079,6 +1110,8 @@ test('renderApp näyttää pelaajan tuloskortin sarakkeet, PDGA Event -linkin, s
     root.innerHTML,
     /<a class="pdga-id-link" href="https:\/\/www\.pdga\.com\/tour\/event\/97339" target="_blank" rel="noopener noreferrer"[^>]*>97339<\/a>/,
   );
+  assert.match(root.innerHTML, /<span class="pdga-id-unassigned">000000<\/span>/);
+  assert.doesNotMatch(root.innerHTML, /href="[^"]*000000"/);
   assert.match(root.innerHTML, /value="1"[\s\S]*?data-result-placement\s*data-player-id="mpo-1"\s*data-tournament-id="t-european"/);
   assert.match(root.innerHTML, /data-result-points>200 p<\/td>/);
   assert.match(root.innerHTML, /data-clear-player-placement="t-european" data-player-id="mpo-1" aria-label="Tyhjennä sijoitus: European Open">Tyhjennä<\/button>/);

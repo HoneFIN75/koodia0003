@@ -162,11 +162,19 @@ export function validateSettingsInput(input = {}) {
   return settings;
 }
 
+export function isUnassignedPdgaEventId(value) {
+  const normalized = normalizeText(value);
+  return normalized === '000000' || (normalized.length > 0 && /^0+$/.test(normalized));
+}
+
 export function extractPdgaPlayerId(value) {
   return extractIdFromPattern(value, /\/player\/(\d+)(?:[/?#]|$)/i);
 }
 
 export function extractPdgaEventId(value) {
+  if (isUnassignedPdgaEventId(value)) {
+    return '';
+  }
   return extractIdFromPattern(value, /\/tour\/event\/(\d+)(?:[/?#]|$)/i);
 }
 
@@ -181,6 +189,10 @@ export function buildPdgaPlayerUrl(settings = {}, player = {}) {
 }
 
 export function buildPdgaEventUrl(settings = {}, tournament = {}) {
+  if (isUnassignedPdgaEventId(tournament.pdgaEventId)) {
+    return '';
+  }
+
   const pdgaEventId = extractPdgaEventId(tournament.pdgaEventId);
   if (pdgaEventId === '') {
     return '';
