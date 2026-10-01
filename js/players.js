@@ -421,8 +421,8 @@ export function parseRatingRankingCsv(csvText) {
     else if (counts.get(pdgaNumber) > 1) reason = 'PDGA ID esiintyy CSV-tiedostossa useammin kuin kerran';
     const pdgaRating = normalizeCsvInteger(columns[1]);
     const worldRank = normalizeCsvInteger(columns[2]);
-    if (!reason && !Number.isSafeInteger(pdgaRating)) reason = 'Virheellinen Rating';
-    if (!reason && !Number.isSafeInteger(worldRank)) reason = 'Virheellinen Ranking';
+    if (!reason && columns[1].trim() && !Number.isSafeInteger(pdgaRating)) reason = 'Virheellinen Rating';
+    if (!reason && columns[2].trim() && !Number.isSafeInteger(worldRank)) reason = 'Virheellinen Ranking';
     if (reason) {
       errors.push({ rowNumber, pdgaId, reason });
     } else {

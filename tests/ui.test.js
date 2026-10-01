@@ -494,6 +494,22 @@ test('renderApp player list uses required column order and add button', () => {
   assert.doesNotMatch(root.innerHTML, /data-edit-player="player-1"[^>]*>Muokkaa<\/button>/);
 });
 
+test('pelaajalista merkitsee vain puuttuvan ratingin myös ruudunlukijalle', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [
+    { id: 'one', name: 'Testi Pelaaja', division: 'MPO', pdgaNumber: 12345, pdgaRating: null, worldRank: null },
+    { id: 'two', name: 'Toinen Pelaaja', division: 'FPO', pdgaNumber: 67890, pdgaRating: 998, worldRank: null },
+  ];
+
+  renderApp(root, dataState, createUiState({ activeView: 'players' }));
+
+  assert.match(root.innerHTML, /<td data-label="PDGA-rating" class="rating-missing">—<span class="visually-hidden"> Ei ratingia<\/span><\/td>/);
+  assert.match(root.innerHTML, /<td data-label="PDGA-rating">998<\/td>/);
+  assert.match(root.innerHTML, /<td data-label="Maailmanranking">—<\/td>/);
+  assert.doesNotMatch(root.innerHTML, /data-label="Maailmanranking" class="rating-missing"/);
+});
+
 test('renderApp renders sortable headers as keyboard-accessible buttons', () => {
   const root = createRootStub();
   const dataState = createEmptyState();

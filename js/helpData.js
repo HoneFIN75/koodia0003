@@ -247,7 +247,9 @@ PDGA ID;Rating;Ranking
 12345;998;120
 56789;1021;34
 
-Rating ja Ranking ovat positiivisia kokonaislukuja. Importti täsmää olemassa olevat pelaajat PDGA ID:n perusteella ja muuttaa vain heidän Rating- ja World Ranking -kenttiään. Nimi, sarja, tulokset ja pisteet säilyvät ennallaan. Uusia pelaajia ei lisätä.
+Rating ja Ranking ovat annettuina positiivisia kokonaislukuja. Puuttuva Rating on sallittu ja tallennetaan tyhjänä. Puuttuva World Ranking on sallittu ja tallennetaan tyhjänä. Tyhjä arvo korvaa myös aiemmin tallennetun arvon. Pelaajalistassa tyhjät Rating-arvot korostetaan hillityllä varoitusvärillä ja merkitään myös tekstillä ruudunlukijalle.
+
+Importti täsmää olemassa olevat pelaajat PDGA ID:n perusteella ja muuttaa vain heidän Rating- ja World Ranking -kenttiään. Nimi, sarja, tulokset ja pisteet säilyvät ennallaan. Uusia pelaajia ei lisätä.
 
 CSV-tiedoston sisäiset saman PDGA ID:n rivit ovat virheitä eikä niitä päivitetä. Järjestelmästä puuttuvat pelaajat näytetään huomioina. Lopuksi näet onnistuneesti päivitettyjen, virheiden ja huomioiden lukumäärät sekä rivikohtaiset syyt.`,
       },
