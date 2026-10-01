@@ -28,7 +28,20 @@ Ratkaisu säilyy kevyenä, mutta data kulkee nyt selaimesta REST API:n kautta pa
 - tuloskortit ovat ainoa pistelähde: turnaus- ja kokonaispisteet lasketaan aina dynaamisesti sijoituksista, pistetaulukoista ja kertoimista
 - ranking kaikille, MPO:lle ja FPO:lle
 - yhteenvetonäkymä tilastokorteilla, top 10 -pylväillä ja pelaajakohtaisella tulostaulukolla
+- Vertaile-näkymä (navigaatiossa heti Yhteenvedon jälkeen): valittujen pelaajien sijoitusten lukunäkymä turnauksittain
 - Ohjeet-näkymä, johon kaikki käyttöohjeet on koottu
+
+## Vertaile-näkymä
+
+Vertaile on lukunäkymä, jossa valittujen pelaajien sijoituksia verrataan turnauksittain.
+
+- pelaajat lisätään hakukentän automaattitäydennyksellä nimellä tai PDGA ID:llä (vähintään 3 merkkiä)
+- valitut pelaajat näkyvät korteissa, joissa on rating, maailmanranking, kokonaispisteet ja turnausten määrä sekä poistopainike (−)
+- pelaajan poistaminen koskee vain vertailua eikä poista pelaajan tietoja
+- valinnalla "Piilota turnaukset joissa kukaan vertailtavista pelaajista ei ole pelannut" rajataan tyhjät turnausrivit pois
+- turnaukset ovat samassa järjestyksessä kuin Turnaukset-sivulla (järjestysnumero, sitten alkamispäivä)
+- sijoitus näytetään sellaisenaan tasatulosmerkintöineen (esim. 3T4) ja rivin paras sijoitus korostetaan myös lihavoinnilla ja ruudunlukijatekstillä
+- vertailulogiikka on moduulissa `js/compare.js`
 
 ## Ohjeet-näkymä
 
@@ -38,6 +51,7 @@ Kaikki käyttöohjeet, tuontiohjeet ja selitykset ylläpidetään keskitetysti t
 - Ohjeet-näkymä renderöi osiot ja ohjeaiheet automaattisesti `details`/`summary`-rakenteena
 - ohjeen lisääminen, muokkaaminen tai poistaminen vaatii vain muutoksen `js/helpData.js`-tiedostoon eikä lainkaan käyttöliittymäkehitystä
 - ohjeita ei muokata käyttöliittymästä eikä niitä tallenneta tietovarastoon
+- ohjeisiin pääsee vain päänavigaation Ohjeet-kohdasta: sovelluksessa ei ole erillisiä ohjepainikkeita tai -linkkejä
 
 ## Pistelaskenta
 

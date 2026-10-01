@@ -62,6 +62,9 @@ let uiState = {
   rankingFilter: 'ALL',
   summaryFilter: 'ALL',
   summaryPlayerId: '',
+  comparePlayerIds: [],
+  compareSearch: '',
+  compareHideEmptyTournaments: true,
   selectedPlayerId: '',
   playerSearch: '',
   playerDivisionFilter: 'ALL',
@@ -395,6 +398,33 @@ const handlers = {
   },
   setSummaryPlayer(playerId) {
     uiState.summaryPlayerId = playerId;
+    render();
+  },
+  setCompareSearch(query) {
+    uiState.compareSearch = query;
+    uiState.pendingFocusSelector = '#compare-player-search';
+    render();
+  },
+  addComparePlayer(playerId) {
+    const player = findPlayer(dataState.players, playerId);
+    if (!player || uiState.comparePlayerIds.includes(player.id)) {
+      return;
+    }
+
+    uiState.comparePlayerIds = [...uiState.comparePlayerIds, player.id];
+    uiState.compareSearch = '';
+    uiState.pendingFocusSelector = '#compare-player-search';
+    render();
+  },
+  removeComparePlayer(playerId) {
+    // Poistaminen koskee vain vertailua: pelaajan tietoja ei muuteta eikä poisteta.
+    uiState.comparePlayerIds = uiState.comparePlayerIds.filter((id) => id !== playerId);
+    uiState.pendingFocusSelector = '#compare-player-search';
+    render();
+  },
+  setCompareHideEmptyTournaments(hideEmptyTournaments) {
+    uiState.compareHideEmptyTournaments = Boolean(hideEmptyTournaments);
+    uiState.pendingFocusSelector = '#compare-hide-empty';
     render();
   },
   setPlayerSearch(query) {

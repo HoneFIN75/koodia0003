@@ -14,6 +14,7 @@ import { buildRanking, getTopRanking } from './ranking.js';
 import { findMultiplier, formatMultiplier, sortMultipliers } from './multipliers.js';
 import { sortTableRows } from './table-sorting.js';
 import { HELP_SECTIONS } from './helpData.js';
+import { COMPARE_SEARCH_MIN_LENGTH, buildCompareRows, buildComparePlayerSummaries, searchComparePlayers } from './compare.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -339,6 +340,7 @@ function renderNav(activeView, resultCardOrigin = 'players') {
     : activeView === 'tournament-result-card' ? 'results' : activeView;
   const items = [
     { id: 'summary', label: 'Yhteenveto' },
+    { id: 'compare', label: 'Vertaile' },
     { id: 'ranking', label: 'Ranking' },
     { id: 'results', label: 'Tulokset' },
     { id: 'players', label: 'Pelaajat' },
@@ -368,14 +370,11 @@ function renderNav(activeView, resultCardOrigin = 'players') {
   `;
 }
 
-function renderHelpButton(sectionId) {
-  return `<button type="button" class="secondary-button" data-view-target="help" data-help-target="${escapeHtml(sectionId)}">Ohjeet</button>`;
-}
-
-function renderActionBar({ label, actions = [], dangerActions = [], helpSection }) {
+// Ohjeisiin pääsee vain päänavigaation Ohjeet-kohdasta, joten toimintopalkeissa ei ole ohjepainikkeita.
+function renderActionBar({ label, actions = [], dangerActions = [] }) {
   const normalActions = actions.filter(Boolean);
   const destructiveActions = dangerActions.filter(Boolean);
-  if (!normalActions.length && !destructiveActions.length && !helpSection) {
+  if (!normalActions.length && !destructiveActions.length) {
     return '';
   }
 
@@ -387,7 +386,6 @@ function renderActionBar({ label, actions = [], dangerActions = [], helpSection 
           ? `<div class="action-bar-group action-bar-danger" role="group" aria-label="Vaaralliset toiminnot">${destructiveActions.join('')}</div>`
           : ''
       }
-      ${helpSection ? `<div class="action-bar-group action-bar-help">${renderHelpButton(helpSection)}</div>` : ''}
     </div>
   `;
 }
@@ -512,12 +510,161 @@ function renderSummarySection(dataState, uiState) {
   return `
     <section class="section" id="section-summary" ${uiState.activeView === 'summary' ? '' : 'hidden'} aria-labelledby="summary-title">
       <h1 id="summary-title">Yhteenveto</h1>
-      ${renderActionBar({ label: 'Yhteenvedon toiminnot', helpSection: 'summary' })}
       ${renderStats(dataState)}
       <div class="two-column">
         ${renderTopTenCard('TOP 10 MPO', mpoRanking, 'MPO', dataState)}
         ${renderTopTenCard('TOP 10 FPO', fpoRanking, 'FPO', dataState)}
       </div>
+    </section>
+  `;
+}
+
+function renderComparePlayerSuggestions(query, suggestions) {
+  if (query.length < COMPARE_SEARCH_MIN_LENGTH) {
+    return '';
+  }
+
+  if (!suggestions.length) {
+    return '<p class="compare-suggestions-empty" role="status">Hakua vastaavia pelaajia ei löytynyt.</p>';
+  }
+
+  return `
+    <ul class="compare-suggestions" id="compare-player-suggestions" role="listbox" aria-label="Pelaajaehdotukset">
+      ${suggestions
+        .map(
+          (player) => `
+            <li role="presentation">
+              <button type="button" role="option" aria-selected="false" class="compare-suggestion" data-add-compare-player="${escapeHtml(player.id)}">
+                <span class="compare-suggestion-name">${escapeHtml(player.name)}</span>
+                <span class="compare-suggestion-meta">${escapeHtml(renderValueOrDash(player.pdgaNumber))} · ${escapeHtml(player.division)}</span>
+              </button>
+            </li>
+          `,
+        )
+        .join('')}
+    </ul>
+  `;
+}
+
+function renderComparePlayerSummaryCard(summary, dataState) {
+  return `
+    <article class="compare-player-card" data-compare-player-card="${escapeHtml(summary.id)}">
+      <div class="compare-player-card-head">
+        <h3 class="compare-player-card-title">${escapeHtml(summary.name)}</h3>
+        <button type="button" class="compare-remove-button" data-remove-compare-player="${escapeHtml(summary.id)}" aria-label="Poista pelaaja ${escapeHtml(summary.name)} vertailusta" title="Poista vertailusta"><span aria-hidden="true">−</span></button>
+      </div>
+      <dl class="compare-player-card-meta">
+        <div><dt>PDGA-rating</dt><dd>${escapeHtml(renderValueOrDash(summary.pdgaRating))}</dd></div>
+        <div><dt>Maailmanranking</dt><dd>${escapeHtml(renderValueOrDash(summary.worldRank))}</dd></div>
+        <div><dt>Kokonaispisteet</dt><dd>${formatPoints(summary.totalPoints, dataState.settings)} p</dd></div>
+        <div><dt>Turnauksia</dt><dd>${formatNumber(summary.tournamentCount)}</dd></div>
+      </dl>
+    </article>
+  `;
+}
+
+function renderComparePlacementCell(entry) {
+  if (!entry.placement) {
+    return `<td data-label="${escapeHtml(entry.name)}" class="compare-placement">—</td>`;
+  }
+
+  // Paras sijoitus korostetaan vaalealla taustalla, lihavoinnilla ja ruudunlukijoille
+  // tarkoitetulla tekstillä, jotta korostus ei perustu pelkkään väriin.
+  return `<td data-label="${escapeHtml(entry.name)}" class="compare-placement${entry.isBest ? ' is-best' : ''}"${entry.isBest ? ' data-compare-best="true"' : ''}>${escapeHtml(entry.placement)}${
+    entry.isBest ? '<span class="visually-hidden"> (paras sijoitus)</span>' : ''
+  }</td>`;
+}
+
+function renderCompareSection(dataState, uiState) {
+  const selectedPlayerIds = uiState.comparePlayerIds || [];
+  const summaries = buildComparePlayerSummaries(dataState, selectedPlayerIds);
+  const hideEmptyTournaments = Boolean(uiState.compareHideEmptyTournaments);
+  const rows = summaries.length
+    ? buildCompareRows(dataState, summaries.map((summary) => summary.id), { hideEmptyTournaments })
+    : [];
+  const searchQuery = String(uiState.compareSearch || '').trim();
+  const suggestionPlayers = searchComparePlayers(dataState.players || [], searchQuery, {
+    selectedPlayerIds,
+  });
+  const suggestions = renderComparePlayerSuggestions(searchQuery, suggestionPlayers);
+
+  return `
+    <section class="section" id="section-compare" ${uiState.activeView === 'compare' ? '' : 'hidden'} aria-labelledby="compare-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="compare-title">Vertaile</h2>
+          <p class="section-subtitle">Vertaile valittujen pelaajien sijoituksia turnauksittain. Sivu on lukunäkymä eikä muuta tietoja.</p>
+        </div>
+      </div>
+      <article class="panel compare-panel">
+        <div class="compare-search">
+          <label for="compare-player-search">Hae pelaaja nimellä tai PDGA ID:llä</label>
+          <input
+            id="compare-player-search"
+            type="search"
+            role="combobox"
+            autocomplete="off"
+            aria-autocomplete="list"
+            aria-expanded="${suggestionPlayers.length > 0}"
+            aria-controls="compare-player-suggestions"
+            aria-describedby="compare-player-search-hint"
+            placeholder="Esimerkiksi Tuo tai 123"
+            value="${escapeHtml(uiState.compareSearch || '')}"
+            data-compare-player-search
+          />
+          <p class="field-hint" id="compare-player-search-hint">Kirjoita vähintään ${COMPARE_SEARCH_MIN_LENGTH} merkkiä, niin saat ehdotuksia. Valitse pelaaja lisätäksesi hänet vertailuun.</p>
+          ${suggestions}
+        </div>
+        ${
+          summaries.length
+            ? `<div class="compare-players" aria-label="Vertailtavat pelaajat" role="group">
+                ${summaries.map((summary) => renderComparePlayerSummaryCard(summary, dataState)).join('')}
+              </div>`
+            : renderEmptyState('Lisää vertailuun vähintään yksi pelaaja haun avulla.')
+        }
+        <div class="compare-filter">
+          <input type="checkbox" id="compare-hide-empty" data-compare-hide-empty ${hideEmptyTournaments ? 'checked' : ''} aria-checked="${hideEmptyTournaments}" />
+          <label for="compare-hide-empty">Piilota turnaukset joissa kukaan vertailtavista pelaajista ei ole pelannut</label>
+        </div>
+        ${
+          summaries.length && rows.length
+            ? `
+              <div class="table-wrap compare-table-wrap">
+                <table class="table compare-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Turnauksen nimi</th>
+                      <th scope="col">Tila</th>
+                      <th scope="col" class="number">Kerroin</th>
+                      ${summaries.map((summary) => `<th scope="col">${escapeHtml(summary.name)}</th>`).join('')}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rows
+                      .map(
+                        (row) => `
+                          <tr data-compare-tournament="${escapeHtml(row.tournament.id)}">
+                            <td data-label="Turnauksen nimi">${renderTournamentName(row.tournament)}</td>
+                            <td data-label="Tila">${escapeHtml(renderValueOrDash(row.multiplier?.abbreviation))}</td>
+                            <td data-label="Kerroin" class="number">${row.multiplier ? escapeHtml(formatMultiplier(row.multiplier.multiplier)) : '—'}</td>
+                            ${row.placements.map(renderComparePlacementCell).join('')}
+                          </tr>
+                        `,
+                      )
+                      .join('')}
+                  </tbody>
+                </table>
+              </div>
+            `
+            : summaries.length
+              ? renderEmptyState(
+                hideEmptyTournaments
+                  ? 'Valituilla pelaajilla ei ole vielä tuloksia. Poista suodatin nähdäksesi kaikki turnaukset.'
+                  : 'Turnauksia ei ole vielä lisätty.',
+              )
+              : ''
+        }
+      </article>
     </section>
   `;
 }
@@ -551,7 +698,6 @@ function renderRankingSection(dataState, uiState) {
           <h2 id="ranking-title">Ranking</h2>
         </div>
       </div>
-      ${renderActionBar({ label: 'Rankingin toiminnot', helpSection: 'ranking' })}
       <article class="card">
         ${renderTableToolbar({
           label: 'Ranking-taulukon suodatus',
@@ -688,7 +834,6 @@ function renderResultsSection(dataState, uiState) {
           <h2 id="results-title">Tulokset</h2>
         </div>
       </div>
-      ${renderActionBar({ label: 'Tulosten toiminnot', helpSection: 'results' })}
       <article class="panel">
         ${
           tournaments.length
@@ -801,7 +946,7 @@ function renderTournamentResultCardSection(dataState, uiState) {
       <section class="section" id="section-tournament-result-card" aria-labelledby="tournament-result-card-title">
         <h2 id="tournament-result-card-title">Turnauksen tulokset</h2>
         ${renderEmptyState('Turnausta ei löytynyt.')}
-        ${renderActionBar({ label: 'Turnauksen tuloskortin toiminnot', actions: [backButton], helpSection: 'results' })}
+        ${renderActionBar({ label: 'Turnauksen tuloskortin toiminnot', actions: [backButton] })}
       </section>
     `;
   }
@@ -812,7 +957,7 @@ function renderTournamentResultCardSection(dataState, uiState) {
 
   return `
     <section class="section" id="section-tournament-result-card" aria-labelledby="tournament-result-card-title">
-      ${renderActionBar({ label: 'Turnauksen tuloskortin toiminnot', actions: [backButton], helpSection: 'results' })}
+      ${renderActionBar({ label: 'Turnauksen tuloskortin toiminnot', actions: [backButton] })}
       <article class="panel tournament-result-card" data-tournament-result-card="${escapeHtml(tournament.id)}">
         <header class="tournament-result-card-header">
           <p class="eyebrow">Turnauksen tuloskortti</p>
@@ -908,7 +1053,7 @@ function renderPlayerResultCardSection(dataState, uiState) {
       <section class="section" id="section-player-result-card" aria-labelledby="player-result-card-title">
         <h2 id="player-result-card-title">Tuloskortti</h2>
         ${renderEmptyState('Pelaajaa ei löytynyt.')}
-        ${renderActionBar({ label: 'Tuloskortin toiminnot', actions: [backButton], helpSection: 'players' })}
+        ${renderActionBar({ label: 'Tuloskortin toiminnot', actions: [backButton] })}
       </section>
     `;
   }
@@ -933,7 +1078,6 @@ function renderPlayerResultCardSection(dataState, uiState) {
       </div>
       ${renderActionBar({
         label: 'Tuloskortin toiminnot',
-        helpSection: 'players',
         actions: editMode
           ? [
             '<button type="button" class="button" data-save-player-result-card>Tallenna ja poistu</button>',
@@ -1080,7 +1224,6 @@ function renderPlayerSection(dataState, uiState) {
       </div>
       ${renderActionBar({
         label: 'Pelaajien toiminnot',
-        helpSection: 'players',
         actions: [
           '<button type="button" class="button" data-open-player-dialog>Lisää pelaaja</button>',
           '<button type="button" class="secondary-button" data-open-players-import-dialog>Tuo pelaajat</button>',
@@ -1438,7 +1581,6 @@ function renderTournamentSection(dataState, uiState) {
       </div>
       ${renderActionBar({
         label: 'Turnausten toiminnot',
-        helpSection: 'tournaments',
         actions: [
           '<button type="button" class="button" data-open-tournament-dialog>Lisää turnaus</button>',
           '<button type="button" class="secondary-button" data-open-tournament-import-dialog>Tuo turnaukset</button>',
@@ -1823,7 +1965,6 @@ function renderMultipliersSection(dataState, uiState) {
       </div>
       ${renderActionBar({
         label: 'Kertoimien toiminnot',
-        helpSection: 'multipliers',
         actions: ['<button type="button" class="button" data-open-multiplier-dialog>Lisää kerroin</button>'],
       })}
       <article class="panel">
@@ -2102,7 +2243,6 @@ function renderSettingsSection(dataState, uiState) {
           <h2 id="settings-title">Asetukset</h2>
         </div>
       </div>
-      ${renderActionBar({ label: 'Asetusten ohjeet', helpSection: 'settings' })}
       <form id="settings-form" class="panel">
           <h3>PDGA-linkkien perusosoitteet</h3>
           <div class="form-grid">
@@ -2181,7 +2321,6 @@ function renderPointsSection(dataState, uiState) {
       </div>
       ${renderActionBar({
         label: 'Pistetaulukoiden toiminnot',
-        helpSection: 'points',
         actions: [
           '<button type="button" class="button" data-open-points-dialog>Lisää rivi</button>',
           '<button type="button" class="secondary-button" data-open-points-import>Tuo pistetaulukko</button>',
@@ -2505,6 +2644,7 @@ export function renderApp(root, dataState, uiState) {
       <main id="main-content" class="main-inner" tabindex="-1">
         ${uiState.feedback ? `<div class="message ${uiState.feedback.type}" role="status" aria-live="polite">${escapeHtml(uiState.feedback.text)}</div>` : ''}
         ${renderSummarySection(dataState, uiState)}
+        ${renderCompareSection(dataState, uiState)}
         ${renderRankingSection(dataState, uiState)}
         ${renderResultsSection(dataState, uiState)}
         ${renderTournamentResultCardSection(dataState, uiState)}
@@ -2631,6 +2771,22 @@ export function bindUi(root, dataState, uiState, handlers) {
 
   root.querySelector('[data-summary-player]')?.addEventListener('change', (event) => {
     handlers.setSummaryPlayer(event.target.value);
+  });
+
+  root.querySelector('[data-compare-player-search]')?.addEventListener('input', (event) => {
+    handlers.setCompareSearch(event.target.value);
+  });
+
+  root.querySelectorAll('[data-add-compare-player]').forEach((button) => {
+    button.addEventListener('click', () => handlers.addComparePlayer(button.dataset.addComparePlayer));
+  });
+
+  root.querySelectorAll('[data-remove-compare-player]').forEach((button) => {
+    button.addEventListener('click', () => handlers.removeComparePlayer(button.dataset.removeComparePlayer));
+  });
+
+  root.querySelector('[data-compare-hide-empty]')?.addEventListener('change', (event) => {
+    handlers.setCompareHideEmptyTournaments(Boolean(event.target.checked));
   });
 
   root.querySelector('[data-player-search]')?.addEventListener('input', (event) => {
