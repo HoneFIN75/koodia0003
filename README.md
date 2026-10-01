@@ -135,7 +135,7 @@ Palvelin kuuntelee oletuksena vain paikallista rajapintaa (`127.0.0.1`). Julkise
 
 Käyttöliittymän värit ja typografinen ilme on johdettu varovaisesti Suomen frisbeegolfliiton verkkosivuston yleisestä virallisesta ja urheilullisesta tunnelmasta. Väriarvoja ei pidä tulkita liiton virallisiksi brändiväreiksi.
 
-Tässä MVP:ssä käytetään tekstimuotoista logo-paikkavarausta “Suomen frisbeegolfliitto”. Lopullinen SVG- tai PNG-logo sekä viralliset väriarvot pitää varmistaa erillisestä hyväksytystä logoaineistosta ja graafisesta ohjeistosta ennen lopullista tuotantoviimeistelyä.
+Tässä MVP:ssä käytetään tekstimuotoista SFL-logo-paikkavarausta. Kompaktissa ylätunnisteessa näkyvät logo, otsikko “SFL Pisteytystyökalu” ja yksirivinen build-tieto (esim. `Build dcf1ce3 • 01.10.2026 19:55`); organisaation nimi “Suomen frisbeegolfliitto” on saatavilla ruudunlukijoille. Lopullinen SVG- tai PNG-logo sekä viralliset väriarvot pitää varmistaa erillisestä hyväksytystä logoaineistosta ja graafisesta ohjeistosta ennen lopullista tuotantoviimeistelyä.
 
 ## Seuraavat kehitysvaiheet
 

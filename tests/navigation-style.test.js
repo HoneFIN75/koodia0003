@@ -26,3 +26,12 @@ test('mobile navigation always lays out all ten buttons in two rows', async () =
   assert.match(mobileRules, /\.main-nav ul\s*\{[^}]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\);/s);
   assert.doesNotMatch(css, /\.main-nav\[hidden\]/);
 });
+
+test('header is compact and keeps the build row secondary to the title', async () => {
+  const css = await readFile(path.join(rootDir, 'css/styles.css'), 'utf8');
+
+  assert.match(css, /\.header-inner\s*\{[^}]*padding:\s*var\(--spacing-xs\) 0;/s);
+  assert.match(css, /\.brand-title\s*\{[^}]*font-size:\s*1\.25rem;[^}]*font-weight:\s*800;/s);
+  assert.match(css, /\.build-info\s*\{[^}]*color:\s*var\(--color-text-muted\);[^}]*font-size:\s*0\.75rem;/s);
+  assert.match(css, /\.main-nav\s*\{[^}]*border-top:\s*1px solid var\(--color-border\);/s);
+});

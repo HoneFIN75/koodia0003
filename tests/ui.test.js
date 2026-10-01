@@ -367,7 +367,7 @@ test('renderApp näyttää yhteenvetosivulla vain dashboardin avainluvut ja TOP 
   assert.doesNotMatch(root.innerHTML, /Syötetyt tulokset/);
 });
 
-test('renderApp näyttää deployment-metatiedot otsikon alla commit-buildillä Suomen ajassa', () => {
+test('renderApp näyttää kompaktin build-rivin otsikon alla commit-buildillä Suomen ajassa', () => {
   const root = createRootStub();
   const dataState = createEmptyState();
 
@@ -383,10 +383,17 @@ test('renderApp näyttää deployment-metatiedot otsikon alla commit-buildillä 
     }),
   );
 
-  assert.match(root.innerHTML, /SFL Pisteytystyökalu/);
-  assert.match(root.innerHTML, /<dt>Versio:<\/dt><dd>1\.0\.15<\/dd>/);
-  assert.match(root.innerHTML, /<dt>Koonti:<\/dt><dd>84f2c71<\/dd>/);
-  assert.match(root.innerHTML, /<dt>Päivitetty:<\/dt><dd>27\.09\.2026 14:15<\/dd>/);
+  const buildInfo = root.innerHTML.match(/<p class="build-info"[^>]*>[\s\S]*?<\/p>/)?.[0] ?? '';
+  assert.match(root.innerHTML, /<strong class="brand-title">SFL Pisteytystyökalu<\/strong>/);
+  assert.match(
+    buildInfo,
+    /Build <span class="build-info-id">84f2c71<\/span>\s*<span class="build-info-separator" aria-hidden="true">•<\/span><span class="visually-hidden">, päivitetty<\/span>\s*<time datetime="2026-09-27T11:15:00Z">27\.09\.2026 14:15<\/time>/,
+  );
+  assert.match(buildInfo, /<span class="visually-hidden">, versio 1\.0\.15<\/span>/);
+  assert.match(buildInfo, /title="Versio 1\.0\.15"/);
+  assert.doesNotMatch(root.innerHTML, /<dt>Koonti:<\/dt>/);
+  assert.doesNotMatch(root.innerHTML, /<span>Suomen frisbeegolfliitto<\/span>/);
+  assert.match(root.innerHTML, /<span class="visually-hidden">Suomen frisbeegolfliitto<\/span>/);
 });
 
 test('renderApp näyttää vain olemassa olevat pelaajat TOP 10 -listoilla', () => {
