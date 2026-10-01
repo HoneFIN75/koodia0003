@@ -1096,39 +1096,19 @@ button.player-name-button:focus-visible {
   font-size: var(--font-size-sm);
 }
 
-.chart {
-  display: grid;
-  gap: var(--spacing-sm);
+/* Yhteenvedon World Ranking- ja TOP 10 -taulukot: sama korttirakenne, kapeat numerosarakkeet. */
+.summary-table th:first-child,
+.summary-table td:first-child {
+  width: 3.5rem;
 }
 
-.chart-row {
-  display: grid;
-  gap: var(--spacing-xs);
+.summary-table td.number,
+.summary-table th.number {
+  white-space: nowrap;
 }
 
-.chart-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--spacing-md);
-  font-size: 0.9375rem;
-}
-
-.chart-meta-dashboard {
-  align-items: baseline;
-}
-
-.chart-bar-track {
-  width: 100%;
-  border-radius: 999px;
-  background: var(--color-surface-muted);
-  border: 1px solid rgba(13, 95, 115, 0.08);
-  overflow: hidden;
-}
-
-.chart-bar {
-  min-height: 1rem;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+.summary-table th.number .table-sort-button {
+  justify-content: flex-end;
 }
 
 .definition-list {

@@ -22,9 +22,44 @@ export const HELP_SECTIONS = [
 Näkymä sisältää:
 - Pelaajat-tunnusluvun, joka kertoo tallennettujen pelaajien määrän
 - Turnaukset-tunnusluvun, joka kertoo tallennettujen turnausten määrän
-- TOP 10 MPO- ja TOP 10 FPO -listat kokonaispisteiden mukaan
+- World Ranking MPO- ja World Ranking FPO -taulukot PDGA World Ranking -sijoituksen mukaan
+- TOP 10 MPO- ja TOP 10 FPO -taulukot sovelluksen kokonaispisteiden mukaan
+
+Kaikissa neljässä taulukossa on samat sarakkeet: #, Nimi, Rating ja Kokonaispisteet. TOP 10 -taulukoissa # on pelaajan sijoitus sovelluksen rankingissa, ja taulukon voi lajitella samalla tavalla sarakkeiden #, Rating ja Kokonaispisteet mukaan. Lajittelu muuttaa vain näyttöjärjestystä, ei TOP 10 -listan pelaajia.
 
 Yhteenveto on vain lukunäkymä: tietoja muokataan aina niiden omilla sivuilla.`,
+      },
+      {
+        title: 'World Ranking MPO',
+        content: `World Ranking MPO -taulukko näyttää MPO-sarjan pelaajat PDGA World Ranking -sijoituksen mukaan. Taulukko on TOP 10 MPO -taulukon yläpuolella, jotta virallista PDGA-sijoitusta voi verrata suoraan sovelluksen omiin rankingpisteisiin.
+
+Sarakkeet:
+- # = pelaajan World Ranking -sijoitus
+- Nimi = pelaajan nimi
+- Rating = pelaajan nykyinen PDGA-rating
+- Kokonaispisteet = sovelluksen rankingin kokonaispisteet, jotka lasketaan aina tuloskorttien sijoituksista
+
+Lajittelu: oletuksena taulukko on lajiteltu World Rankingin mukaan nousevasti, eli paras sijoitus on ensimmäisenä. Sarakkeiden #, Rating ja Kokonaispisteet otsikot ovat painikkeita: valinta lajittelee sarakkeen mukaan ja uusi valinta vaihtaa nousevan (▲) ja laskevan (▼) järjestyksen. Jokaisella Yhteenvedon taulukolla on oma lajittelunsa, joten World Ranking MPO -taulukon lajittelu ei muuta muiden taulukoiden järjestystä.
+
+Puuttuva ranking: pelaajat, joilla ei ole World Ranking -sijoitusta (kenttä on tyhjä), eivät näy taulukossa. Taulukossa näytetään vain positiiviset kokonaislukusijoitukset. Sijoituksen voi lisätä pelaajan tietoihin Pelaajat-sivulla tai Rating ja Ranking -päivitysimportilla.
+
+Tuloskortti: pelaajan nimi on painike, joka avaa pelaajan tuloskortin lukutilaan samalla tavalla kuin Ranking-sivulla. Yhteenvetoon palataan Takaisin yhteenvetoon -painikkeella tai päänavigaation Yhteenveto-kohdasta.`,
+      },
+      {
+        title: 'World Ranking FPO',
+        content: `World Ranking FPO -taulukko näyttää FPO-sarjan pelaajat PDGA World Ranking -sijoituksen mukaan. Taulukko on TOP 10 FPO -taulukon yläpuolella, jotta virallista PDGA-sijoitusta voi verrata suoraan sovelluksen omiin rankingpisteisiin.
+
+Sarakkeet:
+- # = pelaajan World Ranking -sijoitus
+- Nimi = pelaajan nimi
+- Rating = pelaajan nykyinen PDGA-rating
+- Kokonaispisteet = sovelluksen rankingin kokonaispisteet, jotka lasketaan aina tuloskorttien sijoituksista
+
+Lajittelu: oletuksena taulukko on lajiteltu World Rankingin mukaan nousevasti, eli paras sijoitus on ensimmäisenä. Sarakkeiden #, Rating ja Kokonaispisteet otsikot ovat painikkeita: valinta lajittelee sarakkeen mukaan ja uusi valinta vaihtaa nousevan (▲) ja laskevan (▼) järjestyksen. Jokaisella Yhteenvedon taulukolla on oma lajittelunsa, joten World Ranking FPO -taulukon lajittelu ei muuta muiden taulukoiden järjestystä.
+
+Puuttuva ranking: pelaajat, joilla ei ole World Ranking -sijoitusta (kenttä on tyhjä), eivät näy taulukossa. Taulukossa näytetään vain positiiviset kokonaislukusijoitukset. Sijoituksen voi lisätä pelaajan tietoihin Pelaajat-sivulla tai Rating ja Ranking -päivitysimportilla.
+
+Tuloskortti: pelaajan nimi on painike, joka avaa pelaajan tuloskortin lukutilaan samalla tavalla kuin Ranking-sivulla. Yhteenvetoon palataan Takaisin yhteenvetoon -painikkeella tai päänavigaation Yhteenveto-kohdasta.`,
       },
     ],
   },
@@ -95,7 +130,7 @@ Ranking ja Yhteenvedon TOP-listat päivittyvät automaattisesti, kun sijoitus, p
         title: 'Pisteiden pyöristys',
         content: `Asetukset-sivun Pyöristys-valinta määrittää, montako desimaalia kokonaispisteissä näytetään (0–4, oletus 2). Pisteet näytetään suomalaisessa muodossa desimaalipilkulla, esimerkiksi 123,46.
 
-Pyöristys vaikuttaa vain näytettäviin arvoihin Yhteenveto-sivun TOP 10 -listoissa ja Ranking-sivun kokonaispisteissä. Laskenta, tallennetut arvot, pistetaulukot, kertoimet ja tulokset säilyttävät aina täyden tarkkuuden.`,
+Pyöristys vaikuttaa vain näytettäviin arvoihin Yhteenveto-sivun taulukoissa ja Ranking-sivun kokonaispisteissä. Laskenta, tallennetut arvot, pistetaulukot, kertoimet ja tulokset säilyttävät aina täyden tarkkuuden.`,
       },
       {
         title: 'Pelaajan Tuloskortin avaaminen',

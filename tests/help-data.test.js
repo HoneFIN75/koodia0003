@@ -91,3 +91,14 @@ test('findHelpSection returns null for unknown sections and listHelpSections exp
   assert.equal(findHelpSection('unknown'), null);
   assert.equal(listHelpSections(), HELP_SECTIONS);
 });
+
+test('World Ranking -taulukot on dokumentoitu Yhteenveto-osiossa', () => {
+  const summary = findHelpSection('summary');
+  ['World Ranking MPO', 'World Ranking FPO'].forEach((title) => {
+    const topic = summary.topics.find((entry) => entry.title === title);
+    assert.ok(topic, `Yhteenveto-osiosta puuttuu ohje ${title}.`);
+    ['Lajittelu', 'nousevasti', '▲', '▼', 'Puuttuva ranking', 'eivät näy taulukossa', 'tuloskortin lukutilaan', 'Takaisin yhteenvetoon'].forEach((part) => {
+      assert.ok(topic.content.includes(part), `Ohjeesta ${title} puuttuu kohta ${part}.`);
+    });
+  });
+});
