@@ -1583,7 +1583,7 @@ button.player-name-button:focus-visible {
   }
 
   .site-header .logout-button {
-    min-height: 2.25rem;
+    min-height: 2.75rem;
     padding: var(--spacing-2xs) var(--spacing-sm);
     font-size: 0.8125rem;
   }

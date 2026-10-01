@@ -384,17 +384,13 @@ test('renderApp näyttää kompaktin build-rivin otsikon alla commit-buildillä 
   );
 
   const buildInfo = root.innerHTML.match(/<p class="build-info"[^>]*>[\s\S]*?<\/p>/)?.[0] ?? '';
-  const visibleBuildText = buildInfo
-    .replace(/<span class="visually-hidden">[^<]*<\/span>/g, '')
-    .replace(/<[^>]+>/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
   assert.match(root.innerHTML, /<strong class="brand-title">SFL Pisteytystyökalu<\/strong>/);
-  assert.equal(visibleBuildText, 'Build 84f2c71 • 27.09.2026 14:15');
+  assert.match(
+    buildInfo,
+    /Build <span class="build-info-id">84f2c71<\/span>\s*<span class="build-info-separator" aria-hidden="true">•<\/span><span class="visually-hidden">, päivitetty<\/span>\s*<time datetime="2026-09-27T11:15:00Z">27\.09\.2026 14:15<\/time>/,
+  );
+  assert.match(buildInfo, /<span class="visually-hidden">, versio 1\.0\.15<\/span>/);
   assert.match(buildInfo, /title="Versio 1\.0\.15"/);
-  assert.match(buildInfo, /<time datetime="2026-09-27T11:15:00Z">27\.09\.2026 14:15<\/time>/);
-  assert.match(buildInfo, /<span class="build-info-separator" aria-hidden="true">•<\/span>/);
   assert.doesNotMatch(root.innerHTML, /<dt>Koonti:<\/dt>/);
   assert.doesNotMatch(root.innerHTML, /<span>Suomen frisbeegolfliitto<\/span>/);
   assert.match(root.innerHTML, /<span class="visually-hidden">Suomen frisbeegolfliitto<\/span>/);

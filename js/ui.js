@@ -111,7 +111,7 @@ function renderDeploymentInfo(deploymentInfo) {
     <p class="build-info"${versionTitle}>
       <span class="visually-hidden">Julkaisun koontitiedot: </span>Build <span class="build-info-id">${escapeHtml(buildIdentifier)}</span>
       <span class="build-info-separator" aria-hidden="true">•</span><span class="visually-hidden">, päivitetty</span>
-      <time datetime="${escapeHtml(deploymentInfo.deployedAt)}">${formatDeploymentTimestamp(deploymentInfo.deployedAt)}</time>
+      <time datetime="${escapeHtml(deploymentInfo.deployedAt)}">${formatDeploymentTimestamp(deploymentInfo.deployedAt)}</time>${versionIdentifier ? `<span class="visually-hidden">, versio ${escapeHtml(versionIdentifier)}</span>` : ''}
     </p>
   `;
 }
