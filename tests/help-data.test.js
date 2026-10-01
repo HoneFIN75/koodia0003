@@ -127,3 +127,11 @@ test('tuloskorttien Import ja Export on dokumentoitu Pelaajat-osiossa', () => {
     assert.ok(topic.content.includes(part), `Ohjeesta puuttuu kohta ${part}.`);
   });
 });
+
+test('kaikkien tulosten tyhjennys on dokumentoitu Pelaajat-osiossa', () => {
+  const topic = findHelpSection('players').topics.find((entry) => entry.title === 'Poista kaikki tulokset');
+  assert.ok(topic, 'Pelaajat-osiosta puuttuu tulosten tyhjennysohje.');
+  ['nollata kaikkien pelaajien turnaussijoitukset', 'tyhjentää kaikkien pelaajien tuloskortit', 'lasketut pisteet', 'Pelaajien tiedot', 'turnaukset', 'kertoimet', 'pistetaulukot', 'Rating', 'World Ranking', 'uuden kauden', 'tuonneista', 'laajamittaiset korjaukset'].forEach((part) => {
+    assert.ok(topic.content.includes(part), `Ohjeesta puuttuu kohta ${part}.`);
+  });
+});

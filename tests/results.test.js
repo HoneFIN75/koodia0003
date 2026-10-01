@@ -4,6 +4,7 @@ import {
   buildPlayerResultCardRows,
   buildTournamentStandings,
   getPlacementMedal,
+  clearAllResults,
   clearPlayerPlacement,
   countResults,
   formatBestResult,
@@ -127,6 +128,37 @@ test('turnauksen tai pelaajan poisto poistaa niihin liittyvät sijoitukset', () 
   assert.equal(countResults(state.resultCards, { tournamentId: 't-1' }), 2);
   assert.equal(countResults(removeTournamentFromResultCards(state.resultCards, 't-1')), 1);
   assert.equal(countResults(removePlayerResultCard(state.resultCards, 'mpo-1')), 1);
+});
+
+test('clearAllResults tyhjentää sijoitukset muuttamatta muita tietoja ja nollaa lasketut pisteet', () => {
+  const state = createState();
+  state.players[0].pdgaRating = 1000;
+  state.players[0].worldRank = 5;
+  state.settings = { playerBaseUrl: 'https://www.pdga.com/player', playerFetchTimeoutMs: 5000 };
+  state.rankings = { activeDivision: 'MPO', sortOrder: 'desc' };
+  apply(state, { playerId: 'mpo-1', tournamentId: 't-1', placement: '1' });
+  apply(state, { playerId: 'mpo-1', tournamentId: 't-2', placement: '2T2' });
+  apply(state, { playerId: 'fpo-1', tournamentId: 't-1', placement: '1' });
+
+  const expectedPreservedState = { ...state, resultCards: [] };
+  const cleared = clearAllResults(state);
+
+  assert.notEqual(cleared, state);
+  assert.deepEqual(cleared, expectedPreservedState);
+  assert.deepEqual(cleared.resultCards, []);
+  assert.deepEqual(
+    buildRanking(cleared)
+      .map((player) => [player.id, player.totalPoints, player.tournamentCount])
+      .sort(([leftId], [rightId]) => leftId.localeCompare(rightId)),
+    state.players
+      .map((player) => [player.id, 0, 0])
+      .sort(([leftId], [rightId]) => leftId.localeCompare(rightId)),
+  );
+  assert.deepEqual(buildPlayerResultCardRows(cleared, 'mpo-1').map((row) => [row.placement, row.calculatedPoints]), [
+    ['', null],
+    ['', null],
+    ['', null],
+  ]);
 });
 
 test('getBestTournamentResults näyttää parhaan MPO- ja FPO-sijoituksen', () => {

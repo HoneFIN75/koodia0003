@@ -37,6 +37,7 @@ import {
   parsePointsTableCsv,
 } from './scoring.js';
 import {
+  clearAllResults,
   clearPlayerPlacement,
   getPlayerPlacement,
   removePlayerResultCard,
@@ -187,6 +188,7 @@ function closeResultCardImportDialogState() {
 
 const RESULT_CARD_IMPORT_LOG_SOURCE = 'resultCardImport';
 const RESULT_CARD_EXPORT_LOG_SOURCE = 'resultCardExport';
+const CLEAR_ALL_RESULTS_LOG_SOURCE = 'clearAllResults';
 
 function getErrorMessage(error) {
   return error instanceof Error ? error.message : 'Tuntematon virhe.';
@@ -655,6 +657,38 @@ const handlers = {
     uiState.feedback = null;
     render();
   },
+  requestClearAllResults() {
+    if (!dataState.resultCards.length) {
+      return;
+    }
+
+    uiState.confirmationDialog = { type: 'clear-all-results' };
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  async confirmClearAllResults() {
+    if (uiState.confirmationDialog?.type !== 'clear-all-results' || !dataState.resultCards.length) {
+      return;
+    }
+
+    const previousState = dataState;
+    try {
+      dataState = clearAllResults(dataState);
+      localRevision += 1;
+      uiState.confirmationDialog = null;
+      uiState.pendingFocusSelector = '[data-request-clear-all-results]';
+      await persistAndRender('✓ Kaikki tulokset poistettu onnistuneesti');
+    } catch (error) {
+      dataState = previousState;
+      localRevision += 1;
+      uiState.confirmationDialog = null;
+      uiState.pendingFocusSelector = '[data-request-clear-all-results]';
+      void logErrors(CLEAR_ALL_RESULTS_LOG_SOURCE, [{ message: `Tulosten poistaminen epäonnistui: ${getErrorMessage(error)}` }]);
+      uiState.feedback = { type: 'error', text: '✕ Tulosten poistaminen epäonnistui' };
+      render();
+    }
+  },
   async confirmDeleteAllPlayers() {
     if (uiState.confirmationDialog?.type !== 'delete-all-players') {
       return;
@@ -738,6 +772,8 @@ const handlers = {
       uiState.pendingFocusSelector = `[data-clear-player-placement="${uiState.confirmationDialog.tournamentId}"]`;
     } else if (uiState.confirmationDialog?.type === 'delete-all-players') {
       uiState.pendingFocusSelector = '[data-request-delete-all-players]';
+    } else if (uiState.confirmationDialog?.type === 'clear-all-results') {
+      uiState.pendingFocusSelector = '[data-request-clear-all-results]';
     } else if (uiState.confirmationDialog?.type === 'delete-point') {
       uiState.pendingFocusSelector = `[data-delete-point="${uiState.confirmationDialog.division}:${uiState.confirmationDialog.place}"]`;
     }

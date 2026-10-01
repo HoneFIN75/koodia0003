@@ -1272,6 +1272,11 @@ function renderPlayerSection(dataState, uiState) {
             label: 'Poista kaikki pelaajat',
             disabled: !dataState.players.length,
           }),
+          renderDangerActionButton({
+            attribute: 'data-request-clear-all-results',
+            label: 'Poista kaikki tulokset',
+            disabled: !dataState.resultCards.length,
+          }),
         ],
       })}
       <article class="panel">
@@ -2660,6 +2665,21 @@ function renderConfirmationDialog(dataState, uiState) {
     });
   }
 
+  if (dialog.type === 'clear-all-results') {
+    return renderDangerConfirmDialog({
+      title: 'Poista kaikki tulokset',
+      body: `
+        <p>Olet poistamassa KAIKKIEN pelaajien KAIKKI turnaussijoitukset.</p>
+        <p>Toiminto tyhjentää kaikki tuloskortit ja poistaa kaikki lasketut pisteet.</p>
+        <p>Pelaajat, turnaukset, kertoimet ja pistetaulukot säilyvät ennallaan.</p>
+        <p><strong>Toimintoa ei voi perua.</strong></p>
+        <p>Haluatko varmasti jatkaa?</p>
+      `,
+      confirmAttribute: 'data-confirm-clear-all-results',
+      confirmLabel: 'Poista kaikki tulokset',
+    });
+  }
+
   if (dialog.type === 'delete-points-division') {
     const division = dialog.division;
 
@@ -2962,6 +2982,7 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-close-result-card-import-dialog]')?.addEventListener('click', () => handlers.closeResultCardImportDialog());
   root.querySelector('[data-result-card-import-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
   root.querySelector('[data-request-delete-all-players]')?.addEventListener('click', () => handlers.requestDeleteAllPlayers());
+  root.querySelector('[data-request-clear-all-results]')?.addEventListener('click', () => handlers.requestClearAllResults());
 
   root.querySelector('#player-form')?.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -3089,6 +3110,7 @@ export function bindUi(root, dataState, uiState, handlers) {
   root.querySelector('[data-cancel-confirm-dialog]')?.addEventListener('click', () => handlers.closeConfirmationDialog());
   root.querySelector('[data-confirm-delete-player]')?.addEventListener('click', () => handlers.confirmDeletePlayer());
   root.querySelector('[data-confirm-delete-all-players]')?.addEventListener('click', () => handlers.confirmDeleteAllPlayers());
+  root.querySelector('[data-confirm-clear-all-results]')?.addEventListener('click', () => handlers.confirmClearAllResults());
   root.querySelector('[data-confirm-delete-point]')?.addEventListener('click', () => handlers.confirmDeletePoint());
   root.querySelector('[data-confirm-delete-tournament]')?.addEventListener('click', () => handlers.confirmDeleteTournament());
   root.querySelector('[data-confirm-delete-all-tournaments]')?.addEventListener('click', () => handlers.confirmDeleteAllTournaments());
