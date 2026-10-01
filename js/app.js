@@ -41,7 +41,7 @@ import {
   removeTournamentFromResultCards,
   setPlayerPlacement,
 } from './results.js';
-import { renderApp, bindUi, setPlayerResultCardStatus, updatePlayerResultRow } from './ui.js';
+import { renderApp, bindUi, resolveResultCardOriginView, setPlayerResultCardStatus, updatePlayerResultRow } from './ui.js';
 import {
   AuthRequiredError,
   changeSitePassword,
@@ -169,11 +169,6 @@ function closeTournamentImportDialogState() {
 
 let saveQueue = Promise.resolve();
 let localRevision = 0;
-
-// Tuloskortin lähtönäkymä rajataan tuettuihin näkymiin, jotta paluu ei vie tuntemattomalle sivulle.
-function normalizeResultCardOrigin(origin) {
-  return origin === 'ranking' ? 'ranking' : 'players';
-}
 
 function cloneResultCards(resultCards = []) {
   return resultCards.map((card) => ({ ...card, results: (card.results || []).map((entry) => ({ ...entry })) }));
@@ -1106,7 +1101,7 @@ const handlers = {
 
     uiState.activeView = 'player-result-card';
     uiState.resultCardPlayerId = playerId;
-    uiState.resultCardOrigin = normalizeResultCardOrigin(origin);
+    uiState.resultCardOrigin = resolveResultCardOriginView(origin);
     uiState.resultCardEditMode = false;
     uiState.resultCardDraft = null;
     uiState.navOpen = false;
@@ -1116,7 +1111,7 @@ const handlers = {
   },
   closePlayerResultCard() {
     const playerId = uiState.resultCardPlayerId;
-    const origin = normalizeResultCardOrigin(uiState.resultCardOrigin);
+    const origin = resolveResultCardOriginView(uiState.resultCardOrigin);
     uiState.activeView = origin;
     uiState.resultCardPlayerId = '';
     uiState.resultCardOrigin = 'players';

@@ -324,7 +324,7 @@ function getMultiplierAbbreviation(tournament, multipliers) {
 }
 
 // Tuloskortin lähtönäkymä rajataan tuettuihin näkymiin, jotta navigaatio ja paluu pysyvät ehjinä.
-function resolveResultCardOriginView(origin) {
+export function resolveResultCardOriginView(origin) {
   return origin === 'ranking' ? 'ranking' : 'players';
 }
 
