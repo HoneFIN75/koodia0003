@@ -237,7 +237,8 @@ function renderPlayerNameResultCardButton(player, origin) {
   }
 
   const playerName = escapeHtml(player.name || '—');
-  return `<button type="button" class="player-name-button" data-open-player-result-card="${escapeHtml(playerId)}" data-result-card-origin="${escapeHtml(origin)}" title="Avaa tuloskortti" aria-label="Avaa pelaajan ${playerName} tuloskortti">${playerName}</button>`;
+  const accessibleName = escapeHtml(player.name || 'nimetön pelaaja');
+  return `<button type="button" class="player-name-button" data-open-player-result-card="${escapeHtml(playerId)}" data-result-card-origin="${escapeHtml(origin)}" title="Avaa tuloskortti" aria-label="Avaa pelaajan ${accessibleName} tuloskortti">${playerName}</button>`;
 }
 
 function renderPdgaPlayerIdLink(player, settings) {
