@@ -41,7 +41,7 @@ import {
   removeTournamentFromResultCards,
   setPlayerPlacement,
 } from './results.js';
-import { renderApp, bindUi, setPlayerResultCardStatus, updatePlayerResultRow } from './ui.js';
+import { renderApp, bindUi, resolveResultCardOriginView, setPlayerResultCardStatus, updatePlayerResultRow } from './ui.js';
 import {
   AuthRequiredError,
   changeSitePassword,
@@ -107,6 +107,7 @@ let uiState = {
   pointsImportDivision: 'MPO',
   pointsImportFocusTarget: '',
   resultCardPlayerId: '',
+  resultCardOrigin: 'players',
   resultCardEditMode: false,
   resultCardDraft: null,
   confirmationDialog: null,
@@ -1092,13 +1093,15 @@ const handlers = {
     }
   },
   // Tuloskortti avataan aina lukutilaan, jotta sijoituksia ei muuteta vahingossa.
-  openPlayerResultCard(playerId) {
+  // origin kertoo, mistä näkymästä kortti avattiin, jotta paluu onnistuu samaan paikkaan.
+  openPlayerResultCard(playerId, origin = 'players') {
     if (!findPlayer(dataState.players, playerId)) {
       return;
     }
 
     uiState.activeView = 'player-result-card';
     uiState.resultCardPlayerId = playerId;
+    uiState.resultCardOrigin = resolveResultCardOriginView(origin);
     uiState.resultCardEditMode = false;
     uiState.resultCardDraft = null;
     uiState.navOpen = false;
@@ -1108,11 +1111,14 @@ const handlers = {
   },
   closePlayerResultCard() {
     const playerId = uiState.resultCardPlayerId;
-    uiState.activeView = 'players';
+    const origin = resolveResultCardOriginView(uiState.resultCardOrigin);
+    uiState.activeView = origin;
     uiState.resultCardPlayerId = '';
+    uiState.resultCardOrigin = 'players';
     uiState.resultCardEditMode = false;
     uiState.resultCardDraft = null;
-    uiState.pendingFocusSelector = playerId ? `[data-open-player-result-card="${playerId}"]` : '[data-open-player-dialog]';
+    const fallbackFocusSelector = origin === 'ranking' ? '[data-ranking-filter]' : '[data-open-player-dialog]';
+    uiState.pendingFocusSelector = playerId ? `[data-open-player-result-card="${playerId}"]` : fallbackFocusSelector;
     render();
   },
   enterPlayerResultCardEdit() {

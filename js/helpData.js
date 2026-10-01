@@ -58,6 +58,19 @@ Ranking ja Yhteenvedon TOP-listat päivittyvät automaattisesti, kun sijoitus, p
 Pyöristys vaikuttaa vain näytettäviin arvoihin Yhteenveto-sivun TOP 10 -listoissa ja Ranking-sivun kokonaispisteissä. Laskenta, tallennetut arvot, pistetaulukot, kertoimet ja tulokset säilyttävät aina täyden tarkkuuden.`,
       },
       {
+        title: 'Pelaajan Tuloskortin avaaminen',
+        content: `Ranking-taulukossa pelaajan nimi on painike: sitä napsauttamalla (tai valitsemalla näppäimistöllä Enterillä tai välilyönnillä) avautuu kyseisen pelaajan Tuloskortti sovelluksen sisällä. Tuloskortti ei avaudu uuteen välilehteen eikä ulkoiselle sivustolle.
+
+Tuloskortti avautuu aina lukutilaan, joten sijoituksia tai pisteitä ei voi muuttaa vahingossa:
+- Muokkaa-painike siirtää muokkaustilaan, jossa sijoituskenttiä voi muuttaa
+- Tallenna ja poistu tallentaa muutokset ja palauttaa lukutilaan
+- Poistu sulkee muokkaustilan tallentamatta ja varmistaa tallentamattomat muutokset
+
+Rankingiin palataan Takaisin Rankingiin -painikkeella tai päänavigaation Ranking-kohdasta.
+
+PDGA ID -sarakkeen numero toimii edelleen linkkinä pelaajan PDGA-profiiliin uudessa välilehdessä.`,
+      },
+      {
         title: 'Rankingin suodatus ja lajittelu',
         content: `Ranking-listaa voi suodattaa sarjan mukaan taulukon yläpuolella olevilla painikkeilla (Kaikki, MPO, FPO). Valittu suodatin on korostettu ja merkitty ✓-merkillä.
 

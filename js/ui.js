@@ -228,6 +228,20 @@ function renderPlayerName(player) {
   return `<span class="player-name-text">${escapeHtml(player?.name || '—')}</span>`;
 }
 
+// Rankingissa pelaajan nimi on sovelluksen sisäinen painike, joka avaa pelaajan tuloskortin.
+// Näkyvä teksti on pelaajan nimi ja aria-label täydentää sen toiminnon kuvauksella. Alleviivaus ja
+// osoitinkursori kertovat klikattavuudesta, joten käyttö ei perustu pelkkään väriin.
+function renderPlayerNameResultCardButton(player, origin) {
+  const playerId = player?.id;
+  const playerName = String(player?.name || '').trim();
+  if (!playerId || !playerName) {
+    return renderPlayerName(player);
+  }
+
+  const escapedName = escapeHtml(playerName);
+  return `<button type="button" class="player-name-button" data-open-player-result-card="${escapeHtml(playerId)}" data-result-card-origin="${escapeHtml(origin)}" title="Avaa tuloskortti" aria-label="Avaa pelaajan ${escapedName} tuloskortti">${escapedName}</button>`;
+}
+
 function renderPdgaPlayerIdLink(player, settings) {
   const pdgaNumber = renderValueOrDash(player?.pdgaNumber);
   const playerPdgaUrl = buildPdgaPlayerUrl(settings, player);
@@ -311,8 +325,16 @@ function getMultiplierAbbreviation(tournament, multipliers) {
   return multiplier?.abbreviation || '';
 }
 
-function renderNav(activeView) {
-  const currentView = activeView === 'player-result-card' ? 'players' : activeView;
+// Tuloskortin lähtönäkymä rajataan tuettuihin näkymiin, jotta navigaatio ja paluu pysyvät ehjinä.
+export function resolveResultCardOriginView(origin) {
+  return origin === 'ranking' ? 'ranking' : 'players';
+}
+
+function renderNav(activeView, resultCardOrigin = 'players') {
+  // Tuloskortti on alanäkymä: aktiivinen navigaatiokohta säilyy siinä näkymässä, josta kortti avattiin.
+  const currentView = activeView === 'player-result-card'
+    ? resolveResultCardOriginView(resultCardOrigin)
+    : activeView;
   const items = [
     { id: 'summary', label: 'Yhteenveto' },
     { id: 'ranking', label: 'Ranking' },
@@ -643,7 +665,7 @@ function renderRankingSection(dataState, uiState) {
                         (entry, index) => `
                           <tr>
                             <td>${index + 1}</td>
-                            <td>${renderPlayerName(entry)}</td>
+                            <td>${renderPlayerNameResultCardButton(entry, 'ranking')}</td>
                             <td>${renderPdgaPlayerIdLink(entry, dataState.settings)}</td>
                             <td>${escapeHtml(entry.division)}</td>
                             <td>${escapeHtml(entry.pdgaRating || '—')}</td>
@@ -809,7 +831,11 @@ function renderPlayerResultCardSection(dataState, uiState) {
   }
 
   const player = (dataState.players || []).find((entry) => entry.id === uiState.resultCardPlayerId);
-  const backButton = '<button type="button" class="secondary-button" data-close-player-result-card>← Takaisin pelaajiin</button>';
+  // Paluupainike seuraa sitä näkymää, josta tuloskortti avattiin (Pelaajat tai Ranking).
+  const backLabel = resolveResultCardOriginView(uiState.resultCardOrigin) === 'ranking'
+    ? '← Takaisin Rankingiin'
+    : '← Takaisin pelaajiin';
+  const backButton = `<button type="button" class="secondary-button" data-close-player-result-card>${backLabel}</button>`;
   if (!player) {
     return `
       <section class="section" id="section-player-result-card" aria-labelledby="player-result-card-title">
@@ -2446,7 +2472,7 @@ export function renderApp(root, dataState, uiState) {
             </div>
           </div>
           <button class="nav-toggle" type="button" data-toggle-nav aria-expanded="${uiState.navOpen}" aria-controls="main-nav">Valikko</button>
-          ${renderNav(uiState.activeView)}
+          ${renderNav(uiState.activeView, uiState.resultCardOrigin)}
           <button class="secondary-button logout-button" type="button" data-logout>Kirjaudu ulos</button>
         </div>
       </header>
@@ -2518,7 +2544,7 @@ export function bindUi(root, dataState, uiState, handlers) {
   });
 
   root.querySelectorAll('[data-open-player-result-card]').forEach((button) => {
-    button.addEventListener('click', () => handlers.openPlayerResultCard(button.dataset.openPlayerResultCard));
+    button.addEventListener('click', () => handlers.openPlayerResultCard(button.dataset.openPlayerResultCard, button.dataset.resultCardOrigin || 'players'));
   });
   root.querySelector('[data-close-player-result-card]')?.addEventListener('click', () => handlers.closePlayerResultCard());
   root.querySelector('[data-edit-player-result-card]')?.addEventListener('click', () => handlers.enterPlayerResultCardEdit());
