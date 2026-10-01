@@ -110,6 +110,7 @@ let uiState = {
   resultCardOrigin: 'players',
   resultCardEditMode: false,
   resultCardDraft: null,
+  tournamentResultCardId: '',
   confirmationDialog: null,
   feedback: null,
   settingsFormErrors: {},
@@ -1091,6 +1092,28 @@ const handlers = {
       uiState.confirmationDialog = null;
       setError(error);
     }
+  },
+  // Turnauksen tuloskortti on Tulokset-sivun lukunäkymä: siinä ei ole muokkaustoimintoja.
+  openTournamentResultCard(tournamentId) {
+    if (!findTournament(dataState.tournaments, tournamentId)) {
+      return;
+    }
+
+    uiState.activeView = 'tournament-result-card';
+    uiState.tournamentResultCardId = tournamentId;
+    uiState.navOpen = false;
+    uiState.feedback = null;
+    uiState.pendingFocusSelector = '[data-close-tournament-result-card]';
+    render();
+  },
+  closeTournamentResultCard() {
+    const tournamentId = uiState.tournamentResultCardId;
+    uiState.activeView = 'results';
+    uiState.tournamentResultCardId = '';
+    uiState.pendingFocusSelector = tournamentId
+      ? `[data-open-tournament-result-card="${CSS.escape(tournamentId)}"]`
+      : '';
+    render();
   },
   // Tuloskortti avataan aina lukutilaan, jotta sijoituksia ei muuteta vahingossa.
   // origin kertoo, mistä näkymästä kortti avattiin, jotta paluu onnistuu samaan paikkaan.

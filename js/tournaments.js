@@ -566,3 +566,20 @@ export function filterAndSortTournaments(
 export function findTournament(tournaments, tournamentId) {
   return tournaments.find((tournament) => tournament.id === tournamentId) || null;
 }
+
+function formatTournamentDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value ?? '').trim());
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : '';
+}
+
+// Turnauksen päivämäärät muodossa pp.kk.vvvv. Yksipäiväisestä turnauksesta
+// (sama tai puuttuva päättymispäivä) näytetään vain yksi päivämäärä.
+export function formatTournamentDateRange(startDate, endDate) {
+  const start = formatTournamentDate(startDate);
+  const end = formatTournamentDate(endDate);
+  if (!start) {
+    return end;
+  }
+
+  return end && end !== start ? `${start} - ${end}` : start;
+}

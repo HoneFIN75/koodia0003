@@ -15,6 +15,12 @@
   --color-error-hover: #862a2a;
   --color-error-surface: rgba(161, 52, 52, 0.08);
   --color-focus-ring: rgba(13, 95, 115, 0.3);
+  --color-medal-gold-surface: rgba(201, 162, 39, 0.16);
+  --color-medal-gold-border: #c9a227;
+  --color-medal-silver-surface: rgba(140, 150, 160, 0.16);
+  --color-medal-silver-border: #9aa4ad;
+  --color-medal-bronze-surface: rgba(176, 112, 60, 0.14);
+  --color-medal-bronze-border: #b0703c;
   --border-radius: 18px;
   --border-radius-sm: 12px;
   --shadow: 0 12px 32px rgba(16, 34, 47, 0.08);
@@ -1318,6 +1324,170 @@ details[open] > summary > .help-marker::before {
   opacity: 0.75;
 }
 
+/* Turnauksen tuloskortti: virallisen tulosluettelon ilme, lukunäkymä. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.tournament-result-card {
+  display: grid;
+  gap: var(--spacing-lg);
+  padding: 0;
+  overflow: hidden;
+}
+
+.tournament-result-card-header {
+  display: grid;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-top: 6px solid var(--color-primary);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+}
+
+.tournament-result-card-header .eyebrow {
+  margin: 0;
+}
+
+.tournament-result-card-title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  line-height: 1.15;
+  color: var(--color-secondary);
+}
+
+.tournament-result-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm) var(--spacing-xl);
+  margin: 0;
+}
+
+.tournament-result-card-meta div {
+  display: grid;
+  gap: var(--spacing-2xs);
+}
+
+.tournament-result-card-meta dt {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.tournament-result-card-meta dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.tournament-result-card-status {
+  font-weight: 700;
+  color: var(--color-primary);
+  border-color: rgba(13, 95, 115, 0.3);
+  background: rgba(13, 95, 115, 0.08);
+}
+
+.pdga-id-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--border-radius-sm);
+  background: var(--color-error-surface);
+}
+
+.tournament-result-card > .message {
+  margin: 0 var(--spacing-xl) var(--spacing-lg);
+}
+
+.tournament-standings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: var(--spacing-lg);
+  padding: 0 var(--spacing-xl) var(--spacing-xl);
+}
+
+.tournament-standings-division {
+  display: grid;
+  gap: var(--spacing-xs);
+  align-content: start;
+}
+
+.tournament-standings-title {
+  margin: 0;
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 2px solid var(--color-secondary);
+  font-size: var(--font-size-lg);
+  letter-spacing: 0.04em;
+  color: var(--color-secondary);
+}
+
+.standings-table th:first-child,
+.standings-table td:first-child {
+  width: 7.5rem;
+  white-space: nowrap;
+}
+
+.standings-table td {
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+  vertical-align: middle;
+}
+
+.standings-placement {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.medal-icon {
+  display: inline-block;
+  width: 1.5rem;
+  margin-right: var(--spacing-2xs);
+  font-size: 1.15em;
+  text-align: center;
+}
+
+.standings-row.medal-gold td,
+.standings-row.medal-silver td,
+.standings-row.medal-bronze td {
+  font-weight: 700;
+}
+
+.standings-row.medal-gold td {
+  background: var(--color-medal-gold-surface);
+  font-weight: 800;
+  font-size: 1.0625rem;
+}
+
+.standings-row.medal-gold td:first-child {
+  box-shadow: inset 4px 0 0 var(--color-medal-gold-border);
+}
+
+.standings-row.medal-silver td {
+  background: var(--color-medal-silver-surface);
+}
+
+.standings-row.medal-silver td:first-child {
+  box-shadow: inset 4px 0 0 var(--color-medal-silver-border);
+}
+
+.standings-row.medal-bronze td {
+  background: var(--color-medal-bronze-surface);
+}
+
+.standings-row.medal-bronze td:first-child {
+  box-shadow: inset 4px 0 0 var(--color-medal-bronze-border);
+}
+
 @media (max-width: 480px) {
   .login-page {
     padding: var(--spacing-md);
@@ -1409,6 +1579,29 @@ details[open] > summary > .help-marker::before {
 
   .hidden-mobile {
     display: none;
+  }
+
+  .tournament-result-card-header {
+    padding: var(--spacing-md);
+  }
+
+  .tournament-standings {
+    padding: 0 var(--spacing-md) var(--spacing-md);
+  }
+
+  .tournament-result-card > .message {
+    margin: 0 var(--spacing-md) var(--spacing-md);
+  }
+
+  .standings-table th,
+  .standings-table td {
+    padding-left: var(--spacing-xs);
+    padding-right: var(--spacing-xs);
+  }
+
+  .standings-table th:first-child,
+  .standings-table td:first-child {
+    width: 6rem;
   }
 
   .help-section-summary,
