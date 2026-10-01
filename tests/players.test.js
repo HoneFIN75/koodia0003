@@ -24,6 +24,24 @@ test('parses rating and ranking CSV with BOM, CRLF and original row numbers', ()
   });
 });
 
+test('rating ja ranking CSV hyväksyy tyhjät arvot mutta hylkää virheelliset kokonaisluvut', () => {
+  const parsed = parseRatingRankingCsv('PDGA ID;Rating;Ranking\n12345;998;120\n67890;  ;85\n98765;950; \n43210;;\n11111;998,5;120\n22222;ABC;120\n33333;998;12.5\n44444;998;ABC\n55555;998;120,5\n66666;12.5;120');
+  assert.deepEqual(parsed.rows, [
+    { rowNumber: 2, pdgaNumber: 12345, pdgaRating: 998, worldRank: 120 },
+    { rowNumber: 3, pdgaNumber: 67890, pdgaRating: null, worldRank: 85 },
+    { rowNumber: 4, pdgaNumber: 98765, pdgaRating: 950, worldRank: null },
+    { rowNumber: 5, pdgaNumber: 43210, pdgaRating: null, worldRank: null },
+  ]);
+  assert.deepEqual(parsed.errors.map(({ rowNumber, reason }) => [rowNumber, reason]), [
+    [6, 'Virheellinen Rating'],
+    [7, 'Virheellinen Rating'],
+    [8, 'Virheellinen Ranking'],
+    [9, 'Virheellinen Ranking'],
+    [10, 'Virheellinen Ranking'],
+    [11, 'Virheellinen Rating'],
+  ]);
+});
+
 test('rating and ranking CSV reports invalid headers, values and duplicate IDs', () => {
   assert.throws(() => parseRatingRankingCsv('PDGA ID;Ranking;Rating\n123;1;2'), /otsikko/);
   assert.throws(() => parseRatingRankingCsv('PDGA ID;Rating;Ranking\n'), /pelaajarivejä/);
@@ -66,6 +84,25 @@ test('rating and ranking import only updates two fields on existing PDGA matches
     importRatingRankingFromCsv(players, 'PDGA ID;Rating;Ranking\n12345;998;120\n98765;0;22').updatedPlayers[0],
     { ...player, pdgaRating: 998, worldRank: 120 },
   );
+});
+
+test('rating ja ranking -importti korvaa myös olemassa olevat arvot tyhjillä ilman huomioita', () => {
+  const players = [
+    { id: 'one', pdgaNumber: 12345, pdgaRating: 900, worldRank: 200 },
+    { id: 'two', pdgaNumber: 67890, pdgaRating: 950, worldRank: 300 },
+    { id: 'three', pdgaNumber: 98765, pdgaRating: 960, worldRank: 400 },
+  ];
+  const imported = importRatingRankingFromCsv(players, 'PDGA ID;Rating;Ranking\n12345;998;120\n67890;  ;85\n98765;950; ');
+  assert.deepEqual(imported.updatedPlayers, [
+    { ...players[0], pdgaRating: 998, worldRank: 120 },
+    { ...players[1], pdgaRating: null, worldRank: 85 },
+    { ...players[2], pdgaRating: 950, worldRank: null },
+  ]);
+  assert.deepEqual(imported.summary, { updatedCount: 3, errors: [], observations: [] });
+
+  const cleared = importRatingRankingFromCsv(imported.updatedPlayers, 'PDGA ID;Rating;Ranking\n12345;;');
+  assert.deepEqual(cleared.updatedPlayers[0], { ...players[0], pdgaRating: null, worldRank: null });
+  assert.deepEqual(cleared.summary, { updatedCount: 1, errors: [], observations: [] });
 });
 
 test('creates an MPO player', () => {

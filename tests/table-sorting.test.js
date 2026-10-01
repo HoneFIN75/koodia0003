@@ -72,6 +72,15 @@ test('sortTableRows käsittelee tyhjät arvot lajittelusuunnan mukaan', () => {
   );
 });
 
+test('sortTableRows lajittelee puuttuvat ratingit ja rankingit numeroarvojen kanssa', () => {
+  const rows = [{ pdgaRating: null, worldRank: 85 }, { pdgaRating: 998, worldRank: null }, { pdgaRating: 950, worldRank: 120 }];
+  for (const field of ['pdgaRating', 'worldRank']) {
+    const config = { [field]: { type: 'number' } };
+    assert.equal(sortTableRows(rows, { field, direction: 'asc' }, config).at(-1)[field], null);
+    assert.equal(sortTableRows(rows, { field, direction: 'desc' }, config)[0][field], null);
+  }
+});
+
 test('toggleSortState vaihtaa suuntaa samalla kentällä ja nollaa uudelle kentälle', () => {
   const first = toggleSortState({ field: 'name', direction: 'asc' }, 'name');
   const second = toggleSortState(first, 'name');
