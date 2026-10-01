@@ -275,6 +275,14 @@ export function calculatePoints({ basePoints, multiplier }) {
 
 const PLACEMENT_PATTERN = /^(?<place>[1-9]\d{0,2})(?:T(?<tieCount>[1-9]\d{0,1}))?$/;
 
+// Sijoitus 0 tarkoittaa, ettei pelaaja osallistunut turnaukseen. Arvo on sallittu ja tallennetaan,
+// mutta siitä ei koskaan lasketa pisteitä eikä sitä tulkita sijoitukseksi.
+export const NON_PARTICIPATION_PLACEMENT = '0';
+
+export function isNonParticipationPlacement(value) {
+  return String(value ?? '').trim() === NON_PARTICIPATION_PLACEMENT;
+}
+
 export function parsePlacement(value) {
   const normalized = String(value ?? '').trim().toUpperCase();
   if (!normalized) {
@@ -363,6 +371,10 @@ export function calculatePlacementPoints({
   multiplier,
 }) {
   const safeDivision = normalizeDivision(division);
+  if (isNonParticipationPlacement(placement)) {
+    return null;
+  }
+
   const parsedPlacement = parsePlacement(placement);
   if (!parsedPlacement) {
     return null;

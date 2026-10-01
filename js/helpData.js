@@ -225,7 +225,9 @@ Sallitut muodot:
 - 1, 2, 10 tai 100 (yksittäinen sijoitus)
 - 3T4, 5T2, 10T3 tai 100T10 (tasatulos muodossa sijoitusTpelaajamäärä)
 
-Sijoituksen pitää olla positiivinen kokonaisluku. Tasatuloksessa pelaajamäärän pitää olla vähintään 2.`,
+Sijoituksen pitää olla positiivinen kokonaisluku. Tasatuloksessa pelaajamäärän pitää olla vähintään 2.
+
+Arvo 0 tarkoittaa, ettei pelaaja osallistunut turnaukseen. Siitä ei anneta pisteitä eikä sitä lasketa osallistumiseksi.`,
       },
       {
         title: 'Tasatulokset',
@@ -336,6 +338,58 @@ Poistu:
 - Sama vahvistus näytetään, jos siirryt muokkaustilasta toiselle sivulle navigaatiosta.
 
 Ilmoitukset näkyvät sivun yläreunassa ja ne piilotetaan automaattisesti viiden sekunnin kuluttua.`,
+      },
+      {
+        title: 'Tuloskorttien Import ja Export',
+        content: `Pelaajat-sivun toimintopalkin Export Tuloskortit- ja Import Tuloskortit -painikkeilla ylläpidetään kaikkien pelaajien tuloskorttien sijoituksia kerralla esimerkiksi Excelissä. Yksittäisen pelaajan tuloskortti toimii edelleen kuten ennenkin.
+
+Export-työnkulku:
+- Export Tuloskortit lataa CSV-tiedoston (tuloskortit-VVVV-KK-PP.csv), jossa on kaikki pelaajat ja kaikki turnaukset.
+- Tiedostossa on järjestelmän nykyiset sijoitukset täsmälleen tallennetussa muodossa, ei tyhjää pohjaa.
+
+Excel-työnkulku:
+1. Avaa viety tiedosto Excelissä.
+2. Muokkaa sijoituksia turnaussarakkeisiin. Älä muuta otsikkoriviä tai PDGA ID -saraketta.
+3. Tallenna tiedosto muodossa "CSV UTF-8 (puolipisteellä erotettu)" (Tallenna nimellä → tiedostomuoto).
+4. Tuo tiedosto Import Tuloskortit -painikkeella.
+
+CSV-muoto:
+- Merkistö on UTF-8 (ä, ö ja å säilyvät oikein). Export lisää tiedoston alkuun UTF-8-tunnisteen, jotta Excel avaa sen oikein.
+- Sarake-erotin on puolipiste (;).
+- Otsikkorivi on pakollinen ja alkaa sarakkeilla PDGA ID;Nimi. Jos otsikkorivi puuttuu tai on virheellinen, koko import epäonnistuu.
+
+Esimerkki:
+PDGA ID;Nimi;T1;T2;T3
+12345;Tuomo Rikman;3;1;5
+67890;Leo Piironen;10;;2
+
+T1/T2/T3-merkintä:
+- Turnaussarakkeet nimetään turnauksen järjestysnumeron mukaan: T1 = järjestysnumero 1, T2 = järjestysnumero 2 jne.
+- Turnauksia ei tunnisteta nimen perusteella. Jos sarakkeelle ei löydy turnausta, sarakkeen arvot ohitetaan ja asiasta raportoidaan virhe.
+
+PDGA ID -tunnistus:
+- Pelaaja tunnistetaan aina ja vain PDGA ID:n perusteella. Nimi-sarake on vain tiedoksi.
+- Jos nimi poikkeaa tallennetusta nimestä, päivitys tehdään silti PDGA ID:n perusteella ja asiasta näytetään huomio.
+- Tuntematon PDGA ID on virhe. Importti ei luo eikä poista pelaajia tai turnauksia, vaan päivittää vain tiedostossa olevien pelaajien sijoitukset.
+
+Sijoitusten muodot:
+- Positiivinen kokonaisluku, esim. 1, 2 tai 10.
+- Tasatulos muodossa sijoitusTpelaajamäärä, esim. 3T4, 10T2 tai 100T10.
+- Tyhjä arvo = sijoitusta ei ole vielä syötetty. Tyhjä solu poistaa aiemmin tallennetun sijoituksen.
+- 0 = pelaaja ei osallistunut turnaukseen. Arvo on sallittu, siitä ei anneta pisteitä eikä sitä lasketa osallistumiseksi.
+- Virheelliset arvot (esim. ABC, 1TT2 tai 3-T-4) ohitetaan ja raportoidaan virheinä. Muut rivit käsitellään normaalisti.
+- Samat säännöt kuin yksittäisellä tuloskortilla ovat voimassa: päällekkäistä sijoitusta tai sijoitusta, jolle pistetaulukossa ei ole arvoa, ei tallenneta, vaan aiempi sijoitus säilyy.
+
+Pisteet:
+- Importti tallentaa vain sijoitukset. Pisteet lasketaan automaattisesti uudelleen: sijoitus → pistetaulukko → sarja → kerroin → lasketut pisteet.
+
+Importin yhteenveto:
+- Import valmis -yhteenveto näyttää päivitettyjen pelaajien, virheiden ja huomioiden määrät.
+- Taulukossa luetellaan virheet ja huomiot rivinumeron mukaan (rivi 1 on otsikkorivi) sekä PDGA ID, sarake ja kuvaus.
+- Virhe tarkoittaa, että rivin tai solun arvoa ei tallennettu (esim. tuntematon PDGA ID, tuntematon T-sarake tai virheellinen sijoitus).
+- Huomio on tiedoksi annettava havainto, esim. sama PDGA ID useammalla rivillä (vain ensimmäinen käsitellään), nimi poikkeaa tallennetusta, tunnistamaton ylimääräinen sarake tai rivi ilman muutoksia.
+- Ilmoitus ✓ Tuloskortit päivitetty onnistuneesti näytetään, kun virheitä ei ollut. ⚠ Osa riveistä ohitettiin kertoo, että osa arvoista ohitettiin virheiden vuoksi. ✕ Import epäonnistui tarkoittaa, ettei mitään päivitetty (esim. otsikkorivi puuttuu).
+- Virheet kirjataan myös palvelimen virhelokiin.`,
       },
       {
         title: 'PDGA ID',

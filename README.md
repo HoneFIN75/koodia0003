@@ -24,6 +24,7 @@ Ratkaisu säilyy kevyenä, mutta data kulkee nyt selaimesta REST API:n kautta pa
 - asetussivu yhteisille PDGA-linkkiasetuksille
 - keskitetty MPO/FPO-pistetaulukkonäkymä ja ylläpito
 - Tulokset-sivun turnausyhteenveto (Paras MPO / Paras FPO) turnausten järjestysnumeron mukaisessa järjestyksessä
+- tuloskorttien massaylläpito CSV:nä (Pelaajat → Export Tuloskortit / Import Tuloskortit): muoto `PDGA ID;Nimi;T1;T2;…`, UTF-8 ja puolipiste-erotin; pelaajat tunnistetaan PDGA ID:n ja turnaukset järjestysnumeron (T1 = järjestysnumero 1) perusteella, logiikka on moduulissa `js/resultCardCsv.js`
 - pelaajakohtaiset tuloskortit (Pelaajat → Tuloskortti): avautuvat lukutilaan, muokkaus Muokkaa-painikkeella, tallennus Tallenna ja poistu -painikkeella sekä Tab-siirtymä seuraavalle riville
 - tuloskortit ovat ainoa pistelähde: turnaus- ja kokonaispisteet lasketaan aina dynaamisesti sijoituksista, pistetaulukoista ja kertoimista
 - ranking kaikille, MPO:lle ja FPO:lle
@@ -95,9 +96,10 @@ Tämä MVP-versio tallentaa kaiken datan palvelimen `jsondb/`-hakemistoon JSON-t
 - palvelin luo puuttuvat JSON-tiedostot automaattisesti
 - palvelin ylläpitää lisäksi sisäistä atomista `state.json`-snapshotia, jotta kirjoitus pysyy eheänä
 - `jsondb/`-hakemisto pitää säilyttää deployjen yli
-- API-endpointit ovat `GET /api/state`, `PUT /api/state`, `GET /api/health`, `POST /api/login` ja `PUT /api/site-password`
+- API-endpointit ovat `GET /api/state`, `PUT /api/state`, `GET /api/health`, `POST /api/login`, `PUT /api/site-password` ja `POST /api/errors`
+- virheet kirjataan keskitetysti `jsondb/errors.json`-tiedostoon (`js/errorLog.js` → `POST /api/errors`, enintään 1000 uusinta merkintää)
 - tietokantapohjainen backend on myöhempi kehitysvaihe
-- importia ja exportia ei ole vielä toteutettu
+- yleistä tietojen importia ja exportia ei ole toteutettu; poikkeuksena CSV-tuonnit sekä tuloskorttien massa-Import/Export (Pelaajat → Export Tuloskortit / Import Tuloskortit)
 - JSON-tiedostojen varmuuskopiointi kuuluu palvelinympäristölle
 
 ## Käynnistys paikallisesti
@@ -140,6 +142,6 @@ Tässä MVP:ssä käytetään tekstimuotoista SFL-logo-paikkavarausta. Kompaktis
 ## Seuraavat kehitysvaiheet
 
 - tietokantapohjainen tallennus JSON-välivaiheen tilalle
-- import/export-toiminnot
+- laajemmat import/export-toiminnot
 - tarkempi audit trail ja mahdolliset käyttäjäroolit
 - varsinainen logoaineisto ja brändivahvistus

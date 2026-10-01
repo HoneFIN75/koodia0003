@@ -56,7 +56,7 @@ async function startPhpServer() {
   const apiIndexPath = path.join(rootDir, 'api', 'index.php').replaceAll('\\', '\\\\');
   await writeFile(routerPath, `<?php
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-if (preg_match('#^/api/(state|health|login|site-password)$#', $path, $matches)) {
+if (preg_match('#^/api/(state|health|login|site-password|errors)$#', $path, $matches)) {
     $_GET['endpoint'] = $matches[1];
     require '${apiIndexPath}';
     return true;
@@ -274,6 +274,50 @@ test('PHP API accepts a plain sitePassword from settings.json and upgrades it to
     assert.equal(Object.hasOwn(settingsFile, 'sitePassword'), false);
     assert.match(settingsFile.sitePasswordHash, /^\$/);
     await loginToPhp(baseUrl, 'kasin-asetettu-1');
+  } finally {
+    await server.stop();
+  }
+});
+
+test('PHP API appends errors to jsondb/errors.json for authenticated requests', { skip: !hasPhp }, async () => {
+  const server = await startPhpServer();
+  const { baseUrl, jsondbDir } = server;
+
+  try {
+    const payload = {
+      source: 'resultCardImport',
+      errors: [{ message: 'Virheellinen sijoitus "ABC".', rowNumber: 3, pdgaId: '12345', column: 'T2' }],
+    };
+    const anonymousResponse = await fetch(`${baseUrl}/api/errors`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    assert.equal(anonymousResponse.status, 401);
+
+    const token = await loginToPhp(baseUrl);
+    const headers = { 'Content-Type': 'application/json', 'X-SFL-Auth-Token': token };
+    const invalidResponse = await fetch(`${baseUrl}/api/errors`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ source: 'resultCardImport', errors: [{ message: '' }] }),
+    });
+    assert.equal(invalidResponse.status, 400);
+
+    for (let index = 0; index < 2; index += 1) {
+      const response = await fetch(`${baseUrl}/api/errors`, { method: 'POST', headers, body: JSON.stringify(payload) });
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), { logged: 1 });
+    }
+
+    const errors = JSON.parse(await readFile(path.join(jsondbDir, 'errors.json'), 'utf8'));
+    assert.equal(errors.length, 2);
+    assert.equal(errors[0].source, 'resultCardImport');
+    assert.equal(errors[0].message, 'Virheellinen sijoitus "ABC".');
+    assert.equal(errors[0].rowNumber, 3);
+    assert.equal(errors[0].pdgaId, '12345');
+    assert.equal(errors[0].column, 'T2');
+    assert.match(errors[0].timestamp, /^\d{4}-\d{2}-\d{2}T/);
   } finally {
     await server.stop();
   }

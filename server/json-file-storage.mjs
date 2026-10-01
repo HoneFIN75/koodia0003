@@ -12,7 +12,10 @@ const STORAGE_FILES = {
   scoreTables: 'scoreTables.json',
   multipliers: 'multipliers.json',
   settings: 'settings.json',
+  errors: 'errors.json',
 };
+
+export const ERROR_LOG_MAX_ENTRIES = 1000;
 
 async function writeJsonAtomically(filePath, value) {
   const tempPath = `${filePath}.${process.pid}.${randomUUID()}.tmp`;
@@ -37,6 +40,7 @@ export class JsonFileStorage {
     this.directoryPath = directoryPath;
     this.ensurePromise = null;
     this.pendingSave = Promise.resolve();
+    this.pendingErrorLogWrite = Promise.resolve();
   }
 
   async ensureInitialized() {
@@ -80,6 +84,24 @@ export class JsonFileStorage {
     const savePromise = this.pendingSave.then(persistState, persistState);
     this.pendingSave = savePromise.catch(() => {});
     return savePromise;
+  }
+
+  // Keskitetty virheloki: virheet lisätään jsondb/errors.json-tiedoston loppuun.
+  // Tiedostossa säilytetään enintään ERROR_LOG_MAX_ENTRIES uusinta merkintää.
+  async appendErrors(entries) {
+    await this.ensureInitialized();
+
+    const appendEntries = async () => {
+      const filePath = this.#resolvePath(STORAGE_FILES.errors);
+      const existing = await readJsonFile(filePath, []);
+      const nextEntries = [...(Array.isArray(existing) ? existing : []), ...entries].slice(-ERROR_LOG_MAX_ENTRIES);
+      await writeJsonAtomically(filePath, nextEntries);
+      return entries.length;
+    };
+
+    const writePromise = this.pendingErrorLogWrite.then(appendEntries, appendEntries);
+    this.pendingErrorLogWrite = writePromise.catch(() => {});
+    return writePromise;
   }
 
   #resolvePath(fileName) {

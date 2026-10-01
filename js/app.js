@@ -43,6 +43,8 @@ import {
   removeTournamentFromResultCards,
   setPlayerPlacement,
 } from './results.js';
+import { buildResultCardCsv, buildResultCardCsvFileName, importResultCardsFromCsv } from './resultCardCsv.js';
+import { logErrors } from './errorLog.js';
 import { renderApp, bindUi, resolveResultCardOriginView, setPlayerResultCardStatus, updatePlayerResultRow } from './ui.js';
 import {
   AuthRequiredError,
@@ -81,6 +83,8 @@ let uiState = {
   playerImportSummary: null,
   ratingRankingDialogOpen: false,
   ratingRankingSummary: null,
+  resultCardImportDialogOpen: false,
+  resultCardImportSummary: null,
   playersStatus: 'loading',
   playersError: '',
   tournamentDialogOpen: false,
@@ -173,6 +177,31 @@ function closeTournamentImportDialogState() {
   uiState.tournamentImportFocusTarget = '';
   uiState.tournamentImportSummary = null;
   uiState.pendingFocusSelector = '[data-open-tournament-import-dialog]';
+}
+
+function closeResultCardImportDialogState() {
+  uiState.resultCardImportDialogOpen = false;
+  uiState.resultCardImportSummary = null;
+  uiState.pendingFocusSelector = '[data-open-result-card-import-dialog]';
+}
+
+const RESULT_CARD_IMPORT_LOG_SOURCE = 'resultCardImport';
+const RESULT_CARD_EXPORT_LOG_SOURCE = 'resultCardExport';
+
+function getErrorMessage(error) {
+  return error instanceof Error ? error.message : 'Tuntematon virhe.';
+}
+
+function downloadTextFile(fileName, content, mimeType) {
+  const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.hidden = true;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 let saveQueue = Promise.resolve();
@@ -526,6 +555,95 @@ const handlers = {
     } catch (error) {
       setError(error);
     }
+  },
+  exportResultCards() {
+    try {
+      downloadTextFile(buildResultCardCsvFileName(), buildResultCardCsv(dataState), 'text/csv;charset=utf-8');
+      uiState.feedback = { type: 'success', text: '✓ Tuloskortit exportattu CSV-tiedostoon' };
+    } catch (error) {
+      void logErrors(RESULT_CARD_EXPORT_LOG_SOURCE, [{ message: `Export epäonnistui: ${getErrorMessage(error)}` }]);
+      uiState.feedback = { type: 'error', text: `✕ Export epäonnistui: ${getErrorMessage(error)}` };
+    }
+    uiState.pendingFocusSelector = '[data-export-result-cards]';
+    render();
+  },
+  openResultCardImportDialog() {
+    uiState.activeView = 'players';
+    uiState.resultCardImportDialogOpen = true;
+    uiState.resultCardImportSummary = null;
+    uiState.pendingFocusSelector = '';
+    uiState.feedback = null;
+    render();
+  },
+  closeResultCardImportDialog() {
+    closeResultCardImportDialogState();
+    render();
+  },
+  // Tuloskorttien massatuonti: vain sijoitukset päivitetään, pisteet lasketaan aina scoring.js:ssä.
+  async submitResultCardImport(formData) {
+    if (uiState.resultCardImportSummary) {
+      return;
+    }
+
+    const failImport = (error) => {
+      void logErrors(RESULT_CARD_IMPORT_LOG_SOURCE, [{ message: `Import epäonnistui: ${getErrorMessage(error)}` }]);
+      uiState.feedback = { type: 'error', text: `✕ Import epäonnistui: ${getErrorMessage(error)}` };
+      render();
+    };
+
+    let outcome;
+    try {
+      const file = formData.get('file');
+      if (!file || typeof file.text !== 'function' || !file.name) {
+        throw new Error('Valitse tuotava CSV-tiedosto.');
+      }
+
+      outcome = importResultCardsFromCsv(dataState, await file.text());
+    } catch (error) {
+      failImport(error);
+      return;
+    }
+
+    const { resultCards, summary } = outcome;
+    if (summary.updatedCount) {
+      const previousResultCards = dataState.resultCards;
+      const previousRevision = localRevision;
+      try {
+        dataState.resultCards = resultCards;
+        localRevision += 1;
+        const { savedState, revision } = await enqueueSave();
+        if (revision === localRevision) {
+          dataState = savedState;
+        }
+      } catch (error) {
+        dataState.resultCards = previousResultCards;
+        localRevision = previousRevision;
+        if (error instanceof AuthRequiredError) {
+          setError(error);
+          return;
+        }
+        failImport(error);
+        return;
+      }
+    }
+
+    if (summary.errors.length) {
+      void logErrors(
+        RESULT_CARD_IMPORT_LOG_SOURCE,
+        summary.errors.map((entry) => ({
+          message: entry.reason,
+          rowNumber: entry.rowNumber,
+          pdgaId: entry.pdgaId,
+          column: entry.column,
+        })),
+      );
+    }
+
+    uiState.resultCardImportSummary = summary;
+    uiState.feedback = summary.errors.length
+      ? { type: 'warning', text: '⚠ Osa riveistä ohitettiin' }
+      : { type: 'success', text: '✓ Tuloskortit päivitetty onnistuneesti' };
+    render();
   },
   requestDeleteAllPlayers() {
     if (!dataState.players.length) {
