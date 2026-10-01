@@ -54,7 +54,7 @@ SFL Pisteytystyökalu on Suomen frisbeegolfliiton selainpohjainen MVP, jolla hal
 
 - ei ulkoisia palveluita tai API-kutsuja
 - ei kirjautumista, rooleja tai käyttöoikeuksia
-- ei importia tai exportia
+- ei importia tai exportia; poikkeuksena omistajan erikseen pyytämät CSV-tuonnit (pelaajat, Rating ja Ranking, turnaukset, pistetaulukot) sekä tuloskorttien massa-Import/Export (`js/resultCardCsv.js`), joka päivittää vain sijoituksia PDGA ID:n ja T<n>-sarakkeiden perusteella
 - ei monikäyttäjäsynkronointia
 - ei automaattista tasatulospisteiden jakamista
 

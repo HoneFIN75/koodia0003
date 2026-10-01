@@ -2376,3 +2376,83 @@ test('bindUi kutsuu Vertaile-sivun haku-, lisäys-, poisto- ja suodatinkäsittel
 
   assert.deepEqual(calls, [['search', 'Tuo'], ['add', 'player-3'], ['remove', 'player-1'], ['hideEmpty', false]]);
 });
+
+test('renderApp näyttää Export ja Import Tuloskortit -toiminnot pelaajasivun toimintopalkissa', () => {
+  const root = createRootStub();
+  renderApp(root, createEmptyState(), createUiState({ activeView: 'players' }));
+
+  assert.match(
+    root.innerHTML,
+    /data-open-rating-ranking-dialog>Päivitä Rating ja Ranking<\/button><button type="button" class="secondary-button" data-export-result-cards>Export Tuloskortit<\/button><button type="button" class="secondary-button" data-open-result-card-import-dialog>Import Tuloskortit<\/button>/,
+  );
+  assert.doesNotMatch(root.innerHTML, /data-result-card-import-dialog-panel/);
+});
+
+test('renderApp näyttää tuloskorttien import-dialogin ja yhteenvedon taulukkona', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  renderApp(root, dataState, createUiState({ resultCardImportDialogOpen: true }));
+  assert.match(root.innerHTML, /role="dialog" aria-modal="true" aria-labelledby="result-card-import-dialog-title"/);
+  assert.match(root.innerHTML, /<input id="result-card-import-file" name="file" type="file" accept=".csv,text\/csv" required \/>/);
+  assert.match(root.innerHTML, /<button type="submit" class="button">Tuo<\/button>/);
+  assert.match(root.innerHTML, /data-cancel-result-card-import>Peruuta<\/button>/);
+
+  renderApp(root, dataState, createUiState({
+    resultCardImportDialogOpen: true,
+    resultCardImportSummary: {
+      totalRows: 3,
+      updatedCount: 52,
+      errors: [
+        { rowNumber: 4, pdgaId: '12345', column: 'T2', reason: 'Virheellinen sijoitus "<b>ABC</b>".' },
+        { rowNumber: 1, pdgaId: '', column: 'T9', reason: 'Sarakkeelle T9 ei löydy turnausta.' },
+      ],
+      observations: [{ rowNumber: 2, pdgaId: '67890', column: '', reason: 'Ei muutoksia.' }],
+    },
+  }));
+  assert.match(root.innerHTML, /<strong>Import valmis<\/strong>/);
+  assert.match(root.innerHTML, /<dt>Päivitetyt pelaajat<\/dt><dd>52<\/dd>/);
+  assert.match(root.innerHTML, /<dt>Virheet<\/dt><dd>2<\/dd>/);
+  assert.match(root.innerHTML, /<dt>Huomiot<\/dt><dd>1<\/dd>/);
+  assert.match(root.innerHTML, /class="message warning" role="alert"/);
+  assert.match(root.innerHTML, /<table class="table result-card-import-issues-table">/);
+  assert.match(root.innerHTML, /&lt;b&gt;ABC&lt;\/b&gt;/);
+  assert.doesNotMatch(root.innerHTML, /<b>ABC<\/b>/);
+  assert.doesNotMatch(root.innerHTML, /id="result-card-import-file"/);
+  assert.match(root.innerHTML, /data-cancel-result-card-import>Sulje<\/button>/);
+  const issueOrder = [...root.innerHTML.matchAll(/data-result-card-import-issue="(\w+)">\s*<td data-label="Rivi" class="number">(\d+)<\/td>/g)]
+    .map((match) => `${match[2]}:${match[1]}`);
+  assert.deepEqual(issueOrder, ['1:error', '2:observation', '4:error']);
+});
+
+test('bindUi kohdistaa tuloskorttien import-dialogin ja sulkee sen Escapella', () => {
+  const restoreDocument = installDocumentStub();
+  try {
+    const fileInput = createFocusableElement();
+    const closeButton = createFocusableElement();
+    const root = createInteractiveRoot({
+      '#result-card-import-file': fileInput,
+      '[data-cancel-result-card-import]': closeButton,
+    });
+    const state = createUiState({ resultCardImportDialogOpen: true });
+    let closed = false;
+    bindUi(root, createEmptyState(), state, {
+      ...createNoopHandlers(),
+      closeResultCardImportDialog() { closed = true; },
+    });
+    assert.equal(global.document.activeElement, fileInput);
+
+    state.resultCardImportSummary = { updatedCount: 0, errors: [], observations: [] };
+    bindUi(root, createEmptyState(), state, createNoopHandlers());
+    assert.equal(global.document.activeElement, closeButton);
+
+    const event = { key: 'Escape', preventDefault() {} };
+    bindUi(root, createEmptyState(), state, {
+      ...createNoopHandlers(),
+      closeResultCardImportDialog() { closed = true; },
+    });
+    root.__dialogKeydownHandler(event);
+    assert.equal(closed, true);
+  } finally {
+    restoreDocument();
+  }
+});

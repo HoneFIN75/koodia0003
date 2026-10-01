@@ -1,6 +1,7 @@
 import {
   DIVISIONS,
   calculateResultPoints,
+  isNonParticipationPlacement,
   listResultEntries,
   parsePlacement,
   tryCalculateResultPoints,
@@ -95,6 +96,17 @@ export function setPlayerPlacement(dataState, { playerId, tournamentId, placemen
     };
   }
 
+  if (isNonParticipationPlacement(normalizedInput)) {
+    return {
+      changed: normalizedInput !== previousPlacement,
+      placement: normalizedInput,
+      points: null,
+      resultCards: normalizedInput !== previousPlacement
+        ? writePlacement(resultCards, playerId, tournamentId, normalizedInput, now)
+        : resultCards,
+    };
+  }
+
   const parsed = validatePlacementAgainstOthers({
     placement: normalizedInput,
     others: listTournamentPlacementsForDivision({
@@ -123,6 +135,12 @@ export function setPlayerPlacement(dataState, { playerId, tournamentId, placemen
     points,
     resultCards: writePlacement(resultCards, playerId, tournamentId, parsed.raw, now),
   };
+}
+
+// Kirjoittaa sijoituksen sellaisenaan ilman validointia. Käytetään vain jo aiemmin tallennetun
+// arvon palauttamiseen (esim. tuloskorttien massatuonnissa hylätyn muutoksen peruminen).
+export function restorePlayerPlacement(resultCards = [], playerId, tournamentId, placement, now = new Date().toISOString()) {
+  return writePlacement(resultCards, playerId, tournamentId, normalizePlacementInput(placement), now);
 }
 
 export function clearPlayerPlacement(resultCards = [], playerId, tournamentId, now = new Date().toISOString()) {

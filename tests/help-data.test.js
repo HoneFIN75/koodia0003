@@ -102,3 +102,28 @@ test('World Ranking -taulukot on dokumentoitu Yhteenveto-osiossa', () => {
     });
   });
 });
+
+test('tuloskorttien Import ja Export on dokumentoitu Pelaajat-osiossa', () => {
+  const topic = findHelpSection('players').topics.find((entry) => entry.title === 'Tuloskorttien Import ja Export');
+  assert.ok(topic, 'Pelaajat-osiosta puuttuu tuloskorttien Import ja Export -ohje.');
+  [
+    'Export-työnkulku',
+    'Excel-työnkulku',
+    'CSV UTF-8 (puolipisteellä erotettu)',
+    'UTF-8',
+    'puolipiste (;)',
+    'PDGA ID;Nimi;T1;T2;T3',
+    'T1 = järjestysnumero 1',
+    'PDGA ID -tunnistus',
+    '0 = pelaaja ei osallistunut',
+    '3T4',
+    '100T10',
+    'ABC, 1TT2 tai 3-T-4',
+    'Import valmis',
+    '✓ Tuloskortit päivitetty onnistuneesti',
+    '⚠ Osa riveistä ohitettiin',
+    '✕ Import epäonnistui',
+  ].forEach((part) => {
+    assert.ok(topic.content.includes(part), `Ohjeesta puuttuu kohta ${part}.`);
+  });
+});
