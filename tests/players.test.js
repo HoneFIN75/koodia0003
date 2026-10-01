@@ -25,7 +25,7 @@ test('parses rating and ranking CSV with BOM, CRLF and original row numbers', ()
 });
 
 test('rating ja ranking CSV hyväksyy tyhjät arvot mutta hylkää virheelliset kokonaisluvut', () => {
-  const parsed = parseRatingRankingCsv('PDGA ID;Rating;Ranking\n12345;998;120\n67890;  ;85\n98765;950; \n43210;;\n11111;998,5;120\n22222;ABC;120\n33333;998;12.5');
+  const parsed = parseRatingRankingCsv('PDGA ID;Rating;Ranking\n12345;998;120\n67890;  ;85\n98765;950; \n43210;;\n11111;998,5;120\n22222;ABC;120\n33333;998;12.5\n44444;998;ABC\n55555;998;120,5\n66666;12.5;120');
   assert.deepEqual(parsed.rows, [
     { rowNumber: 2, pdgaNumber: 12345, pdgaRating: 998, worldRank: 120 },
     { rowNumber: 3, pdgaNumber: 67890, pdgaRating: null, worldRank: 85 },
@@ -36,6 +36,9 @@ test('rating ja ranking CSV hyväksyy tyhjät arvot mutta hylkää virheelliset 
     [6, 'Virheellinen Rating'],
     [7, 'Virheellinen Rating'],
     [8, 'Virheellinen Ranking'],
+    [9, 'Virheellinen Ranking'],
+    [10, 'Virheellinen Ranking'],
+    [11, 'Virheellinen Rating'],
   ]);
 });
 

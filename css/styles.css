@@ -14,6 +14,8 @@
   --color-error: #a13434;
   --color-error-hover: #862a2a;
   --color-error-surface: rgba(161, 52, 52, 0.08);
+  --color-rating-missing-surface: #fdf2f2;
+  --color-rating-missing-text: #8c4c4c;
   --color-focus-ring: rgba(13, 95, 115, 0.3);
   --color-medal-gold-surface: rgba(201, 162, 39, 0.16);
   --color-medal-gold-border: #c9a227;
@@ -818,6 +820,11 @@ textarea {
 
 .table tr.is-selected td {
   background: rgba(13, 95, 115, 0.06);
+}
+
+.players-table td.rating-missing {
+  background: var(--color-rating-missing-surface);
+  color: var(--color-rating-missing-text);
 }
 
 .table .number {

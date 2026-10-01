@@ -1317,12 +1317,13 @@ function renderPlayerSection(dataState, uiState) {
                         <tbody>
                           ${visiblePlayers
                             .map((player) => {
+                              const ratingMissing = player.pdgaRating == null || String(player.pdgaRating).trim() === '';
                               return `
                                 <tr>
                                   <td data-label="Pelaajan nimi">${renderPlayerName(player)}</td>
                                   <td data-label="PDGA ID">${renderPdgaPlayerIdLink(player, dataState.settings)}</td>
                                   <td data-label="Sarja">${escapeHtml(player.division)}</td>
-                                  <td data-label="PDGA-rating">${escapeHtml(renderValueOrDash(player.pdgaRating))}</td>
+                                  <td data-label="PDGA-rating"${ratingMissing ? ' class="rating-missing"' : ''}>${escapeHtml(renderValueOrDash(player.pdgaRating))}${ratingMissing ? '<span class="visually-hidden"> Ei ratingia</span>' : ''}</td>
                                   <td data-label="Maailmanranking">${escapeHtml(renderValueOrDash(player.worldRank))}</td>
                                   <td data-label="Tuloskortti"><button type="button" class="secondary-button" data-open-player-result-card="${escapeHtml(player.id)}" aria-label="Avaa pelaajan ${escapeHtml(player.name)} tuloskortti">Tuloskortti</button></td>
                                   <td data-label="Tiedot"><button type="button" class="secondary-button" data-edit-player="${escapeHtml(player.id)}" aria-label="Muokkaa pelaajan ${escapeHtml(player.name)} tietoja">Tiedot</button></td>

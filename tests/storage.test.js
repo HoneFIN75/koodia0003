@@ -104,6 +104,8 @@ test('saveState sanitizes payload before sending it to API', async () => {
           [removedTournamentField]: 'Suomi',
           [removedPlayerField]: 1994,
           pdgaProfileUrl: 'https://www.pdga.com/player/76543',
+          pdgaRating: null,
+          worldRank: null,
         },
       ],
       tournaments: [
@@ -145,6 +147,8 @@ test('saveState sanitizes payload before sending it to API', async () => {
   assert.ok(!Object.hasOwn(sentState.tournaments[0], removedTournamentField));
   assert.ok(!Object.hasOwn(sentState.players[0], 'pdgaProfileUrl'));
   assert.equal(sentState.players[0].pdgaNumber, 76543);
+  assert.equal(sentState.players[0].pdgaRating, null);
+  assert.equal(sentState.players[0].worldRank, null);
   assert.equal(sentState.tournaments[0].pdgaEventId, 321);
   assert.equal(sentState.tournaments[0].displayOrder, 4);
   assert.equal(sentState.tournaments[0].venue, 'Keskuspuisto');
@@ -155,6 +159,8 @@ test('saveState sanitizes payload before sending it to API', async () => {
     pointDecimals: 2,
   });
   assert.equal(state.players[0].pdgaNumber, 76543);
+  assert.equal(state.players[0].pdgaRating, null);
+  assert.equal(state.players[0].worldRank, null);
   assert.equal(state.tournaments[0].pdgaEventId, 321);
   assert.equal(state.tournaments[0].multiplierId, '');
   assert.deepEqual(state.settings, sentState.settings);
