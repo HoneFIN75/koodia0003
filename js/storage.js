@@ -56,10 +56,13 @@ function sanitizePlayer(player = {}) {
 
 function sanitizeTournament(tournament = {}) {
   const parsedDisplayOrder = Number(tournament.displayOrder);
+  const rawPdgaEventId = String(tournament.pdgaEventId ?? '').trim();
   const pdgaEventId =
-    extractPdgaEventId(tournament.pdgaEventId) ||
-    extractPdgaEventId(tournament.pdgaEventUrl) ||
-    extractPdgaEventId(tournament.externalUrl);
+    rawPdgaEventId === '000000'
+      ? '000000'
+      : extractPdgaEventId(tournament.pdgaEventId) ||
+        extractPdgaEventId(tournament.pdgaEventUrl) ||
+        extractPdgaEventId(tournament.externalUrl);
 
   return {
     id: tournament.id,

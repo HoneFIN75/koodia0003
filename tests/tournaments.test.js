@@ -268,3 +268,35 @@ test('filterAndSortTournaments uses display order as default sorting', () => {
 
   assert.deepEqual(sortedIds, ['tournament-2', 'tournament-3', 'tournament-1']);
 });
+
+test('allows 000000 as unassigned PDGA Event ID and preserves it', () => {
+  const tournament = createTournament([], [{ id: 'multiplier-1' }], {
+    name: 'TBA Event',
+    multiplierId: 'multiplier-1',
+    startDate: '2026-07-03',
+    displayOrder: '1',
+    pdgaEventId: '000000',
+  });
+
+  assert.equal(tournament.pdgaEventId, '000000');
+});
+
+test('imports multiple tournaments with 000000 without treating them as duplicates', () => {
+  const existingTournament = {
+    id: 'tournament-existing',
+    name: 'Vanha TBA',
+    displayOrder: 1,
+    pdgaEventId: '000000',
+  };
+  const csv =
+    'Järjestysnumero;PDGA Event ID;Turnauksen nimi\n2;000000;Uusi TBA 1\n3;000000;Uusi TBA 2\n';
+
+  const { importedTournaments, summary } = importTournamentsFromCsv([existingTournament], csv);
+
+  assert.equal(importedTournaments.length, 2);
+  assert.equal(summary.importedCount, 2);
+  assert.equal(summary.duplicateCount, 0);
+  assert.equal(importedTournaments[0].pdgaEventId, '000000');
+  assert.equal(importedTournaments[1].pdgaEventId, '000000');
+});
+

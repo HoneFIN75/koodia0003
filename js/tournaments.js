@@ -20,7 +20,15 @@ function normalizeText(value) {
 
 function normalizeCsvInteger(value) {
   const normalized = normalizeText(value);
-  if (!normalized || !/^\d+$/.test(normalized)) {
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized === '000000') {
+    return '000000';
+  }
+
+  if (!/^\d+$/.test(normalized)) {
     return null;
   }
 
@@ -170,10 +178,14 @@ function normalizeOptionalUrl(value, label, fieldName, fieldErrors) {
   }
 }
 
-function normalizeOptionalPositiveInteger(value, label, fieldName, fieldErrors) {
+function normalizeOptionalPositiveInteger(value, label, fieldName, fieldErrors, allowUnassigned = false) {
   const normalized = normalizeText(value);
   if (!normalized) {
     return '';
+  }
+
+  if (allowUnassigned && normalized === '000000') {
+    return '000000';
   }
 
   if (!/^\d+$/.test(normalized)) {
@@ -264,7 +276,7 @@ export function validateTournamentInput(tournaments, multipliers, input, current
   ensureDisplayOrderIsUnique(tournaments, displayOrder, currentTournamentId, fieldErrors);
 
   const externalUrl = normalizeOptionalUrl(input.externalUrl, 'Linkki kilpailusivulle', 'externalUrl', fieldErrors);
-  const pdgaEventId = normalizeOptionalPositiveInteger(input.pdgaEventId, 'PDGA-kilpailutunnus', 'pdgaEventId', fieldErrors);
+  const pdgaEventId = normalizeOptionalPositiveInteger(input.pdgaEventId, 'PDGA-kilpailutunnus', 'pdgaEventId', fieldErrors, true);
 
   if (Object.keys(fieldErrors).length > 0) {
     throw new TournamentValidationError(fieldErrors);
@@ -356,7 +368,7 @@ function parseTournamentImportRow(columns, rowNumber, existingPdgaEventIds, exis
     };
   }
 
-  if (existingPdgaEventIds.has(parsedPdgaEventId)) {
+  if (parsedPdgaEventId !== '000000' && existingPdgaEventIds.has(parsedPdgaEventId)) {
     return {
       duplicate: {
         rowNumber,
@@ -379,7 +391,7 @@ export function importTournamentsFromCsv(tournaments, csvText) {
   const existingPdgaEventIds = new Set(
     tournaments
       .map((tournament) => normalizeCsvInteger(tournament.pdgaEventId))
-      .filter((pdgaEventId) => pdgaEventId !== null),
+      .filter((pdgaEventId) => pdgaEventId !== null && pdgaEventId !== '000000'),
   );
   const existingDisplayOrders = new Set(
     tournaments
@@ -419,7 +431,9 @@ export function importTournamentsFromCsv(tournaments, csvText) {
     }
 
     importedTournaments.push(parsedRow.tournament);
-    existingPdgaEventIds.add(parsedRow.tournament.pdgaEventId);
+    if (parsedRow.tournament.pdgaEventId !== '000000') {
+      existingPdgaEventIds.add(parsedRow.tournament.pdgaEventId);
+    }
     existingDisplayOrders.add(parsedRow.tournament.displayOrder);
   });
 

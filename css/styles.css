@@ -811,8 +811,13 @@ textarea {
 .pdga-id-link,
 .player-name-text,
 .tournament-name-link,
-.tournament-name-text {
+.tournament-name-text,
+.pdga-id-unassigned {
   font-weight: 700;
+}
+
+.pdga-id-unassigned {
+  color: var(--color-warning);
 }
 
 .pdga-id-link {

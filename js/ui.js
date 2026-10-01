@@ -1,6 +1,6 @@
 import { DIVISIONS, getVisiblePlayers } from './players.js';
 import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, sortTournaments, filterAndSortTournaments } from './tournaments.js';
-import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS, POINT_DECIMALS_OPTIONS, sanitizePointDecimals } from './pdga.js';
+import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS, isUnassignedPdgaEventId, POINT_DECIMALS_OPTIONS, sanitizePointDecimals } from './pdga.js';
 import { listPointsTableEntries } from './scoring.js';
 import {
   buildPlayerResultCardRows,
@@ -665,20 +665,24 @@ function renderRankingSection(dataState, uiState) {
   `;
 }
 
-function renderTournamentName(tournament, settings) {
-  const pdgaEventUrl = buildPdgaEventUrl(settings, tournament);
-  return pdgaEventUrl
-    ? `<a class="tournament-name-link" href="${escapeHtml(pdgaEventUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(tournament.name)}</a>`
-    : `<span class="tournament-name-text">${escapeHtml(tournament.name)}</span>`;
+function renderTournamentName(tournament) {
+  return `<span class="tournament-name-text">${escapeHtml(tournament?.name || '—')}</span>`;
 }
 
 function renderPdgaEventIdLink(tournament, settings) {
-  const pdgaEventUrl = buildPdgaEventUrl(settings, tournament);
-  if (!pdgaEventUrl) {
-    return escapeHtml(renderValueOrDash(tournament?.pdgaEventId));
+  const rawId = tournament?.pdgaEventId;
+  if (isUnassignedPdgaEventId(rawId)) {
+    const displayText = rawId === 0 ? '000000' : String(rawId);
+    return `<span class="pdga-id-unassigned">${escapeHtml(displayText)}</span>`;
   }
 
-  return `<a class="pdga-id-link" href="${escapeHtml(pdgaEventUrl)}" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-turnaussivu" aria-label="Avaa turnauksen ${escapeHtml(tournament.name || '')} PDGA-sivu (${escapeHtml(tournament.pdgaEventId)})">${escapeHtml(tournament.pdgaEventId)}</a>`;
+  const pdgaEventUrl = buildPdgaEventUrl(settings, tournament);
+  if (!pdgaEventUrl) {
+    return escapeHtml(renderValueOrDash(rawId));
+  }
+
+  const tournamentName = escapeHtml(tournament?.name || '');
+  return `<a class="pdga-id-link" href="${escapeHtml(pdgaEventUrl)}" target="_blank" rel="noopener noreferrer" title="Avaa PDGA-turnaussivu" aria-label="Avaa turnauksen ${tournamentName} PDGA-sivu (${escapeHtml(String(rawId))})">${escapeHtml(String(rawId))}</a>`;
 }
 
 function renderResultsSection(dataState, uiState) {
@@ -704,6 +708,7 @@ function renderResultsSection(dataState, uiState) {
                       <th scope="col">Turnauksen nimi</th>
                       <th scope="col">Tila</th>
                       <th scope="col" class="number">Kerroin</th>
+                      <th scope="col">PDGA Event ID</th>
                       <th scope="col">Alkupäivä</th>
                       <th scope="col">Loppupäivä</th>
                       <th scope="col">Paras MPO</th>
@@ -717,9 +722,10 @@ function renderResultsSection(dataState, uiState) {
                         const best = getBestTournamentResults(dataState, tournament.id);
                         return `
                           <tr>
-                            <td data-label="Turnauksen nimi">${renderTournamentName(tournament, dataState.settings)}</td>
+                            <td data-label="Turnauksen nimi">${renderTournamentName(tournament)}</td>
                             <td data-label="Tila">${escapeHtml(renderValueOrDash(multiplier?.abbreviation))}</td>
                             <td data-label="Kerroin" class="number">${multiplier ? escapeHtml(formatMultiplier(multiplier.multiplier)) : '—'}</td>
+                            <td data-label="PDGA Event ID">${renderPdgaEventIdLink(tournament, dataState.settings)}</td>
                             <td data-label="Alkupäivä">${formatDate(tournament.startDate)}</td>
                             <td data-label="Loppupäivä">${formatDate(tournament.endDate)}</td>
                             <td data-label="Paras MPO">${escapeHtml(formatBestResult(best.MPO))}</td>
@@ -1399,19 +1405,12 @@ function renderTournamentSection(dataState, uiState) {
                     <tbody>
                       ${visibleTournamentsWithMultipliers
                         .map((tournament) => {
-                          const pdgaEventUrl = buildPdgaEventUrl(dataState.settings, tournament);
                           return `
                             <tr>
                               <td data-label="Järjestysnumero">${escapeHtml(renderValueOrDash(tournament.displayOrder))}</td>
-                              <td data-label="Turnauksen nimi">
-                                ${
-                                  pdgaEventUrl
-                                    ? `<a class="tournament-name-link" href="${escapeHtml(pdgaEventUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(tournament.name)}</a>`
-                                    : `<span class="tournament-name-text">${escapeHtml(tournament.name)}</span>`
-                                }
-                              </td>
+                              <td data-label="Turnauksen nimi">${renderTournamentName(tournament)}</td>
                               <td data-label="Tila">${escapeHtml(renderValueOrDash(tournament.multiplierAbbreviation))}</td>
-                              <td data-label="PDGA Event ID">${escapeHtml(renderValueOrDash(tournament.pdgaEventId))}</td>
+                              <td data-label="PDGA Event ID">${renderPdgaEventIdLink(tournament, dataState.settings)}</td>
                               <td data-label="Alkamispäivä">${formatDate(tournament.startDate)}</td>
                               <td data-label="Päättymispäivä">${formatDate(tournament.endDate)}</td>
                               <td data-label="Paikkakunta">${escapeHtml(renderValueOrDash(tournament.location))}</td>

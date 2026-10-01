@@ -7,6 +7,7 @@ import {
   DEFAULT_POINT_DECIMALS,
   extractPdgaEventId,
   extractPdgaPlayerId,
+  isUnassignedPdgaEventId,
   sanitizePointDecimals,
   SettingsValidationError,
   validateSettingsInput,
@@ -15,6 +16,17 @@ import {
 test('extracts player and event ids from full PDGA urls', () => {
   assert.equal(extractPdgaPlayerId('https://www.pdga.com/player/12345'), 12345);
   assert.equal(extractPdgaEventId('https://www.pdga.com/tour/event/98765'), 98765);
+  assert.equal(extractPdgaEventId('https://www.pdga.com/tour/event/000000'), '');
+});
+
+test('identifies unassigned PDGA event id 000000', () => {
+  assert.equal(isUnassignedPdgaEventId('000000'), true);
+  assert.equal(isUnassignedPdgaEventId('  000000  '), true);
+  assert.equal(isUnassignedPdgaEventId(0), true);
+  assert.equal(isUnassignedPdgaEventId('97339'), false);
+  assert.equal(isUnassignedPdgaEventId(97339), false);
+  assert.equal(isUnassignedPdgaEventId(''), false);
+  assert.equal(isUnassignedPdgaEventId(null), false);
 });
 
 test('builds PDGA links from centralized settings and ids', () => {
@@ -25,6 +37,14 @@ test('builds PDGA links from centralized settings and ids', () => {
   assert.equal(
     buildPdgaEventUrl(DEFAULT_PDGA_SETTINGS, { pdgaEventId: 98765 }),
     'https://www.pdga.com/tour/event/98765',
+  );
+  assert.equal(
+    buildPdgaEventUrl(DEFAULT_PDGA_SETTINGS, { pdgaEventId: '000000' }),
+    '',
+  );
+  assert.equal(
+    buildPdgaEventUrl(DEFAULT_PDGA_SETTINGS, { pdgaEventId: 0 }),
+    '',
   );
 });
 
