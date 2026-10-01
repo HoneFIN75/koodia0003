@@ -232,13 +232,13 @@ function renderPlayerName(player) {
 // Painike on näkyvästi alleviivattu ja merkitty aria-labelilla, joten klikattavuus ei perustu väriin.
 function renderPlayerNameResultCardButton(player, origin) {
   const playerId = player?.id;
-  if (!playerId) {
+  const playerName = String(player?.name || '').trim();
+  if (!playerId || !playerName) {
     return renderPlayerName(player);
   }
 
-  const playerName = escapeHtml(player.name || '—');
-  const accessibleName = escapeHtml(player.name || 'nimetön pelaaja');
-  return `<button type="button" class="player-name-button" data-open-player-result-card="${escapeHtml(playerId)}" data-result-card-origin="${escapeHtml(origin)}" title="Avaa tuloskortti" aria-label="Avaa pelaajan ${accessibleName} tuloskortti">${playerName}</button>`;
+  const escapedName = escapeHtml(playerName);
+  return `<button type="button" class="player-name-button" data-open-player-result-card="${escapeHtml(playerId)}" data-result-card-origin="${escapeHtml(origin)}" title="Avaa tuloskortti" aria-label="Avaa pelaajan ${escapedName} tuloskortti">${escapedName}</button>`;
 }
 
 function renderPdgaPlayerIdLink(player, settings) {
