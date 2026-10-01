@@ -74,7 +74,6 @@ function createNoopHandlers() {
 function createUiState(overrides = {}) {
   return {
     activeView: 'players',
-    navOpen: false,
     rankingFilter: 'ALL',
     summaryFilter: 'ALL',
     summaryPlayerId: '',
@@ -1735,7 +1734,7 @@ test('bindUi restores focus to the pending control after confirmation dialog clo
   restoreDocument();
 });
 
-test('renderApp shows Ohjeet tab between Kertoimet and Asetukset', () => {
+test('renderApp shows every navigation tab in the required fixed order', () => {
   const root = createRootStub();
 
   renderApp(root, createEmptyState(), createUiState({ activeView: 'help' }));
@@ -1748,12 +1747,16 @@ test('renderApp shows Ohjeet tab between Kertoimet and Asetukset', () => {
     'results',
     'players',
     'tournaments',
-    'points',
     'multipliers',
-    'help',
+    'points',
     'settings',
+    'help',
   ]);
+  assert.match(root.innerHTML, /<nav class="main-nav" id="main-nav" aria-label="Päänavigaatio">/);
+  assert.doesNotMatch(root.innerHTML, /<nav[^>]*\shidden(?:\s|>)/);
   assert.match(root.innerHTML, /<button type="button" data-view-target="help" aria-current="page">/);
+  assert.equal((root.innerHTML.match(/aria-current="page"/g) || []).length, 1);
+  assert.doesNotMatch(root.innerHTML, /data-toggle-nav|>Valikko<\/button>/);
 });
 
 test('renderApp renders collapsible help sections and topics from help data', () => {
