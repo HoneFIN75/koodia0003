@@ -651,7 +651,7 @@ function renderRankingSection(dataState, uiState) {
                 </table>
               </div>
             `
-            : renderEmptyState('Ranking muodostuu, kun lisäät vähintään yhden pelaajan.')
+            : renderEmptyState('Rankingissa ei ole vielä pelaajia.')
         }
       </article>
     </section>
@@ -2101,8 +2101,8 @@ function renderSettingsSection(dataState, uiState) {
         <div>
           <h2 id="settings-title">Asetukset</h2>
         </div>
-        ${renderActionBar({ label: 'Asetusten ohjeet', helpSection: 'settings' })}
       </div>
+      ${renderActionBar({ label: 'Asetusten ohjeet', helpSection: 'settings' })}
       <form id="settings-form" class="panel">
           <h3>PDGA-linkkien perusosoitteet</h3>
           <div class="form-grid">

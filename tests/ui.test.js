@@ -1793,6 +1793,28 @@ test('Help opens the matching page and keeps topics collapsed', () => {
   assert.match(root.innerHTML, /class="help-topic-content" id="help-topic-players-1" hidden/);
 });
 
+test('bindUi toggles the Help accordion with button state and panel visibility', () => {
+  const panel = { hidden: true };
+  const button = {
+    attributes: { 'aria-controls': 'help-topics-players', 'aria-expanded': 'false' },
+    addEventListener(name, listener) { this.listener = listener; },
+    getAttribute(name) { return this.attributes[name]; },
+    setAttribute(name, value) { this.attributes[name] = value; },
+  };
+  const root = {
+    querySelector(selector) { return selector === '#help-topics-players' ? panel : null; },
+    querySelectorAll(selector) { return selector === '[data-help-toggle]' ? [button] : []; },
+  };
+
+  bindUi(root, createEmptyState(), createUiState({ activeView: 'help' }), createNoopHandlers());
+  button.listener();
+  assert.equal(panel.hidden, false);
+  assert.equal(button.getAttribute('aria-expanded'), 'true');
+  button.listener();
+  assert.equal(panel.hidden, true);
+  assert.equal(button.getAttribute('aria-expanded'), 'false');
+});
+
 test('renderApp keeps the help section hidden when another view is active', () => {
   const root = createRootStub();
 

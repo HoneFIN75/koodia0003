@@ -605,10 +605,6 @@ button.danger-button.danger-action-button:focus-visible {
 }
 
 .action-bar-help {
-  margin-left: 0;
-}
-
-.action-bar-help {
   margin-left: auto;
 }
 
@@ -1634,6 +1630,10 @@ button.player-name-button:focus-visible {
     padding-top: var(--spacing-md);
     border-left: none;
     border-top: 2px dashed rgba(161, 52, 52, 0.35);
+  }
+
+  .action-bar-help {
+    margin-left: 0;
   }
 
   .table-toolbar-meta {
