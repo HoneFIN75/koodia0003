@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildPlayerResultCardRows,
+  buildTournamentStandings,
+  getPlacementMedal,
   clearPlayerPlacement,
   countResults,
   formatBestResult,
@@ -159,4 +161,65 @@ test('buildPlayerResultCardRows listaa turnaukset järjestysnumeron mukaan ja la
   rows = buildPlayerResultCardRows(state, 'mpo-1');
   assert.equal(rows[0].calculatedPoints, 285);
   assert.equal(buildRanking(state, 'MPO')[0].totalPoints, 285);
+});
+
+function createStandingsState(resultCards) {
+  return {
+    players: [
+      { id: 'm1', name: 'Niklas Anttila', division: 'MPO' },
+      { id: 'm2', name: 'Jesse Nieminen', division: 'MPO' },
+      { id: 'm3', name: 'Väinö Mäkelä', division: 'MPO' },
+      { id: 'm4', name: 'Teemu Lampainen', division: 'MPO' },
+      { id: 'm5', name: 'Aki Seppälä', division: 'MPO' },
+      { id: 'f1', name: 'Eveliina Salonen', division: 'FPO' },
+    ],
+    resultCards,
+  };
+}
+
+test('getPlacementMedal käyttää näytetyn sijoituksen ensimmäistä numeroa', () => {
+  assert.equal(getPlacementMedal('1'), 'gold');
+  assert.equal(getPlacementMedal('1T2'), 'gold');
+  assert.equal(getPlacementMedal('2T2'), 'silver');
+  assert.equal(getPlacementMedal('3T4'), 'bronze');
+  assert.equal(getPlacementMedal('4'), null);
+  assert.equal(getPlacementMedal('10T3'), null);
+  assert.equal(getPlacementMedal(''), null);
+  assert.equal(getPlacementMedal('virhe'), null);
+});
+
+test('buildTournamentStandings lajittelee kilpailujärjestykseen ja jättää tyhjät sarjat pois', () => {
+  const state = createStandingsState([
+    { playerId: 'm5', results: [{ tournamentId: 't1', placement: '7' }] },
+    { playerId: 'm3', results: [{ tournamentId: 't1', placement: '3T4' }] },
+    { playerId: 'm2', results: [{ tournamentId: 't1', placement: '2' }, { tournamentId: 't2', placement: '1' }] },
+    { playerId: 'm4', results: [{ tournamentId: 't1', placement: '3T4' }] },
+    { playerId: 'm1', results: [{ tournamentId: 't1', placement: '1' }] },
+    { playerId: 'missing', results: [{ tournamentId: 't1', placement: '4' }] },
+  ]);
+
+  const standings = buildTournamentStandings(state, 't1');
+  assert.deepEqual(standings.map((entry) => entry.division), ['MPO']);
+  assert.deepEqual(
+    standings[0].rows.map((row) => [row.placement, row.name, row.medal]),
+    [
+      ['1', 'Niklas Anttila', 'gold'],
+      ['2', 'Jesse Nieminen', 'silver'],
+      ['3T4', 'Teemu Lampainen', 'bronze'],
+      ['3T4', 'Väinö Mäkelä', 'bronze'],
+      ['7', 'Aki Seppälä', null],
+    ],
+  );
+});
+
+test('buildTournamentStandings näyttää FPO:n yksin ja molemmat sarjat järjestyksessä MPO, FPO', () => {
+  const onlyFpo = createStandingsState([{ playerId: 'f1', results: [{ tournamentId: 't1', placement: '1' }] }]);
+  assert.deepEqual(buildTournamentStandings(onlyFpo, 't1').map((entry) => entry.division), ['FPO']);
+
+  const both = createStandingsState([
+    { playerId: 'f1', results: [{ tournamentId: 't1', placement: '1' }] },
+    { playerId: 'm1', results: [{ tournamentId: 't1', placement: '1' }] },
+  ]);
+  assert.deepEqual(buildTournamentStandings(both, 't1').map((entry) => entry.division), ['MPO', 'FPO']);
+  assert.deepEqual(buildTournamentStandings(both, 'tyhja'), []);
 });

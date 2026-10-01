@@ -1094,6 +1094,135 @@ test('renderApp näyttää Tulokset-sivulla turnausyhteenvedon järjestysnumeron
   assert.doesNotMatch(root.innerHTML, /Lisää tuloskortti|data-open-result-card-dialog|data-delete-all-result-cards/);
 });
 
+test('renderApp näyttää Tulokset-painikkeen jokaisen turnausrivin lopussa', () => {
+  const root = createRootStub();
+  const dataState = createResultsDataState();
+
+  renderApp(root, dataState, createUiState({ activeView: 'results' }));
+
+  const section = root.innerHTML.slice(root.innerHTML.indexOf('id="section-results"'));
+  assert.equal((section.match(/data-open-tournament-result-card="/g) || []).length, 2);
+  assert.match(
+    section,
+    /<td data-label="Paras FPO">1 Eveliina Salonen<\/td>\s*<td data-label="Turnauksen tulokset"><button type="button" class="secondary-button" data-open-tournament-result-card="t-european" aria-label="Avaa turnauksen European Open tulokset">Tulokset<\/button><\/td>\s*<\/tr>/,
+  );
+  assert.match(section, /data-open-tournament-result-card="t-tampere"/);
+});
+
+test('renderApp näyttää turnauksen tuloskortin otsakkeen, sarjat ja mitalikorostukset lukutilassa', () => {
+  const root = createRootStub();
+  const dataState = createResultsDataState();
+  dataState.tournaments[1].location = 'Nokia';
+  dataState.players.push(
+    { id: 'mpo-3', name: 'Väinö Mäkelä', division: 'MPO' },
+    { id: 'mpo-4', name: 'Teemu Lampainen', division: 'MPO' },
+    { id: 'mpo-5', name: 'Aki Seppälä', division: 'MPO' },
+  );
+  dataState.resultCards.push(
+    { id: 'result-card-mpo-5', playerId: 'mpo-5', results: [{ tournamentId: 't-european', placement: '5' }] },
+    { id: 'result-card-mpo-3', playerId: 'mpo-3', results: [{ tournamentId: 't-european', placement: '3T2' }] },
+    { id: 'result-card-mpo-4', playerId: 'mpo-4', results: [{ tournamentId: 't-european', placement: '3T2' }] },
+  );
+
+  renderApp(root, dataState, createUiState({ activeView: 'tournament-result-card', tournamentResultCardId: 't-european' }));
+
+  const html = root.innerHTML;
+  assert.match(html, /data-view-target="results" aria-current="page"/);
+  assert.match(html, /<h2 id="tournament-result-card-title" class="tournament-result-card-title">European Open<\/h2>/);
+  assert.match(html, /data-tournament-result-card-date>17\.07\.2026 - 20\.07\.2026<\/dd>/);
+  assert.match(html, /<dt>Paikkakunta<\/dt><dd>Nokia<\/dd>/);
+  assert.match(html, /<dt>Tila<\/dt><dd><span class="status-chip tournament-result-card-status">MAJ<\/span><\/dd>/);
+  assert.match(
+    html,
+    /<dt>PDGA Event ID<\/dt><dd><a class="pdga-id-link" href="https:\/\/www\.pdga\.com\/tour\/event\/97339" target="_blank" rel="noopener noreferrer"[^>]*>97339<\/a><\/dd>/,
+  );
+  assert.match(html, /data-close-tournament-result-card>← Takaisin tuloksiin<\/button>/);
+  assert.match(html, /data-tournament-standings-division="MPO"[\s\S]*data-tournament-standings-division="FPO"/);
+  assert.match(html, /<th scope="col">Sijoitus<\/th>\s*<th scope="col">Kilpailija<\/th>/);
+
+  const mpo = html.slice(html.indexOf('data-tournament-standings-division="MPO"'), html.indexOf('data-tournament-standings-division="FPO"'));
+  const rowOrder = [...mpo.matchAll(/class="standings-player">([^<]+)</g)].map((match) => match[1]);
+  assert.deepEqual(rowOrder, ['Niklas Anttila', 'Aapo Aalto', 'Teemu Lampainen', 'Väinö Mäkelä', 'Aki Seppälä']);
+  assert.match(mpo, /class="standings-row medal-gold" data-medal="gold">[\s\S]*?aria-label="Kultamitali">🥇<\/span><span class="standings-placement-value">1</);
+  assert.match(mpo, /data-medal="silver">[\s\S]*?🥈[\s\S]*?>2</);
+  assert.equal((mpo.match(/data-medal="bronze"/g) || []).length, 2);
+  assert.match(mpo, /🥉<\/span><span class="standings-placement-value">3T2</);
+  assert.match(mpo, /<tr class="standings-row">\s*<td data-label="Sijoitus" class="standings-placement"><span class="medal-icon medal-icon-empty" aria-hidden="true"><\/span><span class="standings-placement-value">5</);
+
+  const cardStart = html.indexOf('id="section-tournament-result-card"');
+  const card = html.slice(cardStart, html.indexOf('</article>', cardStart));
+  assert.doesNotMatch(card, /<input|data-result-placement|data-edit-player-result-card|danger-button|Tyhjennä/);
+});
+
+test('renderApp näyttää yksipäiväisen turnauksen yhden päivän, piilottaa tyhjät sarjat ja 000000-tunnuksen varoituksena', () => {
+  const root = createRootStub();
+  const dataState = createResultsDataState();
+  dataState.tournaments[0].endDate = '2026-08-01';
+  dataState.resultCards.push({ id: 'result-card-x', playerId: 'fpo-1', results: [{ tournamentId: 't-tampere', placement: '1T2' }] });
+
+  renderApp(root, dataState, createUiState({ activeView: 'tournament-result-card', tournamentResultCardId: 't-tampere' }));
+
+  const html = root.innerHTML;
+  assert.match(html, /data-tournament-result-card-date>01\.08\.2026<\/dd>/);
+  assert.doesNotMatch(html, /01\.08\.2026 - 01\.08\.2026/);
+  assert.match(html, /data-tournament-standings-division="FPO"/);
+  assert.doesNotMatch(html, /data-tournament-standings-division="MPO"/);
+  assert.match(html, /data-medal="gold"[\s\S]*?🥇<\/span><span class="standings-placement-value">1T2</);
+  assert.match(html, /<span class="pdga-id-unassigned pdga-id-warning"[^>]*><span aria-hidden="true">⚠<\/span> <span class="pdga-id-unassigned">000000<\/span><span class="visually-hidden"> \(PDGA Event ID:tä ei ole vielä määritetty\)<\/span><\/span>/);
+  assert.doesNotMatch(html, /href="[^"]*000000"/);
+});
+
+test('renderApp näyttää turnauksen tuloskortilla ilmoituksen, kun tuloksia ei ole', () => {
+  const root = createRootStub();
+  const dataState = createResultsDataState();
+
+  renderApp(root, dataState, createUiState({ activeView: 'tournament-result-card', tournamentResultCardId: 't-tampere' }));
+
+  assert.match(root.innerHTML, /Turnaukseen ei ole vielä syötetty tuloksia\./);
+  assert.doesNotMatch(root.innerHTML, /data-tournament-standings-division/);
+});
+
+test('bindUi kutsuu turnauksen tuloskortin avaus- ja sulkemiskäsittelijöitä', () => {
+  const restoreDocument = installDocumentStub();
+  const openButton = createFocusableElement();
+  openButton.dataset = { openTournamentResultCard: 't-european' };
+  const closeButton = createFocusableElement();
+  const root = {
+    __dialogKeydownHandler: null,
+    querySelector(selector) {
+      return selector === '[data-close-tournament-result-card]' ? closeButton : null;
+    },
+    querySelectorAll(selector) {
+      return selector === '[data-open-tournament-result-card]' ? [openButton] : [];
+    },
+  };
+  const calls = [];
+  const handlers = new Proxy(
+    {
+      openTournamentResultCard(tournamentId) {
+        calls.push(['open', tournamentId]);
+      },
+      closeTournamentResultCard() {
+        calls.push(['close']);
+      },
+    },
+    {
+      get(target, property) {
+        return property in target ? target[property] : () => {};
+      },
+    },
+  );
+
+  try {
+    bindUi(root, createEmptyState(), createUiState(), handlers);
+    openButton.listeners.click();
+    closeButton.listeners.click();
+    assert.deepEqual(calls, [['open', 't-european'], ['close']]);
+  } finally {
+    restoreDocument();
+  }
+});
+
 test('renderApp näyttää pelaajan tuloskortin sarakkeet, PDGA Event -linkin, sijoituskentät ja lasketut pisteet', () => {
   const root = createRootStub();
   const dataState = createResultsDataState();
