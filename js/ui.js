@@ -795,7 +795,7 @@ function renderPlayerResultCardModeBadge(editMode) {
     : { key: 'read-only', label: 'Lukutila', symbol: '🔒', chipClass: 'status-chip' };
 
   return `
-    <p class="result-card-mode" id="player-result-card-instructions">
+    <p class="result-card-mode" id="player-result-card-mode">
       <span class="${mode.chipClass}" data-result-card-mode="${mode.key}" role="status">
         <span aria-hidden="true">${mode.symbol}</span> ${mode.label}
       </span>
@@ -857,7 +857,7 @@ function renderPlayerResultCardSection(dataState, uiState) {
           rows.length
             ? `
               <div class="table-wrap">
-                <table class="table player-result-card-table" aria-describedby="player-result-card-instructions">
+                <table class="table player-result-card-table" aria-describedby="player-result-card-mode">
                   <thead>
                     <tr>
                       <th scope="col">Turnauksen nimi</th>

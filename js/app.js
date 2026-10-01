@@ -1157,7 +1157,7 @@ const handlers = {
     if (hasUnsavedResultCardChanges()) {
       setPlayerResultCardStatus(root, 'pending', 'Tallentamattomia muutoksia. Tallenna muutokset Tallenna ja poistu -painikkeella.');
     } else {
-      setPlayerResultCardStatus(root, '', '');
+      setPlayerResultCardStatus(root, 'none', '');
     }
   },
   // Tallenna ja poistu: kaikki kortin sijoitukset validoidaan ja tallennetaan kerralla,
@@ -1185,6 +1185,7 @@ const handlers = {
       return;
     }
 
+    const previousResultCards = dataState.resultCards;
     try {
       dataState.resultCards = nextState.resultCards;
       localRevision += 1;
@@ -1198,6 +1199,12 @@ const handlers = {
         return;
       }
 
+      // Tallennus epäonnistui: palautetaan tallennettu tila ja jäädään muokkaustilaan,
+      // jotta käyttäjä voi yrittää tallennusta uudelleen samoilla muutoksilla.
+      dataState.resultCards = previousResultCards;
+      localRevision += 1;
+      uiState.resultCardEditMode = true;
+      uiState.resultCardDraft = nextState.resultCards;
       uiState.feedback = {
         type: 'error',
         text: `✕ Tallennus epäonnistui: ${error instanceof Error ? error.message : 'Tuntematon virhe.'}`,
