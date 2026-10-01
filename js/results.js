@@ -158,6 +158,10 @@ export function removePlayerResultCard(resultCards = [], playerId) {
   return resultCards.filter((card) => card.playerId !== playerId);
 }
 
+export function clearAllResults(dataState) {
+  return { ...dataState, resultCards: [] };
+}
+
 export function countResults(resultCards = [], { playerId = null, tournamentId = null } = {}) {
   return listResultEntries(resultCards).filter(
     (entry) => (playerId === null || entry.playerId === playerId) && (tournamentId === null || entry.tournamentId === tournamentId),
