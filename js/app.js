@@ -342,7 +342,7 @@ const handlers = {
       render();
     }
   },
-  changeView(view) {
+  changeView(view, helpSection = '') {
     // Muokkaustila ei jää päälle, jos käyttäjä siirtyy toiselle sivulle. Tallentamattomista
     // muutoksista kysytään sama vahvistus kuin Poistu-painikkeessa.
     if (view !== 'player-result-card' && uiState.resultCardEditMode) {
@@ -358,6 +358,7 @@ const handlers = {
       return;
     }
     uiState.activeView = view;
+    uiState.helpSectionId = view === 'help' ? helpSection : '';
     render();
   },
   async submitSettings(formData) {

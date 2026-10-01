@@ -5,11 +5,11 @@ import { HELP_SECTIONS, findHelpSection, listHelpSections } from '../js/helpData
 test('help data covers the documented sections in navigation order', () => {
   assert.deepEqual(
     HELP_SECTIONS.map((section) => section.id),
-    ['summary', 'ranking', 'results', 'players', 'tournaments', 'points', 'multipliers'],
+    ['summary', 'ranking', 'results', 'players', 'tournaments', 'points', 'multipliers', 'settings'],
   );
   assert.deepEqual(
     HELP_SECTIONS.map((section) => section.title),
-    ['Yhteenveto', 'Ranking', 'Tulokset', 'Pelaajat', 'Turnaukset', 'Pistetaulukot', 'Kertoimet'],
+    ['Yhteenveto', 'Ranking', 'Tulokset', 'Pelaajat', 'Turnaukset', 'Pistetaulukot', 'Kertoimet', 'Asetukset'],
   );
 });
 
@@ -45,6 +45,10 @@ test('migrated import instructions are available in the help data', () => {
 
   const points = findHelpSection('points');
   assert.ok(points.topics.some((topic) => /Sijoitus;Pisteet/.test(topic.content)));
+  const settings = findHelpSection('settings');
+  assert.ok(settings.topics.some((topic) => /perusosoitteesta ja tunnuksesta/.test(topic.content)));
+  assert.ok(settings.topics.some((topic) => /vain näyttöön/.test(topic.content)));
+  assert.ok(settings.topics.some((topic) => /vähintään 8 merkkiä/.test(topic.content)));
 });
 
 test('tuloskortin lukutila ja muokkaustila on dokumentoitu Pelaajat-osiossa', () => {

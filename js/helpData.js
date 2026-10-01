@@ -414,6 +414,34 @@ Tuloskorteille ei tallenneta kerrointa tai pisteitä, vaan Tulokset, Ranking ja 
       },
     ],
   },
+  {
+    id: 'settings',
+    title: 'Asetukset',
+    topics: [
+      {
+        title: 'PDGA-linkkien perusosoitteet',
+        content: `Pelaajille ja turnauksille tallennetaan vain PDGA-tunnus. Linkki muodostetaan automaattisesti perusosoitteesta ja tunnuksesta ja avautuu uuteen välilehteen. Pelaajan profiili avataan PDGA ID -kentästä, ei pelaajan nimestä. Vanhoista täydellisistä PDGA-osoitteista poimitaan tunnus latauksen yhteydessä.
+
+Pelaajaosoitteen oletus: https://www.pdga.com/player/
+Kilpailuosoitteen oletus: https://www.pdga.com/tour/event/
+Perusosoitteen muutos vaikuttaa kaikkiin nykyisiin ja tuleviin linkkeihin.`,
+      },
+      {
+        title: 'Pisteiden näyttö ja pyöristys',
+        content: `Pyöristys määrittää Ranking- ja Yhteenveto-sivuilla näytettävien pisteiden desimaalien määrän (0–4, oletus 2). Se vaikuttaa vain näyttöön, ei laskentaan tai tallennettuihin arvoihin.`,
+      },
+      {
+        title: 'Asetusten tallennus',
+        content: `Tallenna asetukset tallentaa lomakkeen arvot. Palauta tallennetut arvot peruu lomakkeeseen tehdyt tallentamattomat muutokset.`,
+      },
+      {
+        title: 'Salasanasuojaus',
+        content: `Sovellukseen kirjaudutaan yhteisellä sivuston salasanalla. Uuden salasanan pitää olla vähintään 8 merkkiä. Nykyistä salasanaa ei näytetä, eikä salasanaa tallenneta selaimeen.
+
+Uusi salasana otetaan käyttöön seuraavissa kirjautumisissa; jo kirjautuneet käyttäjät pysyvät kirjautuneina. Kirjaudu ulos poistaa kirjautumisen tästä selaimesta.`,
+      },
+    ],
+  },
 ];
 
 export function listHelpSections() {

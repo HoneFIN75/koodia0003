@@ -516,7 +516,7 @@ test('renderApp renders sortable headers as keyboard-accessible buttons', () => 
   assert.match(root.innerHTML, /<button type="button" class="table-sort-button[^"]*" data-sort-table="players" data-sort-field="pdgaNumber">/);
 });
 
-test('renderApp shows players CSV import instructions, required fields and summary', () => {
+test('renderApp shows player import fields and summary without instructions', () => {
   const root = createRootStub();
   const dataState = createEmptyState();
 
@@ -541,9 +541,7 @@ test('renderApp shows players CSV import instructions, required fields and summa
 
   assert.match(root.innerHTML, /<h2 id="players-import-dialog-title">Tuo pelaajat<\/h2>/);
   assert.match(root.innerHTML, /data-players-import-dialog-panel/);
-  assert.match(root.innerHTML, /Tarkemmat ohjeet löytyvät Ohjeet-osion kohdasta Pelaajat\./);
-  assert.match(root.innerHTML, /<code>Etunimi;Sukunimi;PDGA ID;PDGA-rating;Maailmanranking<\/code>/);
-  assert.match(root.innerHTML, /<strong>Erotin:<\/strong> puolipiste <code>;<\/code>/);
+  assert.doesNotMatch(root.innerHTML, /class="import-instructions"/);
   assert.match(root.innerHTML, /id="players-import-division" name="division" required/);
   assert.match(root.innerHTML, /id="players-import-file" name="file" type="file" accept="\.csv,text\/csv" required/);
   assert.match(root.innerHTML, /data-cancel-players-import>Sulje<\/button>/);
@@ -560,7 +558,7 @@ test('renderApp shows a separate rating and ranking import dialog and escaped su
   renderApp(root, dataState, createUiState({ ratingRankingDialogOpen: true }));
   assert.match(root.innerHTML, /data-open-rating-ranking-dialog>Päivitä Rating ja Ranking<\/button>/);
   assert.match(root.innerHTML, /role="dialog" aria-modal="true" aria-labelledby="rating-ranking-title"/);
-  assert.match(root.innerHTML, /<code>PDGA ID;Rating;Ranking<\/code>/);
+  assert.doesNotMatch(root.innerHTML, /class="import-instructions"/);
   assert.match(root.innerHTML, /<textarea id="rating-ranking-csv" name="csv" rows="6" required/);
 
   renderApp(root, dataState, createUiState({
@@ -725,8 +723,7 @@ test('renderApp shows tournament table with required column order and PDGA event
 
   assert.match(root.innerHTML, /data-open-tournament-dialog>Lisää turnaus<\/button>/);
   assert.match(root.innerHTML, /data-open-tournament-import-dialog>Tuo turnaukset<\/button>/);
-  assert.match(root.innerHTML, /Tarkemmat ohjeet löytyvät Ohjeet-osion kohdasta Turnaukset\./);
-  assert.match(root.innerHTML, /Järjestysnumero;PDGA Event ID;Turnauksen nimi/);
+  assert.match(root.innerHTML, /data-help-target="tournaments">Ohjeet<\/button>/);
   assert.match(root.innerHTML, /data-request-delete-all-tournaments/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="name"/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="displayOrder"/);
@@ -781,7 +778,7 @@ test('renderApp shows tournament import dialog and summary', () => {
 
   assert.match(root.innerHTML, /<h2 id="tournament-import-dialog-title">Tuo turnaukset<\/h2>/);
   assert.match(root.innerHTML, /id="tournament-import-file" name="file" type="file" accept="\.csv,text\/csv" required/);
-  assert.match(root.innerHTML, /id="tournament-import-file-hint"/);
+  assert.doesNotMatch(root.innerHTML, /class="import-instructions"/);
   assert.match(root.innerHTML, /Turnausten tuonti valmis/);
   assert.match(root.innerHTML, /<dt>Tuotu<\/dt><dd>3<\/dd>/);
   assert.match(root.innerHTML, /<dt>Ohitetut duplikaatit<\/dt><dd>1<\/dd>/);
@@ -805,7 +802,7 @@ test('renderApp shows disabled import button before file selection', () => {
 
   assert.match(
     root.innerHTML,
-    /data-submit-tournament-import disabled aria-describedby="tournament-import-file-hint">Tuo<\/button>/,
+    /data-submit-tournament-import disabled>Tuo<\/button>/,
   );
 });
 
@@ -987,7 +984,7 @@ test('renderApp shows tournament delete confirmation copy for multiple linked re
   assert.match(root.innerHTML, /Samalla poistetaan 2 turnaustulosta eikä toimintoa voi peruuttaa\./);
 });
 
-test('renderApp shows score table import instructions, division actions and Finnish decimals', () => {
+test('renderApp shows score table division actions and Finnish decimals', () => {
   const root = createRootStub();
   const dataState = createEmptyState();
   dataState.pointsTable = {
@@ -997,8 +994,7 @@ test('renderApp shows score table import instructions, division actions and Finn
 
   renderApp(root, dataState, createUiState({ activeView: 'points' }));
 
-  assert.match(root.innerHTML, /Tarkemmat ohjeet löytyvät Ohjeet-osion kohdasta Pistetaulukot\./);
-  assert.match(root.innerHTML, /Sijoitus;Pisteet/);
+  assert.match(root.innerHTML, /data-help-target="points">Ohjeet<\/button>/);
   assert.match(root.innerHTML, /data-open-points-dialog>Lisää rivi<\/button>/);
   assert.match(root.innerHTML, /data-open-points-import>Tuo pistetaulukko<\/button>/);
   assert.match(root.innerHTML, /data-request-delete-points="MPO">.*Poista kaikki MPO-pisteet<\/button>/);
@@ -1026,7 +1022,7 @@ test('renderApp shows score table import dialog with division dropdown and file 
   assert.match(root.innerHTML, /id="points-import-division" name="division" required/);
   assert.match(root.innerHTML, /<option value="MPO" >MPO<\/option>/);
   assert.match(root.innerHTML, /<option value="FPO" selected>FPO<\/option>/);
-  assert.match(root.innerHTML, /<code>Sijoitus;Pisteet<\/code>/);
+  assert.doesNotMatch(root.innerHTML, /class="import-instructions"/);
   assert.match(root.innerHTML, /id="points-import-file" name="file" type="file" accept="\.csv,text\/csv" required/);
   assert.match(root.innerHTML, /<button type="submit" class="button">Tuo<\/button>/);
   assert.match(root.innerHTML, /data-cancel-points-import>Peruuta<\/button>/);
@@ -1774,7 +1770,49 @@ test('renderApp renders collapsible help sections and topics from help data', ()
 
   assert.match(root.innerHTML, /<span class="help-topic-title">CSV-tuonti<\/span>/);
   assert.match(root.innerHTML, /Divisioona valitaan importin yhteydessä/);
-  assert.doesNotMatch(root.innerHTML, /<details class="help-section" data-help-section="[a-z]+" open/);
+  assert.match(root.innerHTML, /data-help-toggle aria-expanded="false" aria-controls="help-topics-players"/);
+  assert.match(root.innerHTML, /class="help-topic-content" id="help-topic-players-1" hidden/);
+});
+
+test('each operational page has a rightmost Help action targeting its own section', () => {
+  const root = createRootStub();
+  renderApp(root, createEmptyState(), createUiState({ activeView: 'players' }));
+
+  for (const id of ['summary', 'ranking', 'results', 'players', 'tournaments', 'multipliers', 'points', 'settings']) {
+    const section = root.innerHTML.split(`id="section-${id}"`)[1].split('</section>')[0];
+    assert.match(section, new RegExp(`class="action-bar-group action-bar-help"><button type="button" class="secondary-button" data-view-target="help" data-help-target="${id}">Ohjeet</button></div>\\s*</div>`));
+  }
+  assert.doesNotMatch(root.innerHTML, /class="help-hint"|class="import-instructions"/);
+});
+
+test('Help opens the matching page and keeps topics collapsed', () => {
+  const root = createRootStub();
+  renderApp(root, createEmptyState(), createUiState({ activeView: 'help', helpSectionId: 'players' }));
+  assert.match(root.innerHTML, /data-help-section="players">[\s\S]*?aria-expanded="true" aria-controls="help-topics-players"/);
+  assert.match(root.innerHTML, /class="help-topics" id="help-topics-players" >/);
+  assert.match(root.innerHTML, /class="help-topic-content" id="help-topic-players-1" hidden/);
+});
+
+test('bindUi toggles the Help accordion with button state and panel visibility', () => {
+  const panel = { hidden: true };
+  const button = {
+    attributes: { 'aria-controls': 'help-topics-players', 'aria-expanded': 'false' },
+    addEventListener(name, listener) { this.listener = listener; },
+    getAttribute(name) { return this.attributes[name]; },
+    setAttribute(name, value) { this.attributes[name] = value; },
+  };
+  const root = {
+    querySelector(selector) { return selector === '#help-topics-players' ? panel : null; },
+    querySelectorAll(selector) { return selector === '[data-help-toggle]' ? [button] : []; },
+  };
+
+  bindUi(root, createEmptyState(), createUiState({ activeView: 'help' }), createNoopHandlers());
+  button.listener();
+  assert.equal(panel.hidden, false);
+  assert.equal(button.getAttribute('aria-expanded'), 'true');
+  button.listener();
+  assert.equal(panel.hidden, true);
+  assert.equal(button.getAttribute('aria-expanded'), 'false');
 });
 
 test('renderApp keeps the help section hidden when another view is active', () => {
@@ -2065,7 +2103,7 @@ test('renderApp näyttää uloskirjautumisen ja Turvallisuus-osion sivuston sala
 
   renderApp(root, createEmptyState(), createUiState({ activeView: 'settings', sitePasswordFormError: 'Liian lyhyt.' }));
   assert.match(root.innerHTML, /id="sitePassword-error" role="alert">Liian lyhyt\.</);
-  assert.match(root.innerHTML, /aria-describedby="settings-site-password-help sitePassword-error"/);
+  assert.match(root.innerHTML, /aria-describedby="sitePassword-error"/);
 });
 
 test('Ranking, Yhteenveto ja Tulokset käyttävät samaa tuloksista laskettua pistelähdettä', () => {
