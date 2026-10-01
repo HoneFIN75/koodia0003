@@ -1547,6 +1547,26 @@ details[open] > summary > .help-marker::before {
     gap: var(--spacing-sm);
   }
 
+  .brand,
+  .brand-copy {
+    min-width: 0;
+  }
+
+  .brand {
+    gap: var(--spacing-xs);
+  }
+
+  .brand-mark {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: var(--spacing-xs);
+  }
+
+  .brand-copy strong {
+    font-size: 1rem;
+    overflow-wrap: anywhere;
+  }
+
   .main-nav {
     width: 100%;
   }
