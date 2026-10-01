@@ -170,6 +170,11 @@ function closeTournamentImportDialogState() {
 let saveQueue = Promise.resolve();
 let localRevision = 0;
 
+// Tuloskortin lähtönäkymä rajataan tuettuihin näkymiin, jotta paluu ei vie tuntemattomalle sivulle.
+function normalizeResultCardOrigin(origin) {
+  return origin === 'ranking' ? 'ranking' : 'players';
+}
+
 function cloneResultCards(resultCards = []) {
   return resultCards.map((card) => ({ ...card, results: (card.results || []).map((entry) => ({ ...entry })) }));
 }
@@ -1101,7 +1106,7 @@ const handlers = {
 
     uiState.activeView = 'player-result-card';
     uiState.resultCardPlayerId = playerId;
-    uiState.resultCardOrigin = origin === 'ranking' ? 'ranking' : 'players';
+    uiState.resultCardOrigin = normalizeResultCardOrigin(origin);
     uiState.resultCardEditMode = false;
     uiState.resultCardDraft = null;
     uiState.navOpen = false;
@@ -1111,7 +1116,7 @@ const handlers = {
   },
   closePlayerResultCard() {
     const playerId = uiState.resultCardPlayerId;
-    const origin = uiState.resultCardOrigin === 'ranking' ? 'ranking' : 'players';
+    const origin = normalizeResultCardOrigin(uiState.resultCardOrigin);
     uiState.activeView = origin;
     uiState.resultCardPlayerId = '';
     uiState.resultCardOrigin = 'players';
