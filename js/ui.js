@@ -323,10 +323,15 @@ function getMultiplierAbbreviation(tournament, multipliers) {
   return multiplier?.abbreviation || '';
 }
 
+// Tuloskortin lähtönäkymä rajataan tuettuihin näkymiin, jotta navigaatio ja paluu pysyvät ehjinä.
+function resolveResultCardOriginView(origin) {
+  return origin === 'ranking' ? 'ranking' : 'players';
+}
+
 function renderNav(activeView, resultCardOrigin = 'players') {
   // Tuloskortti on alanäkymä: aktiivinen navigaatiokohta säilyy siinä näkymässä, josta kortti avattiin.
   const currentView = activeView === 'player-result-card'
-    ? (resultCardOrigin === 'ranking' ? 'ranking' : 'players')
+    ? resolveResultCardOriginView(resultCardOrigin)
     : activeView;
   const items = [
     { id: 'summary', label: 'Yhteenveto' },
@@ -825,7 +830,9 @@ function renderPlayerResultCardSection(dataState, uiState) {
 
   const player = (dataState.players || []).find((entry) => entry.id === uiState.resultCardPlayerId);
   // Paluupainike seuraa sitä näkymää, josta tuloskortti avattiin (Pelaajat tai Ranking).
-  const backLabel = uiState.resultCardOrigin === 'ranking' ? '← Takaisin Rankingiin' : '← Takaisin pelaajiin';
+  const backLabel = resolveResultCardOriginView(uiState.resultCardOrigin) === 'ranking'
+    ? '← Takaisin Rankingiin'
+    : '← Takaisin pelaajiin';
   const backButton = `<button type="button" class="secondary-button" data-close-player-result-card>${backLabel}</button>`;
   if (!player) {
     return `
