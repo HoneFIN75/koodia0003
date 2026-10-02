@@ -193,6 +193,22 @@ a {
   color: var(--color-text);
 }
 
+.site-header .brand-copy:has(> .header-slogan) {
+  gap: 0;
+  max-width: 60ch;
+  text-align: center;
+}
+
+.site-header .header-slogan {
+  margin: var(--spacing-xs) 0 var(--spacing-md);
+  color: var(--color-text-muted);
+  font-size: calc(var(--font-size-body) * 0.75);
+  font-weight: 400;
+  line-height: 1.4;
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+
 .build-info {
   margin: 0;
   color: var(--color-text-muted);
@@ -1622,6 +1638,10 @@ button.player-name-button:focus-visible {
   .brand-title {
     font-size: 1.0625rem;
     overflow-wrap: anywhere;
+  }
+
+  .site-header .header-slogan {
+    font-size: var(--font-size-sm);
   }
 
   .site-header .logout-button {
