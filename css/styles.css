@@ -1952,3 +1952,195 @@ button.compare-remove-button:focus-visible {
     max-width: none;
   }
 }
+
+/* Sisältötoiminnot: rajaus ei ulotu navigaatioon tai muihin näkymiin. */
+.action-surface :is(button.button, button.secondary-button, button.ghost-button, button.danger-button, .secondary-link-button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  min-height: 2.875rem;
+  max-width: 100%;
+  padding: 0.65rem 1rem;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+
+.action-surface button.button {
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 4px rgba(16, 34, 47, 0.12);
+}
+
+.action-surface :is(button.secondary-button, .secondary-link-button) {
+  color: var(--color-secondary);
+}
+
+.action-surface :is(button.ghost-button, button.action-neutral) {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  box-shadow: none;
+}
+
+.action-surface button.danger-button {
+  background: var(--color-error-surface);
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.action-surface button.button:not(:disabled):hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+  box-shadow: 0 3px 8px rgba(16, 34, 47, 0.16);
+}
+
+.action-surface :is(button.secondary-button, button.ghost-button, .secondary-link-button):not(:disabled):hover {
+  background: var(--color-surface-muted);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.action-surface button.danger-button:not(:disabled):hover {
+  background: var(--color-error);
+  color: var(--color-surface);
+  border-color: var(--color-error);
+}
+
+.action-surface :is(button.button, button.secondary-button, button.ghost-button, button.danger-button, .secondary-link-button):not(:disabled):active {
+  box-shadow: inset 0 2px 4px rgba(16, 34, 47, 0.2);
+}
+
+.action-surface :is(button, .secondary-link-button):focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+.action-surface button.danger-button:focus-visible {
+  outline-color: var(--color-error);
+}
+
+.action-surface :is(button.button, button.secondary-button, button.ghost-button, button.danger-button):disabled {
+  box-shadow: none;
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.action-surface button.button:disabled:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.action-surface button[aria-busy="true"] {
+  cursor: progress;
+  box-shadow: none;
+}
+
+.action-surface .action-icon {
+  flex: 0 0 auto;
+  font-size: 1.1em;
+  line-height: 1;
+}
+
+.action-surface .action-bar {
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md);
+}
+
+.action-surface .action-bar-group {
+  flex: 1 1 24rem;
+  align-items: stretch;
+  gap: var(--spacing-sm);
+}
+
+.action-surface .action-bar-group > button {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.action-surface .action-bar-danger {
+  flex: 0 1 auto;
+  gap: var(--spacing-sm);
+  border-left-style: solid;
+}
+
+.action-surface :is(.form-actions, .table-actions, .inline-actions) {
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.action-surface :is(.panel, .two-column) {
+  min-width: 0;
+}
+
+.action-surface .action-footer {
+  align-items: stretch;
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.action-surface .action-footer > :is(.button, .danger-action-button) {
+  order: 1;
+  margin-inline-start: auto;
+}
+
+.action-surface .action-footer > .action-neutral {
+  order: -1;
+}
+
+.action-surface.dialog-panel {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+
+.action-surface button.filter-button {
+  min-height: 2.75rem;
+}
+
+@media (min-width: 601px) and (max-width: 780px) {
+  .action-surface :is(.action-bar, .action-bar-group) {
+    flex-direction: row;
+  }
+
+  .action-surface .action-bar-group > button {
+    flex: 1 1 12rem;
+    width: auto;
+  }
+
+  .action-surface .action-bar-danger {
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .action-surface :is(.action-bar-group, .action-footer, .danger-zone) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .action-surface .action-bar-group {
+    flex-basis: auto;
+  }
+
+  .action-surface .action-footer > :is(.button, .danger-action-button) {
+    margin-inline-start: 0;
+  }
+
+  .action-surface .action-footer > button,
+  .action-surface .danger-zone > button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action-surface :is(button.button, button.secondary-button, button.ghost-button, button.danger-button, button.filter-button, button.table-sort-button, .secondary-link-button) {
+    transition: none;
+  }
+}

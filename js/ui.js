@@ -443,15 +443,15 @@ function renderTableToolbar({ label, search = '', filters = '', meta = '' }) {
 function renderDangerConfirmDialog({ title, body, confirmAttribute, confirmLabel = 'Poista' }) {
   return `
     <div class="dialog-backdrop" data-close-confirm-dialog>
-      <div class="dialog-panel dialog-panel-danger" role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-warning confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
+      <div class="dialog-panel dialog-panel-danger action-surface" role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-warning confirm-dialog-title" aria-describedby="confirm-dialog-description" data-confirm-dialog-panel tabindex="-1">
         <p class="danger-banner" id="confirm-dialog-warning"><span aria-hidden="true">⚠</span> VAROITUS <span aria-hidden="true">⚠</span></p>
         <h2 id="confirm-dialog-title">${escapeHtml(title)}</h2>
         <div id="confirm-dialog-description" class="confirm-dialog-body">
           ${body}
         </div>
-        <div class="form-actions">
+        <div class="form-actions action-footer">
           <button type="button" class="danger-button danger-action-button" ${confirmAttribute}>${escapeHtml(confirmLabel)}</button>
-          <button type="button" class="secondary-button" data-cancel-confirm-dialog autofocus>Peruuta</button>
+          <button type="button" class="secondary-button action-neutral" data-cancel-confirm-dialog autofocus>Peruuta</button>
         </div>
       </div>
     </div>
@@ -1073,10 +1073,10 @@ function renderPlayerResultCardSection(dataState, uiState) {
   const player = (dataState.players || []).find((entry) => entry.id === uiState.resultCardPlayerId);
   // Paluupainike seuraa sitä näkymää, josta tuloskortti avattiin (Pelaajat, Ranking tai Yhteenveto).
   const backLabel = RESULT_CARD_BACK_LABELS[resolveResultCardOriginView(uiState.resultCardOrigin)];
-  const backButton = `<button type="button" class="secondary-button" data-close-player-result-card>${backLabel}</button>`;
+  const backButton = `<button type="button" class="secondary-button action-neutral" data-close-player-result-card>${backLabel}</button>`;
   if (!player) {
     return `
-      <section class="section" id="section-player-result-card" aria-labelledby="player-result-card-title">
+      <section class="section action-surface" id="section-player-result-card" aria-labelledby="player-result-card-title">
         <h2 id="player-result-card-title">Tuloskortti</h2>
         ${renderEmptyState('Pelaajaa ei löytynyt.')}
         ${renderActionBar({ label: 'Tuloskortin toiminnot', actions: [backButton] })}
@@ -1094,7 +1094,7 @@ function renderPlayerResultCardSection(dataState, uiState) {
   const rows = buildPlayerResultCardRows(viewState, player.id);
 
   return `
-    <section class="section" id="section-player-result-card" aria-labelledby="player-result-card-title">
+    <section class="section action-surface" id="section-player-result-card" aria-labelledby="player-result-card-title">
       <div class="section-heading">
         <div>
           <h2 id="player-result-card-title">Tuloskortti: ${escapeHtml(player.name)}</h2>
@@ -1107,11 +1107,11 @@ function renderPlayerResultCardSection(dataState, uiState) {
         actions: editMode
           ? [
             '<button type="button" class="button" data-save-player-result-card>Tallenna ja poistu</button>',
-            '<button type="button" class="secondary-button" data-exit-player-result-card-edit>Poistu</button>',
+            '<button type="button" class="secondary-button action-neutral" data-exit-player-result-card-edit>Poistu</button>',
           ]
           : [
             backButton,
-            '<button type="button" class="button" data-edit-player-result-card>Muokkaa</button>',
+            '<button type="button" class="secondary-button" data-edit-player-result-card><span class="action-icon" aria-hidden="true">✎</span> Muokkaa</button>',
           ],
       })}
       <p class="result-card-save-status" data-result-card-save-status role="status" aria-live="polite"></p>
@@ -1242,7 +1242,7 @@ function renderPlayerSection(dataState, uiState) {
   });
 
   return `
-    <section class="section" id="section-players" ${uiState.activeView === 'players' ? '' : 'hidden'} aria-labelledby="players-title">
+    <section class="section action-surface" id="section-players" ${uiState.activeView === 'players' ? '' : 'hidden'} aria-labelledby="players-title">
       <div class="section-heading">
         <div>
           <h2 id="players-title">Pelaajat</h2>
@@ -1251,11 +1251,11 @@ function renderPlayerSection(dataState, uiState) {
       ${renderActionBar({
         label: 'Pelaajien toiminnot',
         actions: [
-          '<button type="button" class="button" data-open-player-dialog>Lisää pelaaja</button>',
-          '<button type="button" class="secondary-button" data-open-players-import-dialog>Tuo pelaajat</button>',
-          '<button type="button" class="secondary-button" data-open-rating-ranking-dialog>Päivitä Rating ja Ranking</button>',
-          '<button type="button" class="secondary-button" data-export-result-cards>Export Tuloskortit</button>',
-          '<button type="button" class="secondary-button" data-open-result-card-import-dialog>Import Tuloskortit</button>',
+          '<button type="button" class="button" data-open-player-dialog><span class="action-icon" aria-hidden="true">+</span> Lisää pelaaja</button>',
+          '<button type="button" class="button" data-open-players-import-dialog><span class="action-icon" aria-hidden="true">↥</span> Tuo pelaajat</button>',
+          '<button type="button" class="button" data-open-rating-ranking-dialog><span class="action-icon" aria-hidden="true">↻</span> Päivitä Rating ja Ranking</button>',
+          '<button type="button" class="secondary-button" data-export-result-cards><span class="action-icon" aria-hidden="true">↧</span> Export Tuloskortit</button>',
+          '<button type="button" class="button" data-open-result-card-import-dialog><span class="action-icon" aria-hidden="true">↥</span> Import Tuloskortit</button>',
         ],
         dangerActions: [
           renderDangerActionButton({
@@ -1387,7 +1387,7 @@ function renderPlayerDialog(dataState, uiState) {
 
   return `
     <div class="dialog-backdrop" data-player-dialog-backdrop>
-      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="player-dialog-title" data-player-dialog-panel tabindex="-1">
+      <div class="dialog-panel dialog-panel-wide action-surface" role="dialog" aria-modal="true" aria-labelledby="player-dialog-title" data-player-dialog-panel tabindex="-1">
         <div class="section-heading">
           <div>
             <h2 id="player-dialog-title">${editingPlayer ? 'Muokkaa pelaajaa' : 'Lisää pelaaja'}</h2>
@@ -1460,9 +1460,9 @@ function renderPlayerDialog(dataState, uiState) {
               ${renderFieldError(uiState.playerFormErrors, 'worldRank')}
             </div>
           </div>
-          <div class="form-actions">
+          <div class="form-actions action-footer">
             <button type="submit" class="button">${editingPlayer ? 'Tallenna muutokset' : 'Lisää pelaaja'}</button>
-            <button type="button" class="ghost-button" data-dismiss-player-dialog>Peruuta</button>
+            <button type="button" class="ghost-button action-neutral" data-dismiss-player-dialog>Peruuta</button>
             ${editingPlayer ? `<button type="button" class="danger-button" data-delete-player="${escapeHtml(editingPlayer.id)}">Poista pelaaja</button>` : ''}
           </div>
         </form>
@@ -1484,7 +1484,7 @@ function renderPlayersImportDialog(uiState) {
 
   return `
     <div class="dialog-backdrop" data-close-players-import-dialog>
-      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="players-import-dialog-title" data-players-import-dialog-panel tabindex="-1">
+      <div class="dialog-panel dialog-panel-wide action-surface" role="dialog" aria-modal="true" aria-labelledby="players-import-dialog-title" data-players-import-dialog-panel tabindex="-1">
         <form id="players-import-form">
           <div class="section-heading">
             <div>
@@ -1507,9 +1507,9 @@ function renderPlayersImportDialog(uiState) {
               <input id="players-import-file" name="file" type="file" accept=".csv,text/csv" required />
             </div>
           </div>
-          <div class="form-actions">
+          <div class="form-actions action-footer">
             ${importSummary ? '' : '<button type="submit" class="button">Tuo</button>'}
-            <button type="button" class="secondary-button" data-cancel-players-import>${importSummary ? 'Sulje' : 'Peruuta'}</button>
+            <button type="button" class="secondary-button action-neutral" data-cancel-players-import>${importSummary ? 'Sulje' : 'Peruuta'}</button>
           </div>
         </form>
         ${
@@ -1549,7 +1549,7 @@ function renderRatingRankingDialog(uiState) {
   const summary = uiState.ratingRankingSummary;
   return `
     <div class="dialog-backdrop" data-close-rating-ranking-dialog>
-      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="rating-ranking-title" data-rating-ranking-dialog-panel tabindex="-1">
+      <div class="dialog-panel dialog-panel-wide action-surface" role="dialog" aria-modal="true" aria-labelledby="rating-ranking-title" data-rating-ranking-dialog-panel tabindex="-1">
         <h2 id="rating-ranking-title">Päivitä Rating ja Ranking</h2>
         ${summary ? '' : `
           <form id="rating-ranking-form">
@@ -1557,9 +1557,9 @@ function renderRatingRankingDialog(uiState) {
               <label for="rating-ranking-csv">CSV-data *</label>
               <textarea id="rating-ranking-csv" name="csv" rows="6" required></textarea>
             </div>
-            <div class="form-actions">
+            <div class="form-actions action-footer">
               <button type="submit" class="button">Päivitä</button>
-              <button type="button" class="secondary-button" data-cancel-rating-ranking-dialog>Peruuta</button>
+              <button type="button" class="secondary-button action-neutral" data-cancel-rating-ranking-dialog>Peruuta</button>
             </div>
           </form>
         `}
@@ -1572,7 +1572,7 @@ function renderRatingRankingDialog(uiState) {
             <p>Huomiot: ${formatNumber(summary.observations.length)}</p>
             ${summary.observations.length ? `<ul>${summary.observations.map((observation) => `<li>Rivi ${formatNumber(observation.rowNumber)}, PDGA ID ${escapeHtml(observation.pdgaId)}: ${escapeHtml(observation.reason)}</li>`).join('')}</ul>` : ''}
           </div>
-          <div class="form-actions"><button type="button" class="secondary-button" data-cancel-rating-ranking-dialog>Sulje</button></div>
+          <div class="form-actions action-footer"><button type="button" class="secondary-button action-neutral" data-cancel-rating-ranking-dialog>Sulje</button></div>
         ` : ''}
       </div>
     </div>
@@ -1632,7 +1632,7 @@ function renderResultCardImportDialog(uiState) {
 
   return `
     <div class="dialog-backdrop" data-close-result-card-import-dialog>
-      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="result-card-import-dialog-title" data-result-card-import-dialog-panel tabindex="-1">
+      <div class="dialog-panel dialog-panel-wide action-surface" role="dialog" aria-modal="true" aria-labelledby="result-card-import-dialog-title" data-result-card-import-dialog-panel tabindex="-1">
         <form id="result-card-import-form">
           <div class="section-heading">
             <div>
@@ -1652,9 +1652,9 @@ function renderResultCardImportDialog(uiState) {
                 </div>
               `
           }
-          <div class="form-actions">
+          <div class="form-actions action-footer">
             ${summary ? '' : '<button type="submit" class="button">Tuo</button>'}
-            <button type="button" class="secondary-button" data-cancel-result-card-import>${summary ? 'Sulje' : 'Peruuta'}</button>
+            <button type="button" class="secondary-button action-neutral" data-cancel-result-card-import>${summary ? 'Sulje' : 'Peruuta'}</button>
           </div>
         </form>
         ${
@@ -1705,7 +1705,7 @@ function renderTournamentSection(dataState, uiState) {
   const availableStatuses = orderedMultipliers;
 
   return `
-    <section class="section" id="section-tournaments" ${uiState.activeView === 'tournaments' ? '' : 'hidden'} aria-labelledby="tournaments-title">
+    <section class="section action-surface" id="section-tournaments" ${uiState.activeView === 'tournaments' ? '' : 'hidden'} aria-labelledby="tournaments-title">
       <div class="section-heading">
         <div>
           <h2 id="tournaments-title">Turnaukset</h2>
@@ -1714,8 +1714,8 @@ function renderTournamentSection(dataState, uiState) {
       ${renderActionBar({
         label: 'Turnausten toiminnot',
         actions: [
-          '<button type="button" class="button" data-open-tournament-dialog>Lisää turnaus</button>',
-          '<button type="button" class="secondary-button" data-open-tournament-import-dialog>Tuo turnaukset</button>',
+          '<button type="button" class="button" data-open-tournament-dialog><span class="action-icon" aria-hidden="true">+</span> Lisää turnaus</button>',
+          '<button type="button" class="button" data-open-tournament-import-dialog><span class="action-icon" aria-hidden="true">↥</span> Tuo turnaukset</button>',
         ],
         dangerActions: [
           renderDangerActionButton({
@@ -1866,7 +1866,7 @@ function renderTournamentImportDialog(uiState) {
 
   return `
     <div class="dialog-backdrop" data-close-tournament-import-dialog>
-      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="tournament-import-dialog-title" data-tournament-import-dialog-panel tabindex="-1">
+      <div class="dialog-panel dialog-panel-wide action-surface" role="dialog" aria-modal="true" aria-labelledby="tournament-import-dialog-title" data-tournament-import-dialog-panel tabindex="-1">
         <form id="tournament-import-form">
           <div class="section-heading">
             <div>
@@ -1879,13 +1879,13 @@ function renderTournamentImportDialog(uiState) {
               <input id="tournament-import-file" name="file" type="file" accept=".csv,text/csv" required />
             </div>
           </div>
-          <div class="form-actions">
+          <div class="form-actions action-footer">
             ${
               importSummary
                 ? ''
                 : '<button type="submit" class="button" data-submit-tournament-import disabled>Tuo</button>'
             }
-            <button type="button" class="secondary-button" data-cancel-tournament-import>${importSummary ? 'Sulje' : 'Peruuta'}</button>
+            <button type="button" class="secondary-button action-neutral" data-cancel-tournament-import>${importSummary ? 'Sulje' : 'Peruuta'}</button>
           </div>
         </form>
         ${
@@ -1932,7 +1932,7 @@ function renderTournamentDialog(dataState, uiState) {
   return `
     <div class="dialog-backdrop" data-tournament-dialog-backdrop>
       <div
-        class="dialog-panel dialog-panel-wide"
+        class="dialog-panel dialog-panel-wide action-surface"
         data-tournament-dialog-panel
         role="dialog"
         aria-modal="true"
@@ -2053,10 +2053,10 @@ function renderTournamentDialog(dataState, uiState) {
               <textarea id="tournament-notes" name="notes">${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'notes'))}</textarea>
             </div>
           </div>
-          <div class="form-actions">
+          <div class="form-actions action-footer">
             <button type="submit" class="button">${editingTournament ? 'Tallenna muutokset' : 'Tallenna turnaus'}</button>
             <button type="button" class="secondary-button" data-reset-tournament-form>Tyhjennä lomake</button>
-            <button type="button" class="ghost-button" data-dismiss-tournament-dialog>Peruuta</button>
+            <button type="button" class="ghost-button action-neutral" data-dismiss-tournament-dialog>Peruuta</button>
           </div>
           ${
             editingTournament
@@ -2089,7 +2089,7 @@ function renderMultipliersSection(dataState, uiState) {
   });
 
   return `
-    <section class="section" id="section-multipliers" ${uiState.activeView === 'multipliers' ? '' : 'hidden'} aria-labelledby="multipliers-title">
+    <section class="section action-surface" id="section-multipliers" ${uiState.activeView === 'multipliers' ? '' : 'hidden'} aria-labelledby="multipliers-title">
       <div class="section-heading">
         <div>
           <h2 id="multipliers-title">Kertoimet</h2>
@@ -2097,7 +2097,7 @@ function renderMultipliersSection(dataState, uiState) {
       </div>
       ${renderActionBar({
         label: 'Kertoimien toiminnot',
-        actions: ['<button type="button" class="button" data-open-multiplier-dialog>Lisää kerroin</button>'],
+        actions: ['<button type="button" class="button" data-open-multiplier-dialog><span class="action-icon" aria-hidden="true">+</span> Lisää kerroin</button>'],
       })}
       <article class="panel">
         ${
@@ -2185,7 +2185,7 @@ function renderMultiplierDialog(dataState, uiState) {
   return `
     <div class="dialog-backdrop" data-multiplier-dialog-backdrop>
       <div
-        class="dialog-panel"
+        class="dialog-panel action-surface"
         data-multiplier-dialog-panel
         role="dialog"
         aria-modal="true"
@@ -2249,10 +2249,10 @@ function renderMultiplierDialog(dataState, uiState) {
               ${renderFieldError(fieldErrors, 'multiplier')}
             </div>
           </div>
-          <div class="form-actions">
+          <div class="form-actions action-footer">
             <button type="submit" class="button">${editingMultiplier ? 'Tallenna muutokset' : 'Lisää kerroin'}</button>
             <button type="button" class="secondary-button" data-reset-multiplier-form>Tyhjennä lomake</button>
-            <button type="button" class="ghost-button" data-dismiss-multiplier-dialog>Peruuta</button>
+            <button type="button" class="ghost-button action-neutral" data-dismiss-multiplier-dialog>Peruuta</button>
           </div>
           ${
             editingMultiplier
@@ -2352,8 +2352,8 @@ function renderSecuritySettingsPanel(uiState) {
               ${renderFieldError(fieldErrors, 'sitePassword')}
             </div>
           </div>
-          <div class="form-actions">
-            <button type="submit" class="button">Tallenna salasana</button>
+          <div class="form-actions action-footer">
+            <button type="submit" class="button"><span class="action-icon" aria-hidden="true">✓</span> Tallenna salasana</button>
           </div>
         </form>
       </div>
@@ -2369,7 +2369,7 @@ function renderSettingsSection(dataState, uiState) {
   const fieldErrors = uiState.settingsFormErrors || {};
 
   return `
-    <section class="section" id="section-settings" ${uiState.activeView === 'settings' ? '' : 'hidden'} aria-labelledby="settings-title">
+    <section class="section action-surface" id="section-settings" ${uiState.activeView === 'settings' ? '' : 'hidden'} aria-labelledby="settings-title">
       <div class="section-heading">
         <div>
           <h2 id="settings-title">Asetukset</h2>
@@ -2421,8 +2421,8 @@ function renderSettingsSection(dataState, uiState) {
               ${renderFieldError(fieldErrors, 'pointDecimals')}
             </div>
           </div>
-          <div class="form-actions">
-            <button type="submit" class="button">Tallenna asetukset</button>
+          <div class="form-actions action-footer">
+            <button type="submit" class="button"><span class="action-icon" aria-hidden="true">✓</span> Tallenna asetukset</button>
             <button type="button" class="secondary-button" data-reset-settings-form>Palauta tallennetut arvot</button>
           </div>
       </form>
@@ -2445,7 +2445,7 @@ function renderPointsSection(dataState, uiState) {
   );
 
   return `
-    <section class="section" id="section-points" ${uiState.activeView === 'points' ? '' : 'hidden'} aria-labelledby="points-title">
+    <section class="section action-surface" id="section-points" ${uiState.activeView === 'points' ? '' : 'hidden'} aria-labelledby="points-title">
       <div class="section-heading">
         <div>
           <h2 id="points-title">Pistetaulukot</h2>
@@ -2454,8 +2454,8 @@ function renderPointsSection(dataState, uiState) {
       ${renderActionBar({
         label: 'Pistetaulukoiden toiminnot',
         actions: [
-          '<button type="button" class="button" data-open-points-dialog>Lisää rivi</button>',
-          '<button type="button" class="secondary-button" data-open-points-import>Tuo pistetaulukko</button>',
+          '<button type="button" class="button" data-open-points-dialog><span class="action-icon" aria-hidden="true">+</span> Lisää rivi</button>',
+          '<button type="button" class="button" data-open-points-import><span class="action-icon" aria-hidden="true">↥</span> Tuo pistetaulukko</button>',
         ],
         dangerActions: DIVISIONS.map((division) =>
           renderDangerActionButton({
@@ -2542,7 +2542,7 @@ function renderPointsDialog(uiState) {
 
   return `
     <div class="dialog-backdrop" data-points-dialog-backdrop>
-      <div class="dialog-panel" role="dialog" aria-modal="true" aria-labelledby="points-dialog-title" data-points-dialog-panel tabindex="-1">
+      <div class="dialog-panel action-surface" role="dialog" aria-modal="true" aria-labelledby="points-dialog-title" data-points-dialog-panel tabindex="-1">
         <form id="points-form">
           <div class="section-heading">
             <div>
@@ -2568,9 +2568,9 @@ function renderPointsDialog(uiState) {
               <input id="points-base-points" name="basePoints" required inputmode="decimal" min="0" step="0.1" value="${escapeHtml(editingPoint.basePoints ?? '')}" />
             </div>
           </div>
-          <div class="form-actions">
+          <div class="form-actions action-footer">
             <button type="submit" class="button">${isEditing ? 'Tallenna rivi' : 'Lisää rivi'}</button>
-            <button type="button" class="ghost-button" data-dismiss-points-dialog>Peruuta</button>
+            <button type="button" class="ghost-button action-neutral" data-dismiss-points-dialog>Peruuta</button>
           </div>
         </form>
       </div>
@@ -2587,7 +2587,7 @@ function renderPointsImportDialog(uiState) {
 
   return `
     <div class="dialog-backdrop" data-close-points-import-dialog>
-      <div class="dialog-panel dialog-panel-wide" role="dialog" aria-modal="true" aria-labelledby="points-import-dialog-title" data-points-import-dialog-panel tabindex="-1">
+      <div class="dialog-panel dialog-panel-wide action-surface" role="dialog" aria-modal="true" aria-labelledby="points-import-dialog-title" data-points-import-dialog-panel tabindex="-1">
         <form id="points-import-form">
           <div class="section-heading">
             <div>
@@ -2608,9 +2608,9 @@ function renderPointsImportDialog(uiState) {
               <input id="points-import-file" name="file" type="file" accept=".csv,text/csv" required />
             </div>
           </div>
-          <div class="form-actions">
+          <div class="form-actions action-footer">
             <button type="submit" class="button">Tuo</button>
-            <button type="button" class="secondary-button" data-cancel-points-import>Peruuta</button>
+            <button type="button" class="secondary-button action-neutral" data-cancel-points-import>Peruuta</button>
           </div>
         </form>
       </div>
