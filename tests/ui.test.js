@@ -862,6 +862,7 @@ test('renderApp shows tournament table with required column order and PDGA event
   assert.match(root.innerHTML, /data-request-delete-all-tournaments/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="name"/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="displayOrder"/);
+  assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="displayOrder"[^>]*>\s*<span>#<\/span>/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="multiplierAbbreviation"/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="pdgaEventId"/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="startDate"/);

@@ -1763,7 +1763,7 @@ function renderTournamentSection(dataState, uiState) {
                        ${renderSortableHeader({
                          table: 'tournaments',
                          field: 'displayOrder',
-                         label: 'Järjestysnumero',
+                         label: '#',
                          sortField: uiState.tournamentSortField,
                          sortDirection: uiState.tournamentSortDirection,
                        })}

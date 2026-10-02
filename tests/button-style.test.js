@@ -29,3 +29,7 @@ test('scoped footers align neutral left and submit right without changing DOM/ta
   assert.match(actionStyles, /@media \(max-width: 600px\)[\s\S]*flex-direction:\s*column/);
   assert.match(actionStyles, /@media \(min-width: 601px\) and \(max-width: 780px\)[\s\S]*flex-direction:\s*row/);
 });
+
+test('tournament edit button text does not wrap', () => {
+  assert.match(css, /\.tournaments-table \[data-edit-tournament\]\s*\{[^}]*white-space:\s*nowrap/s);
+});
