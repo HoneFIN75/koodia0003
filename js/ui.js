@@ -495,6 +495,7 @@ function renderSummaryTopTable({ tableId, title, rows, summarySort, emptyMessage
                     ${renderSortableHeader({ ...headerOptions, field: 'name', label: 'Nimi' })}
                     ${renderSortableHeader({ ...headerOptions, field: 'pdgaRating', label: 'Rating', className: 'number' })}
                     ${renderSortableHeader({ ...headerOptions, field: 'worldRank', label: 'WR', ariaLabel: 'World Ranking -sijoitus', className: 'number' })}
+                    ${renderSortableHeader({ ...headerOptions, field: 'tournamentCount', label: 'T', ariaLabel: 'Turnausten määrä', className: 'number' })}
                     ${renderSortableHeader({ ...headerOptions, field: 'totalPoints', label: 'Pts', ariaLabel: 'Kokonaispisteet', className: 'number' })}
                   </tr>
                 </thead>
@@ -507,6 +508,7 @@ function renderSummaryTopTable({ tableId, title, rows, summarySort, emptyMessage
                           <td>${renderPlayerNameResultCardButton(entry, 'summary')}</td>
                           <td class="number">${escapeHtml(renderValueOrDash(entry.pdgaRating))}</td>
                           <td class="number">${escapeHtml(renderValueOrDash(parseWorldRank(entry.worldRank)))}</td>
+                          <td class="number">${formatNumber(entry.tournamentCount)}</td>
                           <td class="number">${formatPoints(entry.totalPoints, dataState.settings)} p</td>
                         </tr>
                       `,

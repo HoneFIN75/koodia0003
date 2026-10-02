@@ -14,11 +14,11 @@ export function buildRanking(dataState, filter = 'ALL') {
   const players = dataState.players || [];
   const totals = getLiveResults(dataState).reduce((accumulator, result) => {
     const current = accumulator.get(result.playerId) || {
-      tournamentCount: 0,
+      tournamentIds: new Set(),
       totalPoints: 0,
     };
 
-    current.tournamentCount += 1;
+    current.tournamentIds.add(result.tournamentId);
     current.totalPoints += result.calculatedPoints;
     accumulator.set(result.playerId, current);
     return accumulator;
@@ -27,10 +27,10 @@ export function buildRanking(dataState, filter = 'ALL') {
   return players
     .filter((player) => filter === 'ALL' || player.division === filter)
     .map((player) => {
-      const aggregate = totals.get(player.id) || { tournamentCount: 0, totalPoints: 0 };
+      const aggregate = totals.get(player.id) || { tournamentIds: new Set(), totalPoints: 0 };
       return {
         ...player,
-        tournamentCount: aggregate.tournamentCount,
+        tournamentCount: aggregate.tournamentIds.size,
         totalPoints: aggregate.totalPoints,
       };
     })
