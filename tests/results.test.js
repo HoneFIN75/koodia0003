@@ -85,7 +85,7 @@ test('setPlayerPlacement käyttää sarjan omaa pistetaulukkoa ja hylkää puutt
   assert.throws(() => apply(state, { playerId: 'mpo-1', tournamentId: 't-1', placement: 'abc' }));
 });
 
-test('setPlayerPlacement sallii toistuvat alemmat sijoitukset ja yksilöi voittajan turnauksen laajuisesti', () => {
+test('setPlayerPlacement sallii toistuvat sijoitukset myös ykkössijalla', () => {
   const state = createState();
   assert.equal(apply(state, { playerId: 'mpo-1', tournamentId: 't-2', placement: '2t2' }).points, 85);
   assert.equal(apply(state, { playerId: 'mpo-2', tournamentId: 't-2', placement: '2T2' }).points, 85);
@@ -94,10 +94,7 @@ test('setPlayerPlacement sallii toistuvat alemmat sijoitukset ja yksilöi voitta
   assert.equal(apply(state, { playerId: 'mpo-3', tournamentId: 't-2', placement: '2T2' }).points, 85);
   assert.equal(apply(state, { playerId: 'mpo-1', tournamentId: 't-1', placement: '1' }).points, 200);
 
-  assert.throws(
-    () => apply(state, { playerId: 'fpo-1', tournamentId: 't-1', placement: '1' }),
-    { message: 'Turnauksessa voi olla vain yksi sijoitus 1.' },
-  );
+  assert.equal(apply(state, { playerId: 'fpo-1', tournamentId: 't-1', placement: '1' }).points, 120);
   assert.equal(apply(state, { playerId: 'fpo-1', tournamentId: 't-2', placement: '2' }).points, 50);
 });
 

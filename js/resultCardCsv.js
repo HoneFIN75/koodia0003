@@ -1,4 +1,4 @@
-import { isNonParticipationPlacement, parsePlacement, UNIQUE_FIRST_PLACE_ERROR } from './scoring.js';
+import { isNonParticipationPlacement, parsePlacement } from './scoring.js';
 import {
   clearPlayerPlacement,
   getPlayerPlacement,
@@ -277,7 +277,6 @@ export function importResultCardsFromCsv(dataState = {}, csvText, { now = new Da
 
   const seenPdgaKeys = new Set();
   const changes = [];
-  const importedFirstPlaces = new Map();
   records.forEach(({ lineNumber: rowNumber, fields }) => {
     const pdgaId = String(fields[0] ?? '').trim();
     if (!pdgaId) {
@@ -353,12 +352,6 @@ export function importResultCardsFromCsv(dataState = {}, csvText, { now = new Da
         return;
       }
 
-      if (placement && !isNonParticipationPlacement(placement) && parsePlacement(placement)?.place === 1) {
-        const firstPlaces = importedFirstPlaces.get(tournament.id) || [];
-        firstPlaces.push({ rowNumber, pdgaId, columnName });
-        importedFirstPlaces.set(tournament.id, firstPlaces);
-      }
-
       const previous = getPlayerPlacement(dataState.resultCards || [], player.id, tournament.id);
       if (placement === previous) {
         return;
@@ -373,27 +366,9 @@ export function importResultCardsFromCsv(dataState = {}, csvText, { now = new Da
     }
   });
 
-  const blockedTournamentIds = new Set();
-  importedFirstPlaces.forEach((firstPlaces, tournamentId) => {
-    if (firstPlaces.length < 2) {
-      return;
-    }
-
-    blockedTournamentIds.add(tournamentId);
-    firstPlaces.forEach(({ rowNumber, pdgaId, columnName }) => {
-      addIssue('error', {
-        rowNumber,
-        pdgaId,
-        column: columnName,
-        reason: UNIQUE_FIRST_PLACE_ERROR,
-      });
-    });
-  });
-
-  // Muuttuvat solut tyhjennetään ensin, jotta voittajan vaihtaminen ei kaadu sijoituksen 1
-  // uniikkiustarkistukseen. Sen jälkeen uudet arvot asetetaan samalla
-  // validoinnilla kuin yksittäisellä tuloskortilla (setPlayerPlacement).
-  const applicableChanges = changes.filter(({ tournament }) => !blockedTournamentIds.has(tournament.id));
+  // Muuttuvat solut tyhjennetään ensin, jotta sijoituksen päivittäminen onnistuu myös silloin,
+  // kun saman turnauksen muita sijoituksia päivitetään samalla tuonnilla.
+  const applicableChanges = changes;
   let resultCards = dataState.resultCards || [];
   applicableChanges.forEach(({ player, tournament, previous }) => {
     if (previous) {
@@ -423,9 +398,7 @@ export function importResultCardsFromCsv(dataState = {}, csvText, { now = new Da
         rowNumber,
         pdgaId,
         column: columnName,
-        reason: error instanceof Error && error.message === UNIQUE_FIRST_PLACE_ERROR
-          ? UNIQUE_FIRST_PLACE_ERROR
-          : `Sijoitusta "${placement}" ei tallennettu: ${error instanceof Error ? error.message : 'Tuntematon virhe.'}${previous ? ` Aiempi sijoitus ${previous} säilytettiin.` : ''}`,
+        reason: `Sijoitusta "${placement}" ei tallennettu: ${error instanceof Error ? error.message : 'Tuntematon virhe.'}${previous ? ` Aiempi sijoitus ${previous} säilytettiin.` : ''}`,
       });
     }
   });

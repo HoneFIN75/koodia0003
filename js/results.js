@@ -69,8 +69,8 @@ function writePlacement(resultCards, playerId, tournamentId, placement, now) {
   ));
 }
 
-// Validoi ja asettaa pelaajan sijoituksen turnaukseen. Heittää virheen, jos sijoitus on virheellinen,
-// sijoitus 1 on jo toisella pelaajalla tai pisteitä ei voida laskea
+// Validoi ja asettaa pelaajan sijoituksen turnaukseen. Heittää virheen, jos sijoitus on virheellinen
+// tai pisteitä ei voida laskea
 // (esim. pistetaulukon arvo tai turnauksen kerroin puuttuu). Tällöin tulosta ei tallenneta.
 export function setPlayerPlacement(dataState, { playerId, tournamentId, placement, now = new Date().toISOString() }) {
   const resultCards = dataState.resultCards || [];
