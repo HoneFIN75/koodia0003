@@ -85,22 +85,19 @@ test('setPlayerPlacement käyttää sarjan omaa pistetaulukkoa ja hylkää puutt
   assert.throws(() => apply(state, { playerId: 'mpo-1', tournamentId: 't-1', placement: 'abc' }));
 });
 
-test('setPlayerPlacement tukee tasatuloksia ja validoi ne saman sarjan pelaajia vasten', () => {
+test('setPlayerPlacement sallii toistuvat alemmat sijoitukset ja yksilöi voittajan turnauksen laajuisesti', () => {
   const state = createState();
   assert.equal(apply(state, { playerId: 'mpo-1', tournamentId: 't-2', placement: '2t2' }).points, 85);
   assert.equal(apply(state, { playerId: 'mpo-2', tournamentId: 't-2', placement: '2T2' }).points, 85);
   assert.equal(getPlayerPlacement(state.resultCards, 'mpo-1', 't-2'), '2T2');
 
-  assert.throws(
-    () => apply(state, { playerId: 'mpo-3', tournamentId: 't-2', placement: '2T2' }),
-    /liikaa pelaajia/,
-  );
-  assert.throws(
-    () => apply(state, { playerId: 'mpo-3', tournamentId: 't-2', placement: '3' }),
-    /menee päällekkäin/,
-  );
+  assert.equal(apply(state, { playerId: 'mpo-3', tournamentId: 't-2', placement: '2T2' }).points, 85);
+  assert.equal(apply(state, { playerId: 'mpo-1', tournamentId: 't-1', placement: '1' }).points, 200);
 
-  // Eri sarjan pelaaja voi käyttää samaa sijoitusta.
+  assert.throws(
+    () => apply(state, { playerId: 'fpo-1', tournamentId: 't-1', placement: '1' }),
+    { message: 'Turnauksessa voi olla vain yksi sijoitus 1.' },
+  );
   assert.equal(apply(state, { playerId: 'fpo-1', tournamentId: 't-2', placement: '2' }).points, 50);
 });
 
@@ -122,7 +119,7 @@ test('turnauksen tai pelaajan poisto poistaa niihin liittyvät sijoitukset', () 
   const state = createState();
   apply(state, { playerId: 'mpo-1', tournamentId: 't-1', placement: '1' });
   apply(state, { playerId: 'mpo-1', tournamentId: 't-2', placement: '1' });
-  apply(state, { playerId: 'fpo-1', tournamentId: 't-1', placement: '1' });
+  apply(state, { playerId: 'fpo-1', tournamentId: 't-1', placement: '2' });
 
   assert.equal(countResults(state.resultCards), 3);
   assert.equal(countResults(state.resultCards, { tournamentId: 't-1' }), 2);
@@ -138,7 +135,7 @@ test('clearAllResults tyhjentää sijoitukset muuttamatta muita tietoja ja nolla
   state.rankings = { activeDivision: 'MPO', sortOrder: 'desc' };
   apply(state, { playerId: 'mpo-1', tournamentId: 't-1', placement: '1' });
   apply(state, { playerId: 'mpo-1', tournamentId: 't-2', placement: '2T2' });
-  apply(state, { playerId: 'fpo-1', tournamentId: 't-1', placement: '1' });
+  apply(state, { playerId: 'fpo-1', tournamentId: 't-1', placement: '2' });
 
   const expectedPreservedState = { ...state, resultCards: [] };
   const cleared = clearAllResults(state);
@@ -167,16 +164,16 @@ test('getBestTournamentResults näyttää parhaan MPO- ja FPO-sijoituksen', () =
 
   apply(state, { playerId: 'mpo-2', tournamentId: 't-1', placement: '3' });
   apply(state, { playerId: 'mpo-1', tournamentId: 't-1', placement: '1' });
-  apply(state, { playerId: 'fpo-1', tournamentId: 't-1', placement: '1' });
-  apply(state, { playerId: 'mpo-2', tournamentId: 't-2', placement: '1T2' });
-  apply(state, { playerId: 'mpo-3', tournamentId: 't-2', placement: '1T2' });
+  apply(state, { playerId: 'fpo-1', tournamentId: 't-1', placement: '2' });
+  apply(state, { playerId: 'mpo-2', tournamentId: 't-2', placement: '2T2' });
+  apply(state, { playerId: 'mpo-3', tournamentId: 't-2', placement: '2T2' });
 
   const best = getBestTournamentResults(state, 't-1');
   assert.equal(formatBestResult(best.MPO), '1 Niklas Anttila');
-  assert.equal(formatBestResult(best.FPO), '1 Eveliina Salonen');
+  assert.equal(formatBestResult(best.FPO), '2 Eveliina Salonen');
 
   const tied = getBestTournamentResults(state, 't-2');
-  assert.equal(formatBestResult(tied.MPO), '1T2 Aapo Aalto, Bertil Berg');
+  assert.equal(formatBestResult(tied.MPO), '2T2 Aapo Aalto, Bertil Berg');
   assert.equal(formatBestResult(tied.FPO), '-');
 });
 

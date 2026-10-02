@@ -274,6 +274,7 @@ export function calculatePoints({ basePoints, multiplier }) {
 }
 
 const PLACEMENT_PATTERN = /^(?<place>[1-9]\d{0,2})(?:T(?<tieCount>[1-9]\d{0,1}))?$/;
+export const UNIQUE_FIRST_PLACE_ERROR = 'Turnauksessa voi olla vain yksi sijoitus 1.';
 
 // Sijoitus 0 tarkoittaa, ettei pelaaja osallistunut turnaukseen. Arvo on sallittu ja tallennetaan,
 // mutta siitä ei koskaan lasketa pisteitä eikä sitä tulkita sijoitukseksi.
@@ -313,10 +314,6 @@ export function parsePlacement(value) {
   };
 }
 
-function rangesOverlap(left, right) {
-  return left.rangeStart <= right.rangeEnd && right.rangeStart <= left.rangeEnd;
-}
-
 function tryParsePlacement(value) {
   try {
     return parsePlacement(value);
@@ -325,40 +322,19 @@ function tryParsePlacement(value) {
   }
 }
 
-// Tasatulosvalidointi saman turnauksen ja saman sarjan sisällä: sijoitusalueet eivät saa
-// mennä päällekkäin (paitsi täsmälleen sama tasatulosmerkintä), eikä tasatuloksessa saa olla
-// enemmän pelaajia kuin merkintä ilmoittaa. Muiden pelaajien sijoitukset voivat vielä puuttua.
+// Sijoitus 1 on turnauksen ainoa uniikki sijoitus. Muut sijoitukset voivat toistua
+// riippumatta tasatulosmerkinnästä tai siitä, onko tuloksia vielä syötetty muille pelaajille.
 export function validatePlacementAgainstOthers({ placement, others = [] }) {
   const parsed = parsePlacement(placement);
   if (!parsed) {
     return null;
   }
 
-  let sameTieCount = 1;
-  others.forEach((other) => {
-    const otherParsed = tryParsePlacement(other.placement);
-    if (!otherParsed || !rangesOverlap(parsed, otherParsed)) {
-      return;
-    }
-
-    const sameTieNotation =
-      parsed.isTie &&
-      otherParsed.isTie &&
-      parsed.place === otherParsed.place &&
-      parsed.tieCount === otherParsed.tieCount;
-
-    if (!sameTieNotation) {
-      const otherName = other.name ? `pelaajan ${other.name} ` : '';
-      throw new Error(
-        `Sijoitus ${parsed.raw} menee päällekkäin ${otherName}sijoituksen ${otherParsed.raw} kanssa. Käytä uniikkeja sijoituksia tai samaa tasatulosta.`,
-      );
-    }
-
-    sameTieCount += 1;
-  });
-
-  if (parsed.isTie && sameTieCount > parsed.tieCount) {
-    throw new Error(`Tasatuloksessa ${parsed.raw} on liikaa pelaajia suhteessa ilmoitettuun pelaajamäärään.`);
+  if (
+    parsed.place === 1 &&
+    (parsed.isTie || others.some((other) => tryParsePlacement(other.placement)?.place === 1))
+  ) {
+    throw new Error(UNIQUE_FIRST_PLACE_ERROR);
   }
 
   return parsed;
