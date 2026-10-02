@@ -22,42 +22,39 @@ export const HELP_SECTIONS = [
 Näkymä sisältää:
 - Pelaajat-tunnusluvun, joka kertoo tallennettujen pelaajien määrän
 - Turnaukset-tunnusluvun, joka kertoo tallennettujen turnausten määrän
-- World Ranking MPO- ja World Ranking FPO -taulukot PDGA World Ranking -sijoituksen mukaan
 - TOP 10 MPO- ja TOP 10 FPO -taulukot sovelluksen kokonaispisteiden mukaan
 
-Kaikissa neljässä taulukossa on samat sarakkeet: #, Nimi, Rating ja Kokonaispisteet. TOP 10 -taulukoissa # on pelaajan sijoitus sovelluksen rankingissa, ja taulukon voi lajitella samalla tavalla sarakkeiden #, Rating ja Kokonaispisteet mukaan. Lajittelu muuttaa vain näyttöjärjestystä, ei TOP 10 -listan pelaajia.
+Molemmissa taulukoissa on samat sarakkeet: #, Nimi, Rating, WR ja Pts. Leveällä näytöllä taulukot ovat rinnakkain ja kapealla näytöllä allekkain.
 
 Yhteenveto on vain lukunäkymä: tietoja muokataan aina niiden omilla sivuilla.`,
       },
       {
-        title: 'World Ranking MPO',
-        content: `World Ranking MPO -taulukko näyttää MPO-sarjan pelaajat PDGA World Ranking -sijoituksen mukaan. Taulukko on TOP 10 MPO -taulukon yläpuolella, jotta virallista PDGA-sijoitusta voi verrata suoraan sovelluksen omiin rankingpisteisiin.
+        title: 'TOP 10 MPO',
+        content: `TOP 10 MPO -taulukko näyttää MPO-sarjan kymmenen eniten kokonaispisteitä kerännyttä pelaajaa.
 
 Sarakkeet:
-- # = pelaajan World Ranking -sijoitus
+- # = pelaajan sijoitus TOP 10 -listalla kokonaispisteiden mukaan
 - Nimi = pelaajan nimi
 - Rating = pelaajan nykyinen PDGA-rating
-- Kokonaispisteet = sovelluksen rankingin kokonaispisteet, jotka lasketaan aina tuloskorttien sijoituksista
+- WR = pelaajan PDGA World Ranking -sijoitus (— jos sijoitusta ei ole)
+- Pts = sovelluksen rankingin kokonaispisteet, jotka lasketaan aina tuloskorttien sijoituksista
 
-Lajittelu: oletuksena taulukko on lajiteltu World Rankingin mukaan nousevasti, eli paras sijoitus on ensimmäisenä. Sarakkeiden #, Rating ja Kokonaispisteet otsikot ovat painikkeita: valinta lajittelee sarakkeen mukaan ja uusi valinta vaihtaa nousevan (▲) ja laskevan (▼) järjestyksen. Jokaisella Yhteenvedon taulukolla on oma lajittelunsa, joten World Ranking MPO -taulukon lajittelu ei muuta muiden taulukoiden järjestystä.
-
-Puuttuva ranking: pelaajat, joilla ei ole World Ranking -sijoitusta (kenttä on tyhjä), eivät näy taulukossa. Taulukossa näytetään vain positiiviset kokonaislukusijoitukset. Sijoituksen voi lisätä pelaajan tietoihin Pelaajat-sivulla tai Rating ja Ranking -päivitysimportilla.
+Lajittelu: oletuksena taulukko on lajiteltu kokonaispisteiden mukaan laskevasti, eli eniten pisteitä kerännyt pelaaja on ensimmäisenä. Kaikki sarakeotsikot (#, Nimi, Rating, WR ja Pts) ovat painikkeita: valinta lajittelee sarakkeen mukaan ja uusi valinta vaihtaa nousevan (▲) ja laskevan (▼) järjestyksen. Lajittelu muuttaa vain näyttöjärjestystä, ei TOP 10 -listan pelaajia eikä #-sijoituksia. Jokaisella Yhteenvedon taulukolla on oma lajittelunsa, joten TOP 10 MPO -taulukon lajittelu ei muuta toisen taulukon järjestystä.
 
 Tuloskortti: pelaajan nimi on painike, joka avaa pelaajan tuloskortin lukutilaan samalla tavalla kuin Ranking-sivulla. Yhteenvetoon palataan Takaisin yhteenvetoon -painikkeella tai päänavigaation Yhteenveto-kohdasta.`,
       },
       {
-        title: 'World Ranking FPO',
-        content: `World Ranking FPO -taulukko näyttää FPO-sarjan pelaajat PDGA World Ranking -sijoituksen mukaan. Taulukko on TOP 10 FPO -taulukon yläpuolella, jotta virallista PDGA-sijoitusta voi verrata suoraan sovelluksen omiin rankingpisteisiin.
+        title: 'TOP 10 FPO',
+        content: `TOP 10 FPO -taulukko näyttää FPO-sarjan kymmenen eniten kokonaispisteitä kerännyttä pelaajaa.
 
 Sarakkeet:
-- # = pelaajan World Ranking -sijoitus
+- # = pelaajan sijoitus TOP 10 -listalla kokonaispisteiden mukaan
 - Nimi = pelaajan nimi
 - Rating = pelaajan nykyinen PDGA-rating
-- Kokonaispisteet = sovelluksen rankingin kokonaispisteet, jotka lasketaan aina tuloskorttien sijoituksista
+- WR = pelaajan PDGA World Ranking -sijoitus (— jos sijoitusta ei ole)
+- Pts = sovelluksen rankingin kokonaispisteet, jotka lasketaan aina tuloskorttien sijoituksista
 
-Lajittelu: oletuksena taulukko on lajiteltu World Rankingin mukaan nousevasti, eli paras sijoitus on ensimmäisenä. Sarakkeiden #, Rating ja Kokonaispisteet otsikot ovat painikkeita: valinta lajittelee sarakkeen mukaan ja uusi valinta vaihtaa nousevan (▲) ja laskevan (▼) järjestyksen. Jokaisella Yhteenvedon taulukolla on oma lajittelunsa, joten World Ranking FPO -taulukon lajittelu ei muuta muiden taulukoiden järjestystä.
-
-Puuttuva ranking: pelaajat, joilla ei ole World Ranking -sijoitusta (kenttä on tyhjä), eivät näy taulukossa. Taulukossa näytetään vain positiiviset kokonaislukusijoitukset. Sijoituksen voi lisätä pelaajan tietoihin Pelaajat-sivulla tai Rating ja Ranking -päivitysimportilla.
+Lajittelu: oletuksena taulukko on lajiteltu kokonaispisteiden mukaan laskevasti, eli eniten pisteitä kerännyt pelaaja on ensimmäisenä. Kaikki sarakeotsikot (#, Nimi, Rating, WR ja Pts) ovat painikkeita: valinta lajittelee sarakkeen mukaan ja uusi valinta vaihtaa nousevan (▲) ja laskevan (▼) järjestyksen. Lajittelu muuttaa vain näyttöjärjestystä, ei TOP 10 -listan pelaajia eikä #-sijoituksia. Jokaisella Yhteenvedon taulukolla on oma lajittelunsa, joten TOP 10 FPO -taulukon lajittelu ei muuta toisen taulukon järjestystä.
 
 Tuloskortti: pelaajan nimi on painike, joka avaa pelaajan tuloskortin lukutilaan samalla tavalla kuin Ranking-sivulla. Yhteenvetoon palataan Takaisin yhteenvetoon -painikkeella tai päänavigaation Yhteenveto-kohdasta.`,
       },

@@ -1112,19 +1112,61 @@ button.player-name-button:focus-visible {
   font-size: var(--font-size-sm);
 }
 
-/* Yhteenvedon World Ranking- ja TOP 10 -taulukot: sama korttirakenne, kapeat numerosarakkeet. */
+/* Yhteenvedon TOP 10 MPO- ja TOP 10 FPO -taulukot: tiivis korttirakenne, kapeat numerosarakkeet ja rivikorostus. */
+.summary-table-card {
+  display: grid;
+  gap: var(--spacing-md);
+  align-content: start;
+}
+
+.summary-table-title {
+  font-size: var(--font-size-lg);
+  letter-spacing: 0.04em;
+  color: var(--color-secondary);
+}
+
+.summary-table th,
+.summary-table td {
+  padding: 0.6rem 0.7rem;
+  vertical-align: middle;
+}
+
 .summary-table th:first-child,
 .summary-table td:first-child {
-  width: 3.5rem;
+  width: 3rem;
 }
 
 .summary-table td.number,
 .summary-table th.number {
+  text-align: right;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .summary-table th.number .table-sort-button {
   justify-content: flex-end;
+}
+
+.summary-table tbody tr:hover td,
+.summary-table tbody tr:focus-within td {
+  background: rgba(13, 95, 115, 0.06);
+}
+
+@media (max-width: 480px) {
+  .summary-table-card {
+    padding: var(--spacing-md);
+  }
+
+  .summary-table th,
+  .summary-table td {
+    padding: 0.5rem 0.35rem;
+    font-size: var(--font-size-sm);
+  }
+
+  .summary-table th:first-child,
+  .summary-table td:first-child {
+    width: 2rem;
+  }
 }
 
 .definition-list {

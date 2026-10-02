@@ -11,7 +11,7 @@ import {
   getPlayerResultRow,
 } from './results.js';
 import { buildRanking } from './ranking.js';
-import { SUMMARY_TABLES, buildTopRows, buildWorldRankingRows, getSummarySort, sortSummaryRows } from './summary.js';
+import { SUMMARY_TABLES, buildTopRows, getSummarySort, parseWorldRank, sortSummaryRows } from './summary.js';
 import { findMultiplier, formatMultiplier, sortMultipliers } from './multipliers.js';
 import { sortTableRows } from './table-sorting.js';
 import { HELP_SECTIONS } from './helpData.js';
@@ -473,17 +473,16 @@ function renderStats(dataState) {
   `;
 }
 
-// Yhteenvedon World Ranking- ja TOP 10 -taulukot käyttävät samaa korttia ja taulukkorakennetta.
-function renderSummaryRankingTable({ tableId, title, rows, summarySort, positionLabel, emptyMessage, dataState }) {
+// Yhteenvedon TOP 10 MPO- ja TOP 10 FPO -taulukot käyttävät samaa korttia ja taulukkorakennetta.
+function renderSummaryTopTable({ tableId, title, rows, summarySort, emptyMessage, dataState }) {
   const sortState = getSummarySort(summarySort, tableId);
-  const { positionField } = SUMMARY_TABLES[tableId];
   const titleId = `${tableId}-title`;
   const headerOptions = { table: tableId, sortField: sortState.field, sortDirection: sortState.direction };
 
   return `
     <article class="card summary-table-card" data-summary-table="${escapeHtml(tableId)}">
       <div class="section-heading">
-        <h3 id="${escapeHtml(titleId)}">${escapeHtml(title)}</h3>
+        <h2 id="${escapeHtml(titleId)}" class="summary-table-title">${escapeHtml(title)}</h2>
       </div>
       ${
         rows.length
@@ -492,10 +491,11 @@ function renderSummaryRankingTable({ tableId, title, rows, summarySort, position
               <table class="table summary-table" aria-labelledby="${escapeHtml(titleId)}">
                 <thead>
                   <tr>
-                    ${renderSortableHeader({ ...headerOptions, field: positionField, label: '#', ariaLabel: positionLabel })}
-                    <th scope="col">Nimi</th>
+                    ${renderSortableHeader({ ...headerOptions, field: 'rankPosition', label: '#', ariaLabel: 'Sijoitus', className: 'number' })}
+                    ${renderSortableHeader({ ...headerOptions, field: 'name', label: 'Nimi' })}
                     ${renderSortableHeader({ ...headerOptions, field: 'pdgaRating', label: 'Rating', className: 'number' })}
-                    ${renderSortableHeader({ ...headerOptions, field: 'totalPoints', label: 'Kokonaispisteet', className: 'number' })}
+                    ${renderSortableHeader({ ...headerOptions, field: 'worldRank', label: 'WR', ariaLabel: 'World Ranking -sijoitus', className: 'number' })}
+                    ${renderSortableHeader({ ...headerOptions, field: 'totalPoints', label: 'Pts', ariaLabel: 'Kokonaispisteet', className: 'number' })}
                   </tr>
                 </thead>
                 <tbody>
@@ -503,9 +503,10 @@ function renderSummaryRankingTable({ tableId, title, rows, summarySort, position
                     .map(
                       (entry) => `
                         <tr>
-                          <td>${escapeHtml(entry[positionField])}</td>
+                          <td class="number">${escapeHtml(entry.rankPosition)}</td>
                           <td>${renderPlayerNameResultCardButton(entry, 'summary')}</td>
                           <td class="number">${escapeHtml(renderValueOrDash(entry.pdgaRating))}</td>
+                          <td class="number">${escapeHtml(renderValueOrDash(parseWorldRank(entry.worldRank)))}</td>
                           <td class="number">${formatPoints(entry.totalPoints, dataState.settings)} p</td>
                         </tr>
                       `,
@@ -522,35 +523,25 @@ function renderSummaryRankingTable({ tableId, title, rows, summarySort, position
 }
 
 function renderSummarySection(dataState, uiState) {
-  const rankings = {
-    MPO: buildRanking(dataState, 'MPO'),
-    FPO: buildRanking(dataState, 'FPO'),
-  };
-  const renderTable = (tableId, title, positionLabel, emptyMessage) => {
-    const { division, type } = SUMMARY_TABLES[tableId];
-    const rows = type === 'world-ranking' ? buildWorldRankingRows(rankings[division]) : buildTopRows(rankings[division]);
-    return renderSummaryRankingTable({
+  const renderTable = (tableId, title, emptyMessage) => {
+    const { division } = SUMMARY_TABLES[tableId];
+    const rows = buildTopRows(buildRanking(dataState, division));
+    return renderSummaryTopTable({
       tableId,
       title,
       rows: sortSummaryRows(rows, getSummarySort(uiState.summarySort, tableId)),
       summarySort: uiState.summarySort,
-      positionLabel,
       emptyMessage,
       dataState,
     });
   };
 
   return `
-    <section class="section" id="section-summary" ${uiState.activeView === 'summary' ? '' : 'hidden'} aria-labelledby="summary-title">
-      <h1 id="summary-title">Yhteenveto</h1>
+    <section class="section" id="section-summary" ${uiState.activeView === 'summary' ? '' : 'hidden'} aria-label="Yhteenveto">
       ${renderStats(dataState)}
       <div class="two-column summary-tables">
-        ${renderTable('summary-world-ranking-mpo', 'World Ranking MPO', 'World Ranking -sijoitus', 'Sarjassa MPO ei ole pelaajia, joilla on World Ranking -sijoitus.')}
-        ${renderTable('summary-world-ranking-fpo', 'World Ranking FPO', 'World Ranking -sijoitus', 'Sarjassa FPO ei ole pelaajia, joilla on World Ranking -sijoitus.')}
-      </div>
-      <div class="two-column summary-tables">
-        ${renderTable('summary-top-mpo', 'TOP 10 MPO', 'Sijoitus', 'Sarjassa MPO ei ole vielä pisteellisiä pelaajia.')}
-        ${renderTable('summary-top-fpo', 'TOP 10 FPO', 'Sijoitus', 'Sarjassa FPO ei ole vielä pisteellisiä pelaajia.')}
+        ${renderTable('summary-top-mpo', 'TOP 10 MPO', 'Sarjassa MPO ei ole vielä pisteellisiä pelaajia.')}
+        ${renderTable('summary-top-fpo', 'TOP 10 FPO', 'Sarjassa FPO ei ole vielä pisteellisiä pelaajia.')}
       </div>
     </section>
   `;
