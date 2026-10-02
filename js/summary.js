@@ -13,6 +13,7 @@ const SUMMARY_SORT_COLUMNS = {
   name: { type: 'text', defaultDirection: 'asc' },
   pdgaRating: { type: 'number', defaultDirection: 'desc' },
   worldRank: { type: 'number', defaultDirection: 'asc', getValue: (row) => parseWorldRank(row?.worldRank) },
+  tournamentCount: { type: 'number', defaultDirection: 'desc' },
   totalPoints: { type: 'number', defaultDirection: 'desc' },
 };
 

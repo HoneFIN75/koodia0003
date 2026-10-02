@@ -45,7 +45,7 @@ test('TOP 10 -taulukon oletuslajittelu on kokonaispisteet laskevasti', () => {
 test('Yhteenvedossa on vain TOP 10 MPO- ja TOP 10 FPO -taulukot, joissa kaikki sarakkeet ovat lajiteltavia', () => {
   assert.deepEqual(Object.keys(SUMMARY_TABLES), ['summary-top-mpo', 'summary-top-fpo']);
   assert.equal(isSummaryTable('summary-world-ranking-mpo'), false);
-  assert.deepEqual(getSummarySortableFields('summary-top-mpo'), ['rankPosition', 'name', 'pdgaRating', 'worldRank', 'totalPoints']);
+  assert.deepEqual(getSummarySortableFields('summary-top-mpo'), ['rankPosition', 'name', 'pdgaRating', 'worldRank', 'tournamentCount', 'totalPoints']);
   assert.deepEqual(getSummarySortableFields('ranking'), []);
 });
 
@@ -85,6 +85,15 @@ test('toggleSummarySort vaihtaa nousevan ja laskevan järjestyksen sarakkeittain
   sort = toggleSummarySort(sort, tableId, 'worldRank');
   assert.deepEqual(sort[tableId], { field: 'worldRank', direction: 'desc' });
   assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.id).slice(-3), ['p1', 'p3', 'p2']);
+
+  sort = toggleSummarySort(sort, tableId, 'tournamentCount');
+  assert.deepEqual(sort[tableId], { field: 'tournamentCount', direction: 'desc' });
+  const tournamentCounts = sortSummaryRows([
+    { id: 'few', tournamentCount: 2 },
+    { id: 'many', tournamentCount: 10 },
+    { id: 'none', tournamentCount: 0 },
+  ], sort[tableId]);
+  assert.deepEqual(tournamentCounts.map((row) => row.id), ['many', 'few', 'none']);
 });
 
 test('toggleSummarySort pitää MPO- ja FPO-taulukoiden lajittelut erillään', () => {
@@ -129,8 +138,39 @@ test('buildTopRows säilyttää TOP 10 -jäsenet ja rankinglaskennan järjestyks
   assert.deepEqual(rows.map((row) => row.id), fullRanking.slice(0, 10).map((row) => row.id));
   assert.deepEqual(rows.map((row) => row.rankPosition), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   assert.deepEqual(rows.map((row) => row.totalPoints), fullRanking.slice(0, 10).map((row) => row.totalPoints));
+  assert.deepEqual(rows.map((row) => row.tournamentCount), Array(10).fill(1));
 
   const sortedByRating = sortSummaryRows(rows, { field: 'pdgaRating', direction: 'asc' });
   assert.deepEqual(new Set(sortedByRating.map((row) => row.id)), new Set(rows.map((row) => row.id)));
   assert.equal(sortedByRating[0].rankPosition, 10);
+});
+
+test('buildRanking laskee vain yksilölliset turnaukset, joissa on validi tulos', () => {
+  const dataState = {
+    players: [
+      { id: 'p1', name: 'Pelaaja', division: 'MPO' },
+      { id: 'p2', name: 'Ilman tuloksia', division: 'MPO' },
+    ],
+    tournaments: [
+      { id: 't1', multiplierId: 'm1' },
+      { id: 't2', multiplierId: 'm1' },
+    ],
+    multipliers: [{ id: 'm1', multiplier: 1 }],
+    pointsTable: { MPO: { 1: 100 }, FPO: {} },
+    resultCards: [{
+      id: 'result-card-p1',
+      playerId: 'p1',
+      results: [
+        { tournamentId: 't1', placement: '1' },
+        { tournamentId: 't1', placement: '1' },
+        { tournamentId: 't2', placement: '0' },
+        { tournamentId: 'missing', placement: '1' },
+        { tournamentId: 't2', placement: '' },
+      ],
+    }],
+  };
+
+  const rankingRows = buildRanking(dataState, 'MPO');
+  assert.equal(rankingRows.find((row) => row.id === 'p1').tournamentCount, 1);
+  assert.equal(rankingRows.find((row) => row.id === 'p2').tournamentCount, 0);
 });
