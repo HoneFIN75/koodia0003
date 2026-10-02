@@ -1,147 +1,199 @@
-# SFL Pisteytystyökalu
+# 🥏 SFL Pisteytystyökalu
 
-SFL Pisteytystyökalu on Suomen frisbeegolfliiton selainpohjainen MVP suomalaisen MPO- ja FPO-pelaajaringingin, turnausten, pistetaulukoiden ja turnaustulosten hallintaan.
+> Suomen frisbeegolfliiton selainpohjainen MVP MPO- ja FPO-kilpailupisteiden hallintaan — pelaajista ja turnauksista tuloskortteihin ja ajantasaiseen rankingiin.
 
-## Teknologia
+Työkalu on tarkoitettu kilpailutietojen ylläpitäjille ja rankingin seuraajille. Sen päätarkoitus on pitää perustiedot yhdessä paikassa ja laskea pisteet yhdenmukaisesti nykyisistä sijoituksista, pistetaulukoista ja turnauskertoimista.
 
-Ratkaisu on tarkoituksella kevyt ja jatkokehitettävä:
+**Pähkinänkuoressa:** suomenkielinen käyttöliittymä · ei frontend-kehystä · oma JSON-API · palvelimen tiedostotallennus.
 
-- semanttinen HTML5-sivupohja
-- erillinen CSS-tiedosto design tokeneilla
-- modulaarinen vanilla JavaScript
-- minimaalinen Node.js-palvelin paikalliskehitykseen ja vaihtoehtoinen PHP-API Apache-ympäristöön
-- palvelimen `jsondb/`-hakemistoon tallennettavat JSON-tiedostot
-- Node.js-pohjainen testaus (`node --test`)
-- yksinkertainen build-skripti julkaistavan `dist`-hakemiston luontiin
+## 🛠️ Keskeiset teknologiat
 
-Ratkaisu säilyy kevyenä, mutta data kulkee nyt selaimesta REST API:n kautta palvelimen JSON-tiedostoihin. Tallennus on erotettu omaksi kerroksekseen, jotta JSON-tallennus voidaan myöhemmin korvata tietokantaratkaisulla ilman käyttöliittymän täydellistä uudelleenkirjoitusta.
+| Osa | Nykyinen toteutus |
+| --- | --- |
+| Frontend | Semanttinen HTML5, CSS design tokeneilla ja modulaarinen vanilla JavaScript (ES-moduulit). |
+| Backend | Node.js:n oma HTTP-palvelin paikalliskehitykseen; vaihtoehtoinen PHP-API Apache-ympäristöön. |
+| Tietovarasto | Palvelimen `jsondb/`-hakemiston JSON-tiedostot. Varsinaista tietokantamoottoria ei vielä käytetä. |
+| Integraatiot | PDGA-pelaaja- ja kilpailulinkit sekä rajatut CSV-tuonnit ja tuloskorttien CSV-vienti. Ei automaattista PDGA-API-hakua. |
+| Testaus ja build | Node.js:n `node --test` ja oma tiedostot kopioiva build-skripti; ei bundleria. |
+| Infra / hosting | GitHub Actions rakentaa julkaisun ja siirtää `dist/`-sisällön nykyiselle palvelimelle SSH/rsync-mallilla. Apache/PHP-julkaisua tuetaan `.htaccess`-reitityksellä. |
+| Ulkoiset palvelut | Sovelluksen toiminta ei edellytä ulkoista API-palvelua. PDGA-linkit avautuvat ulkoiselle sivustolle. Hosting-palveluntarjoajaa ei määritellä repositoriossa. |
 
-## MVP-toiminnallisuudet
+## 🏗️ Järjestelmän rakenne
 
-- suomenkielinen responsiivinen käyttöliittymä ja päänavigaatio
-- pelaajien CRUD-hallinta (MPO/FPO)
-- turnausten CRUD-hallinta ennalta määritetyillä multiplier-vaihtoehdoilla
-- asetussivu yhteisille PDGA-linkkiasetuksille
-- keskitetty MPO/FPO-pistetaulukkonäkymä ja ylläpito
-- Tulokset-sivun turnausyhteenveto (Paras MPO / Paras FPO) turnausten järjestysnumeron mukaisessa järjestyksessä
-- tuloskorttien massaylläpito CSV:nä (Pelaajat → Export Tuloskortit / Import Tuloskortit): muoto `PDGA ID;Nimi;T1;T2;…`, UTF-8 ja puolipiste-erotin; pelaajat tunnistetaan PDGA ID:n ja turnaukset järjestysnumeron (T1 = järjestysnumero 1) perusteella, logiikka on moduulissa `js/resultCardCsv.js`
-- pelaajakohtaiset tuloskortit (Pelaajat → Tuloskortti): avautuvat lukutilaan, muokkaus Muokkaa-painikkeella, tallennus Tallenna ja poistu -painikkeella sekä Tab-siirtymä seuraavalle riville
-- tuloskortit ovat ainoa pistelähde: turnaus- ja kokonaispisteet lasketaan aina dynaamisesti sijoituksista, pistetaulukoista ja kertoimista
-- ranking kaikille, MPO:lle ja FPO:lle
-- yhteenvetonäkymä tilastokorteilla, top 10 -pylväillä ja pelaajakohtaisella tulostaulukolla
-- Vertaile-näkymä (navigaatiossa heti Yhteenvedon jälkeen): valittujen pelaajien sijoitusten lukunäkymä turnauksittain
-- Ohjeet-näkymä, johon kaikki käyttöohjeet on koottu
+Sovellus on yhden HTML-sivun käyttöliittymä, jonka näkymät renderöidään JavaScriptillä. Selain ja API palvellaan samasta alkuperästä. Node.js ja PHP ovat **vaihtoehtoisia palvelintoteutuksia**, eivät peräkkäisiä kerroksia.
 
-## Vertaile-näkymä
+```text
+Käyttäjän toiminto
+  → app.js: tapahtumat ja sovellustila
+  → toimialamoduulit: validointi ja tietojen muutokset
+  → storage.js: GET / PUT /api/state
+  → Node.js- tai PHP-API
+  → jsondb/: state.json + erilliset JSON-tiedostot
+  → scoring.js / ranking.js: pisteiden laskenta
+  → ui.js: päivitetty näkymä
+```
 
-Vertaile on lukunäkymä, jossa valittujen pelaajien sijoituksia verrataan turnauksittain.
+| Kerros | Tärkeimmät tiedostot ja vastuut |
+| --- | --- |
+| Käyttöliittymä | `index.html`, `css/styles.css`, `js/ui.js`: sivupohja, ulkoasu ja komponenttien renderöinti. |
+| Sovellusohjaus | `js/app.js`: tapahtumankäsittely, käyttöliittymätila ja tallennuksen koordinointi. |
+| Toimialalogiikka | `js/players.js`, `js/tournaments.js`, `js/multipliers.js`, `js/results.js`: perustiedot, validoinnit ja tuloskortit. |
+| Laskenta | `js/scoring.js`, `js/ranking.js`, `js/summary.js`, `js/compare.js`: pisteet, ranking ja johdetut näkymät. |
+| Tallennus ja tunnistautuminen | `js/storage.js`, `js/auth.js`, `js/login.js`; palvelimella `server/` tai `api/index.php`. |
+| Yhteiset komponentit | `js/table-sorting.js`, `js/pdga.js`, `js/errorLog.js`, `js/version.js` ja keskitetty ohjesisältö `js/helpData.js`. |
 
-- pelaajat lisätään hakukentän automaattitäydennyksellä nimellä tai PDGA ID:llä (vähintään 3 merkkiä)
-- valitut pelaajat näkyvät korteissa, joissa on rating, maailmanranking, kokonaispisteet ja turnausten määrä sekä poistopainike (−)
-- pelaajan poistaminen koskee vain vertailua eikä poista pelaajan tietoja
-- valinnalla "Piilota turnaukset joissa kukaan vertailtavista pelaajista ei ole pelannut" rajataan tyhjät turnausrivit pois
-- turnaukset ovat samassa järjestyksessä kuin Turnaukset-sivulla (järjestysnumero, sitten alkamispäivä)
-- sijoitus näytetään sellaisenaan tasatulosmerkintöineen (esim. 3T4) ja rivin paras sijoitus korostetaan myös lihavoinnilla ja ruudunlukijatekstillä
-- vertailulogiikka on moduulissa `js/compare.js`
+### Pistelaskennan ydin
 
-## Ohjeet-näkymä
+- **Tuloskortit ovat ainoa pistelähde:** `resultCards: [{ id, playerId, results: [{ tournamentId, placement }] }]`.
+- Tuloskortille tallennetaan sijoitus, ei pisteitä tai kerrointa. Turnaus viittaa kertoimeen `multiplierId`-kentällä.
+- `turnauspisteet = sijoituksen 1x-peruspisteet × turnauksen kerroin`.
+- `kokonaispisteet = pelaajan kaikkien turnauspisteiden summa`.
+- Tasatulosmerkintä, esimerkiksi `3T4`, käyttää sijojen 3–6 peruspisteiden keskiarvoa ennen kertoimella kertomista. Tasatulokset syötetään erikseen, niitä ei päätellä automaattisesti.
+- Puuttuva pistetaulukon arvo estää tuloksen tallennuksen. Pistetaulukon tai kertoimen muutos vaikuttaa pisteisiin heti.
 
-Kaikki käyttöohjeet, tuontiohjeet ja selitykset ylläpidetään keskitetysti tiedostossa `js/helpData.js`.
+`js/storage.js` normalisoi datan ja migroi vanhoja tulos- ja kerroinrakenteita. Palvelimen atomisesti kirjoitettava `state.json` on tallennuksen snapshot-lähde; erilliset JSON-tiedostot synkronoidaan sen rinnalle. Sovellusdata ei ole selaimen localStoragessa, mutta kirjautumistunniste on.
 
-- rakenne on `{ id, title, topics: [{ title, content }] }`
-- Ohjeet-näkymä renderöi osiot ja ohjeaiheet automaattisesti `details`/`summary`-rakenteena
-- ohjeen lisääminen, muokkaaminen tai poistaminen vaatii vain muutoksen `js/helpData.js`-tiedostoon eikä lainkaan käyttöliittymäkehitystä
-- ohjeita ei muokata käyttöliittymästä eikä niitä tallenneta tietovarastoon
-- ohjeisiin pääsee vain päänavigaation Ohjeet-kohdasta: sovelluksessa ei ole erillisiä ohjepainikkeita tai -linkkejä
+## 📄 Sivut ja komponentit
 
-## Pistelaskenta
+Näkymät ovat saman sovelluksen sisäisiä, eivät erillisiä HTML-sivuja. Sovellusdata ladataan ja tallennetaan yhteisesti `/api/state`-rajapinnan kautta; lukunäkymille ei ole omia API-endpointteja.
 
-- `turnauspisteet = sijoituksen 1x-peruspisteet × turnauksen multiplier`
-- `kokonaispisteet = pelaajan kaikkien turnauspisteiden summa`
-- tuloskortti on pelaajakohtainen (`resultCards: [{ id, playerId, results: [{ tournamentId, placement }] }]`) ja sille tallennetaan vain sijoitus
-- pisteitä, peruspisteitä tai kertoimia ei tallenneta: ne lasketaan aina nykyisestä pistetaulukosta ja turnauksen nykyisestä kertoimesta
-- vanhat turnauskohtaiset tuloskortit ja `tournamentResults`-rivit migroidaan pelaajakohtaisiksi tuloskorteiksi datan normalisoinnissa
+| Sivu / näkymä | Tarkoitus | Keskeiset toiminnot | Käytettävät palvelut tai API:t |
+| --- | --- | --- | --- |
+| Kirjautuminen | Yhteinen salasanasuojaus | Kirjautuminen ja uloskirjautuminen | `POST /api/login`, `js/auth.js` |
+| Yhteenveto | Nopea ranking-tilanne | MPO- ja FPO-TOP 10, lajittelu, pelaajan tuloskortin avaaminen | Ladattu tila, `js/summary.js`, `js/ranking.js` |
+| Vertaile | Pelaajien sijoitusten vertailu | Pelaajahaku, vertailukortit ja tyhjien turnausrivien piilotus | Ladattu tila, `js/compare.js` |
+| Ranking | Kokonaispisteiden seuranta | Kaikki/MPO/FPO-suodatus, lajittelu ja tuloskortit | Ladattu tila, `js/ranking.js`, `js/scoring.js` |
+| Tulokset | Turnauskohtainen yhteenveto | Paras MPO/FPO ja turnauksen tuloskortin avaaminen | Ladattu tila, `js/results.js` |
+| Pelaajat | Pelaajarekisterin ylläpito | Lisäys, muokkaus, poisto, CSV-tuonti, Rating ja Ranking -päivitys sekä tuloskorttien massa-Import/Export | `/api/state`, `js/players.js`, `js/resultCardCsv.js`, PDGA-linkit |
+| Tuloskortit | Sijoitusten ylläpito ja tarkastelu | Pelaajan tuloskortin luku ja muokkaus; turnauksen tuloskortti vain lukutilassa | `/api/state`, `js/results.js`, `js/scoring.js` |
+| Turnaukset | Turnauslistan ylläpito | Perustiedot, järjestysnumerot, kerroinvalinta ja CSV-tuonti; ei tulosten syöttöä tällä sivulla | `/api/state`, `js/tournaments.js`, PDGA-linkit |
+| Kertoimet | Pistekertoimien ylläpito | Kertoimen nimi, lyhenne, järjestys ja arvo | `/api/state`, `js/multipliers.js` |
+| Pistetaulukot | MPO/FPO-peruspisteiden ylläpito | Sijoituskohtaiset pisteet ja CSV-tuonti | `/api/state`, `js/scoring.js` |
+| Asetukset | Yhteiset määritykset | PDGA-perusosoitteet, pisteiden näyttötarkkuus ja salasanan vaihto | `/api/state`, `PUT /api/site-password`, `js/pdga.js` |
+| Ohjeet | Käyttö- ja tuontiohjeet | Painikkeilla avattavat ohjeosiot ja aiheet | `js/helpData.js`; ei erillistä API:a |
 
-Pisteet haetaan keskitetysti `js/scoring.js`-moduulista. Pistearvoja ei kovakoodata käyttöliittymäkomponentteihin.
+Tuloskorttien CSV-muoto on `PDGA ID;Nimi;T1;T2;…` (UTF-8, puolipiste-erotin). Pelaaja tunnistetaan PDGA ID:llä ja `T<n>` turnauksen järjestysnumerolla. Tuonti päivittää vain sijoituksia. Muut CSV-muodot on kuvattu sovelluksen **Ohjeet**-näkymässä.
 
-## PDGA-asetukset ja tunnukset
+## 🧭 Perusperiaatteet
 
-- Asetukset-näkymässä hallitaan yhteisiä PDGA-perusosoitteita:
-  - `PDGA-pelaajaosoitteen perus-URL` (oletus `https://www.pdga.com/player/`)
-  - `PDGA-kilpailuosoitteen perus-URL` (oletus `https://www.pdga.com/tour/event/`)
-- Pelaajalle tallennetaan vain PDGA-pelaajatunnus.
-- Turnaukselle tallennetaan vain PDGA-kilpailutunnus.
-- Käyttöliittymä muodostaa PDGA-linkit automaattisesti muodossa `perusosoite + tunnus`.
-- Vanhoista täydellisistä PDGA-osoitteista poimitaan tunnus automaattisesti tallennusdatan normalisoinnissa aina kun se on mahdollista.
+| Periaate | Toteutus ja kehityslinja |
+| --- | --- |
+| Responsiivisuus | CSS:n mukautuvat asettelut ja taulukoiden vieritys tukevat eri näyttökokoja. |
+| Saavutettavuus | Semanttiset rakenteet, kenttien nimet, näppäimistökäyttö, näkyvä focus ja ARIA-tilat. Merkitys ei saa perustua pelkkään väriin. |
+| Tietoturva | Syötteiden validointi, renderöitävän tekstin HTML-escapetus ja palvelimella tarkistettava kirjautumistunniste. Tallennus ja varmuuskopiot pidetään poissa julkisesta web-juuresta. |
+| Suorituskyky | Ei frontend-kehystä tai kolmannen osapuolen ajonaikaisia paketteja. Ranking lasketaan nykyisestä tilasta; koko tilan siirto ja JSON-tallennus rajaavat skaalautuvuutta. |
+| Lokitus | `js/errorLog.js` lähettää raportoitavat virheet `POST /api/errors` -rajapintaan. `jsondb/errors.json` säilyttää enintään 1 000 uusinta merkintää; lokitusvirhe ei keskeytä käyttäjän toimintoa. Ei kattavaa audit trailia. |
+| Virheenkäsittely | Suomenkieliset kenttävirheet ja toimintopalautteet, API:n JSON-virhevastaukset ja kirjautumiseen ohjaus tunnisteen puuttuessa tai ollessa virheellinen. |
 
-## Väliaikainen salasanasuojaus
+### Salasanasuojaus ei ole käyttäjähallinta
 
-Kehitysvaiheessa sovellus on suojattu yhteisellä sivuston salasanalla. Kyseessä ei ole tuotantotason käyttäjähallinta, vaan kevyt portti satunnaisen käytön estämiseksi.
+Yhteinen sivuston salasana on kehitysvaiheen portti, ei käyttäjäkohtainen oikeusmalli. Vaihda koodissa määritetty ensikäynnistyksen oletussalasana heti käyttöönotossa kohdassa **Asetukset → Turvallisuus → Sivuston salasana** (8–200 merkkiä).
 
-- Sovellus näyttää ensin kirjautumisnäkymän (`js/login.js`). Salasana tarkistetaan palvelimella (`POST /api/login`), ja onnistuneesta kirjautumisesta tallennetaan selaimen localStorageen allekirjoitettu tunniste.
-- Tunniste säilyy sivun päivitysten ja selaimen uudelleenkäynnistysten yli, kunnes käyttäjä valitsee **Kirjaudu ulos** tai selaimen tallennustila tyhjennetään.
-- `GET /api/state` ja `PUT /api/state` vaativat voimassa olevan tunnisteen (`X-SFL-Auth-Token`-otsake).
-- Salasanaa vaihdetaan kohdassa **Asetukset → Turvallisuus → Sivuston salasana** (`PUT /api/site-password`, vähintään 8 merkkiä). Uusi salasana koskee tulevia kirjautumisia; jo kirjautuneet käyttäjät pysyvät kirjautuneina.
-- Salasana säilytetään vain palvelimella tiedostossa `jsondb/settings.json` tiivisteenä (`sitePasswordHash`, PHP:ssä `password_hash`). Samassa tiedostossa on tunnisteiden allekirjoitusavain `authSecret`. Näitä kenttiä ei koskaan palauteta selaimelle.
-- **Oletussalasana on `sfl-pisteet-2026`.** Palvelin kirjoittaa sen tiivisteen `settings.json`-tiedostoon ensimmäisellä kirjautumiskerralla, jos salasanaa ei ole asetettu. Vaihda salasana heti käyttöönoton jälkeen.
-- Salasanan voi asettaa myös käsin lisäämällä `settings.json`-tiedostoon kentän `"sitePassword": "..."` ja poistamalla `sitePasswordHash`-kentän. Selväkielinen arvo muutetaan tiivisteeksi ensimmäisellä onnistuneella kirjautumisella.
-- Kaikkien istuntojen mitätöimiseksi poista `authSecret` tiedostosta `settings.json`; palvelin luo uuden avaimen automaattisesti.
-- Tunnistautuminen on eristetty moduuleihin `js/auth.js` ja `js/login.js`, jotta se voidaan myöhemmin korvata varsinaisella kirjautumisella (esim. Microsoft/Google ja roolipohjainen käyttöoikeus) ilman laajoja muutoksia muuhun sovellukseen.
+API käyttää allekirjoitettua `X-SFL-Auth-Token`-tunnistetta. Salasanatiiviste ja allekirjoitusavain säilyvät palvelimen `settings.json`-tiedostossa eikä niitä palauteta selaimelle. Tunniste ei vanhene automaattisesti; salasanan vaihto ei mitätöi olemassa olevia istuntoja. Istunnot voi mitätöidä poistamalla palvelimen `settings.json`-tiedostosta `authSecret`-kentän, jolloin uusi avain luodaan automaattisesti.
 
-## Tallennus
+Julkisessa käytössä tarvitaan HTTPS ja asianmukaisesti suojattu palvelinympäristö. Node-palvelin kuuntelee oletuksena vain loopback-osoitetta. Muualta tulevat kirjoituspyynnöt edellyttävät asetettua `SFL_API_WRITE_TOKEN`-arvoa ja luotetun proxyn välittämiä otsakkeita `X-SFL-Proxy-Authenticated: true` sekä `X-SFL-Write-Token`. Selain ei saa käsitellä proxyn salaisuutta.
 
-Tämä MVP-versio tallentaa kaiken datan palvelimen `jsondb/`-hakemistoon JSON-tiedostoina REST API:n kautta.
+## ⚙️ Vakioasetukset ja määrittelyt
 
-- tiedot ovat yhteisiä kaikille käyttäjille
-- palvelin luo puuttuvat JSON-tiedostot automaattisesti
-- palvelin ylläpitää lisäksi sisäistä atomista `state.json`-snapshotia, jotta kirjoitus pysyy eheänä
-- `jsondb/`-hakemisto pitää säilyttää deployjen yli
-- API-endpointit ovat `GET /api/state`, `PUT /api/state`, `GET /api/health`, `POST /api/login`, `PUT /api/site-password` ja `POST /api/errors`
-- virheet kirjataan keskitetysti `jsondb/errors.json`-tiedostoon (`js/errorLog.js` → `POST /api/errors`, enintään 1000 uusinta merkintää)
-- tietokantapohjainen backend on myöhempi kehitysvaihe
-- yleistä tietojen importia ja exportia ei ole toteutettu; poikkeuksena CSV-tuonnit sekä tuloskorttien massa-Import/Export (Pelaajat → Export Tuloskortit / Import Tuloskortit)
-- JSON-tiedostojen varmuuskopiointi kuuluu palvelinympäristölle
+### Palvelimen ympäristömuuttujat
 
-## Käynnistys paikallisesti
+Paikallinen Node-kehitys toimii oletuksilla. Projektissa ei ole `.env`-lataajaa: muuttujat asetetaan prosessin ympäristöön.
 
-Edellytykset:
+| Muuttuja | Toteutus | Oletus / tarkoitus |
+| --- | --- | --- |
+| `PORT` | Node.js | `3000` |
+| `HOST` | Node.js | `127.0.0.1` |
+| `PUBLIC_DIR` | Node.js | Repositorion juuri; julkaistun buildin tarjoamiseen esimerkiksi `dist`. Suhteelliset polut ratkaistaan projektin juuresta. |
+| `JSONDB_DIR` | Node.js | `jsondb`; pysyvien tietojen hakemisto. Suhteellinen polku ratkaistaan projektin juuresta. |
+| `SFL_API_WRITE_TOKEN` | Node.js | Ei asetettu oletuksena; proxyn kautta tulevien kirjoituspyyntöjen tarkistus. |
+| `SFL_JSONDB_PATH` | PHP | Oletuksena sovelluksen juuren `jsondb`; tuotannossa aseta absoluuttinen polku web-juuren ulkopuolelle. |
+| `SFL_ALLOW_PUBLIC_JSONDB` | PHP | Ei sallittu oletuksena. Arvo `true` ohittaa määritetyn tallennuspolun web-juuritarkistuksen; älä käytä ohitusta julkisessa ympäristössä. |
 
-- Node.js 20+
-- npm
+Julkaisuworkflow käyttää olemassa olevia GitHub Actions -salaisuuksia `SSH_USER`, `SSH_HOST`, `DEPLOY_PATH` ja `SSH_KEY`. Niiden arvoja ei tallenneta repositorioon eikä niitä tarvitse muuttaa README-päivityksen vuoksi.
 
-Asennus ja komennot:
+### Sovelluksen oletukset ja standardit
+
+- Sarjat: **MPO** ja **FPO**. Uudessa tietovarastossa pelaajat, turnaukset, tuloskortit ja pistetaulukkojen arvot ovat tyhjiä.
+- Oletuskertoimet: **Major 2×**, **National Tour 1,5×**, **C-Tier 1×**; ylläpito Kertoimet-näkymässä.
+- PDGA-perusosoitteet: `https://www.pdga.com/player/` ja `https://www.pdga.com/tour/event/`; linkki muodostetaan perusosoitteesta ja tunnuksesta.
+- Pisteiden näyttötarkkuus: **2 desimaalia**, valittavissa 0–4. Näyttöpyöristys ei muuta laskennan tarkkuutta.
+- Datan skeemaversio on `js/storage.js`-moduulin `STORAGE_VERSION` (nykyisin **4**).
+- HTML5, ES-moduulit, UTF-8, JSON ja HTTP-rajapinta. Käyttöliittymän kieli on suomi.
+
+## 🚀 Kehitysohjeet
+
+### 1. Käynnistä paikallisesti
+
+Tarvitset **Node.js 20+** ja npm:n. PHP ei ole tarpeen Node-palvelinta käytettäessä.
+
+Suorita repositorion juuressa:
 
 ```bash
-npm install
-npm test
-npm run build
+npm ci
 npm start
 ```
 
-Avaa tämän jälkeen sovellus osoitteesta `http://localhost:3000`.
+Avaa **http://127.0.0.1:3000**. Palvelin luo tietovaraston tarvittaessa. Käytä ensikäynnistyksessä oletussalasanaa, jonka määrittely löytyy tiedostoista `server/site-auth.mjs` ja `api/index.php`, ja vaihda se heti.
 
-Palvelin kuuntelee oletuksena vain paikallista rajapintaa (`127.0.0.1`). Julkisessa ympäristössä Node-palvelin kannattaa sijoittaa autentikoidun tai muuten suojatun reverse proxyn taakse. Jos proxy ei yhdistä Node-palvelimeen loopback-osoitteesta, write-pyyntöjen pitää välittää sekä `X-SFL-Proxy-Authenticated: true` että `X-SFL-Write-Token`, kun `SFL_API_WRITE_TOKEN` on asetettu Node-palvelimelle.
+Käyttöliittymän tiedostomuutokset näkyvät sivun päivityksellä; palvelinkoodin muutokset vaativat palvelimen uudelleenkäynnistyksen. Älä avaa `index.html`-tiedostoa suoraan `file://`-osoitteella, sillä sovellus tarvitsee API:n.
 
-## Julkaisu
+### 2. Testaa ja rakenna
 
-`.github/workflows/deploy.yml` rakentaa julkaistavan `dist`-hakemiston ja julkaisee sen SSH/rsync-mallilla. Workflow suojaa palvelimen `jsondb/`-hakemiston rsync-poistoilta, jotta data säilyy deployjen yli. Workflow saa käynnistyä automaattisesti vain `main`-haaran pushista.
+```bash
+npm test
+npm run build
+```
 
-### Apache/PHP-ympäristö
+- Testit käyttävät Node.js:n sisäänrakennettua testiajuria; PHP-API-testit hyödyntävät PHP:tä, jos se on saatavilla.
+- Kohdennettu testi: `node --test tests/scoring.test.js`.
+- Erillistä lint-komentoa ei ole määritelty.
+- Build luo `dist/`-hakemiston uudelleen ja kopioi HTML:n, CSS:n, JavaScriptin, resurssit sekä `server/`- ja `api/`-hakemistot. Sovellusdataa ei kopioida.
+- `dist/`, `node_modules/` ja `jsondb/` on jätetty versionhallinnan ulkopuolelle.
 
-- Lataa webhotelliin `dist/`-hakemiston sisältö kokonaisuudessaan (ml. `api/` ja juuren `.htaccess`).
-- Varmista, että `jsondb/` on kirjoitettavissa PHP-prosessille (hakemisto luodaan automaattisesti tarvittaessa).
-- Suositus: aseta ympäristömuuttuja `SFL_JSONDB_PATH` osoittamaan web-juuren ulkopuoliseen hakemistoon.
-- Tarkista toimivuus avaamalla `https://oma-domain.fi/api/health` — vastauksen tulee olla JSON, jossa `status` on `ok`.
+### 3. Julkaise hyväksynnän jälkeen
 
-## Brändi ja logo
+> **Automaattinen julkaisu käynnistyy vain `main`-haaran pushista.** PR-haaran push ei julkaise sovellusta. Workflow sallii lisäksi erillisen käsikäynnistyksen (`workflow_dispatch`).
 
-Käyttöliittymän värit ja typografinen ilme on johdettu varovaisesti Suomen frisbeegolfliiton verkkosivuston yleisestä virallisesta ja urheilullisesta tunnelmasta. Väriarvoja ei pidä tulkita liiton virallisiksi brändiväreiksi.
+Nykyinen `.github/workflows/deploy.yml` ajaa `npm ci`, `npm test` ja `npm run build`, luo `version.json`-metatiedot, tarkistaa buildin ja siirtää koko `dist/`-sisällön SSH/rsyncillä. `jsondb/` suojataan rsync-poistoilta. Lopuksi workflow päivittää version metatiedot atomisesti palvelimen UTC-ajalla.
 
-Tässä MVP:ssä käytetään tekstimuotoista SFL-logo-paikkavarausta. Kompaktissa ylätunnisteessa näkyvät logo, otsikko “SFL Pisteytystyökalu” ja yksirivinen build-tieto (esim. `Build dcf1ce3 • 01.10.2026 19:55`); organisaation nimi “Suomen frisbeegolfliitto” on saatavilla ruudunlukijoille. Lopullinen SVG- tai PNG-logo sekä viralliset väriarvot pitää varmistaa erillisestä hyväksytystä logoaineistosta ja graafisesta ohjeistosta ennen lopullista tuotantoviimeistelyä.
+Apache/PHP-ympäristössä tarvitaan PHP, `.htaccess`-reititystä tukeva Apache ja PHP-prosessille kirjoitettava tallennushakemisto. Julkaise `dist/` kokonaisuudessaan, myös piilotetut `.htaccess`-tiedostot, ja aseta `SFL_JSONDB_PATH` web-juuren ulkopuolelle. Tarkista `/api/health`: vastauksessa tulee olla `"status": "ok"`.
 
-## Seuraavat kehitysvaiheet
+Palvelinympäristön vastuulla ovat HTTPS, tallennushakemiston oikeudet ja varmuuskopiot. **Tämä dokumentaatiomuutos ei muuta deploy-salaisuuksia, palvelinympäristöä tai SSH-asetuksia eikä käynnistä julkaisua.** README tulee `main`-haaraan vasta PR:n hyväksynnän ja yhdistämisen jälkeen.
 
-- tietokantapohjainen tallennus JSON-välivaiheen tilalle
-- laajemmat import/export-toiminnot
-- tarkempi audit trail ja mahdolliset käyttäjäroolit
-- varsinainen logoaineisto ja brändivahvistus
+## 📂 Hakemistorakenne
+
+```text
+.
+├── index.html               # Sovelluksen HTML-sivupohja
+├── css/                     # Tyylit ja design tokenit
+├── js/                      # Käyttöliittymä, toimialalogiikka ja API-asiakas
+├── assets/                  # Staattiset kuvat ja muut resurssit
+├── server/                  # Node.js-palvelin, tunnistautuminen ja JSON-tallennus
+├── api/                     # Vaihtoehtoinen PHP-API ja sen Apache-reititys
+├── scripts/                 # Build-skripti
+├── tests/                   # Laskennan, UI:n, tallennuksen ja API:n testit
+├── docs/                    # MVP-vaatimusdokumentti
+├── .github/workflows/       # GitHub Actions -julkaisuworkflow
+├── .htaccess                # Juuren Apache-API-reititys
+├── package.json             # Projektin tiedot ja npm-komennot
+├── package-lock.json        # Lukittu npm-asennus
+├── jsondb/                  # Ajossa syntyvä tietovarasto; ei versionhallinnassa
+└── dist/                    # Buildin tulos; ei versionhallinnassa
+```
+
+**Aloita lukeminen:** `js/app.js` → `js/storage.js` → `js/scoring.js` → `js/ui.js`. Käyttöohjeiden sisältö ylläpidetään `js/helpData.js`-rakenteessa, ei tietovarastossa. [MVP-vaatimusdokumentti](docs/mvp-requirements.md) kuvaa alkuperäistä rajausta; nykyinen toteutus sisältää jo esimerkiksi palvelintallennuksen ja yhteisen salasanasuojauksen.
+
+## 🗺️ Huomioitavaa ja jatkokehitys
+
+### Riippuvuudet ja tunnetut rajoitteet
+
+- `package.json` ei määrittele ulkoisia npm-riippuvuuksia; Node.js ja vaihtoehtoisesti PHP/Apache ovat ympäristövaatimuksia.
+- Ei käyttäjäkohtaisia tunnuksia tai rooleja, automaattista istunnon vanhenemista eikä kattavaa audit trailia.
+- Tiedot ovat yhteisiä, mutta monikäyttäjämuokkausten konfliktinratkaisua ei ole: koko tilan tallennus voi ylikirjoittaa toisen käyttäjän muutokset.
+- Ei offline-tallennusta tai automaattista PDGA-synkronointia. Tuonti/vienti rajoittuu toteutettuihin CSV-toimintoihin.
+- JSON-tiedostojen varmuuskopiointi ja palautus eivät kuulu sovelluksen toimintoihin.
+- Käyttöliittymän SFL-henkinen ilme ei tarkoita, että värit olisivat vahvistettuja virallisia brändivärejä. Logo on tekstipaikkavaraus.
+
+### Mahdolliset seuraavat vaiheet
+
+Tietokantapohjainen tallennus, käyttäjäkohtainen tunnistautuminen ja oikeudet, muokkauskonfliktien hallinta, tarkempi audit trail sekä hyväksytty logoaineisto ja brändivahvistus. Nämä ovat jatkokehitysideoita, eivät nykyisen version ominaisuuksia.
