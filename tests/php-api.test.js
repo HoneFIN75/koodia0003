@@ -100,7 +100,7 @@ async function loginToPhp(baseUrl, password = 'sfl-pisteet-2026') {
   return token;
 }
 
-test('PHP API supports state save/load and compatibility payloads', { skip: !hasPhp }, async () => {
+test('PHP API supports state save/load, repeated placements and compatibility payloads', { skip: !hasPhp }, async () => {
   const server = await startPhpServer();
   const port = new URL(server.baseUrl).port;
   const { jsondbDir } = server;
@@ -167,8 +167,7 @@ test('PHP API supports state save/load and compatibility payloads', { skip: !has
         })),
       }),
     });
-    assert.equal(duplicateFirstPlaceResponse.status, 400);
-    assert.equal((await duplicateFirstPlaceResponse.json()).message, 'Turnauksessa voi olla vain yksi sijoitus 1.');
+    assert.equal(duplicateFirstPlaceResponse.status, 200);
 
     const tiedFirstPlaceResponse = await fetch(`http://127.0.0.1:${port}/api/state`, {
       method: 'PUT',
@@ -180,12 +179,11 @@ test('PHP API supports state save/load and compatibility payloads', { skip: !has
         ...duplicateLowerPlacements,
         resultCards: duplicateLowerPlacements.resultCards.map((card, index) => ({
           ...card,
-          results: [{ ...card.results[0], placement: index === 0 ? '1T2' : '2' }],
+          results: [{ ...card.results[0], placement: index === 0 ? '1T2' : '1' }],
         })),
       }),
     });
-    assert.equal(tiedFirstPlaceResponse.status, 400);
-    assert.equal((await tiedFirstPlaceResponse.json()).message, 'Turnauksessa voi olla vain yksi sijoitus 1.');
+    assert.equal(tiedFirstPlaceResponse.status, 200);
 
     const invalidJsonResponse = await fetch(`http://127.0.0.1:${port}/api/state`, {
       method: 'PUT',
