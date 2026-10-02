@@ -32,4 +32,5 @@ test('scoped footers align neutral left and submit right without changing DOM/ta
 
 test('tournament edit button text does not wrap', () => {
   assert.match(css, /\.tournaments-table \[data-edit-tournament\]\s*\{[^}]*white-space:\s*nowrap/s);
+  assert.match(css, /\.action-surface \.tournaments-table \[data-edit-tournament\],\s*\.tournaments-table \[data-edit-tournament\]\s*\{[^}]*white-space:\s*nowrap/s);
 });
