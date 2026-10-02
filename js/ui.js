@@ -2781,6 +2781,7 @@ export function renderApp(root, dataState, uiState) {
             <div class="brand-copy">
               <span class="visually-hidden">Suomen frisbeegolfliitto</span>
               <strong class="brand-title">SFL Pisteytystyökalu</strong>
+              <p class="header-slogan">Jokainen turnaus on kuin uusi väylä. Avaus antaa suunnan, mutta jatkoheitoilla ratkaistaan voittajat.</p>
               ${renderDeploymentInfo(uiState.deploymentInfo)}
             </div>
           </div>

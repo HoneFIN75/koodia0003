@@ -157,6 +157,19 @@ function createUiState(overrides = {}) {
   };
 }
 
+test('page header places the exact Finnish slogan immediately after the unchanged application title', () => {
+  const root = createRootStub();
+  renderApp(root, createEmptyState(), createUiState());
+
+  const header = root.innerHTML.match(/<header class="site-header">[\s\S]*?<\/header>/)?.[0];
+  assert.ok(header);
+  assert.match(
+    header,
+    /<strong class="brand-title">SFL Pisteytystyökalu<\/strong>\s*<p class="header-slogan">Jokainen turnaus on kuin uusi väylä\. Avaus antaa suunnan, mutta jatkoheitoilla ratkaistaan voittajat\.<\/p>/,
+  );
+  assert.equal(root.innerHTML.match(/class="header-slogan"/g)?.length, 1);
+});
+
 test('button styling is scoped to requested sections, never navigation or unrelated pages', () => {
   const root = createRootStub();
   renderApp(root, createEmptyState(), createUiState());
