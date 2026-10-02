@@ -863,6 +863,7 @@ textarea {
   text-align: right;
 }
 
+.action-surface .tournaments-table [data-edit-tournament],
 .tournaments-table [data-edit-tournament] {
   white-space: nowrap;
 }
