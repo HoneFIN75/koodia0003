@@ -98,7 +98,7 @@ test('TOP 10 -taulukot on dokumentoitu Yhteenveto-osiossa', () => {
   ['TOP 10 MPO', 'TOP 10 FPO'].forEach((title) => {
     const topic = summary.topics.find((entry) => entry.title === title);
     assert.ok(topic, `Yhteenveto-osiosta puuttuu ohje ${title}.`);
-    ['Lajittelu', 'laskevasti', '#, Nimi, Rating, WR ja Pts', 'WR =', 'Pts =', '▲', '▼', 'tuloskortin lukutilaan', 'Takaisin yhteenvetoon'].forEach((part) => {
+    ['Lajittelu', 'laskevasti', '#, Nimi, Rating, WR, T ja Pts', 'WR =', 'T =', 'Pts =', '▲', '▼', 'tuloskortin lukutilaan', 'Takaisin yhteenvetoon'].forEach((part) => {
       assert.ok(topic.content.includes(part), `Ohjeesta ${title} puuttuu kohta ${part}.`);
     });
   });

@@ -1514,6 +1514,7 @@ test('renderApp näyttää Yhteenvedossa vain TOP 10 MPO- ja TOP 10 FPO -tauluko
     ['name', 'Nimi'],
     ['pdgaRating', 'Rating'],
     ['worldRank', 'WR'],
+    ['tournamentCount', 'T'],
     ['totalPoints', 'Pts'],
   ]);
   assert.match(topMpo, /aria-sort="descending">\s*<button type="button" class="table-sort-button is-active" data-sort-table="summary-top-mpo" data-sort-field="totalPoints" aria-label="Kokonaispisteet">\s*<span>Pts<\/span>\s*<span class="table-sort-indicator" aria-hidden="true">▼<\/span>/);
@@ -1522,10 +1523,15 @@ test('renderApp näyttää Yhteenvedossa vain TOP 10 MPO- ja TOP 10 FPO -tauluko
   assert.match(topMpo, /data-open-player-result-card="mpo-1" data-result-card-origin="summary"/);
   assert.match(topMpo, /Ilman Rankingia/);
   assert.match(topMpo, /<td class="number">1025<\/td>/);
+  assert.match(topMpo, /<td class="number">1<\/td>\s*<td class="number">200,00 p<\/td>/);
   assert.match(topMpo, /Ilman Rankingia[\s\S]*?<td class="number">990<\/td>\s*<td class="number">—<\/td>/);
 
   const topFpo = html.match(/data-summary-table="summary-top-fpo"[\s\S]*?<\/article>/)[0];
   assert.match(topFpo, /TOP 10 FPO/);
+  const fpoHeaders = [...topFpo.matchAll(/data-sort-field="([^"]+)"[^>]*>\s*<span>([^<]+)<\/span>/g)].map((match) => [match[1], match[2]]);
+  assert.deepEqual(fpoHeaders, headers);
+  assert.match(topFpo, /data-sort-field="tournamentCount"[^>]*>\s*<span>T<\/span>/);
+  assert.match(topFpo, /<td class="number">1<\/td>\s*<td class="number">120,00 p<\/td>/);
 });
 
 test('renderApp näyttää Yhteenvedon TOP 10 -taulukossa 10 pelaajaa pisteiden mukaan laskevasti', () => {
