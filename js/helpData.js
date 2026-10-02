@@ -238,8 +238,7 @@ Esimerkki:
 - Kaikille tasatuloksen pelaajille merkitään omille tuloskorteilleen sama sijoitus 3T4.
 
 Huomioi:
-- Saman turnauksen ja sarjan sijoitusalueet eivät saa mennä päällekkäin eri sijoitusten kesken.
-- Tasatulosmerkintää voi käyttää enintään niin monella pelaajalla kuin merkintä ilmoittaa.
+- Saman turnauksen sama sijoitus voidaan tallentaa usealle pelaajalle.
 - Tasatuloksen pelaajat saavat jaettujen sijojen 1x-peruspisteiden keskiarvon kerrottuna turnauksen kertoimella.`,
       },
       {
@@ -386,7 +385,7 @@ Sijoitusten muodot:
 - Tyhjä arvo = sijoitusta ei ole vielä syötetty. Tyhjä solu poistaa aiemmin tallennetun sijoituksen.
 - 0 = pelaaja ei osallistunut turnaukseen. Arvo on sallittu, siitä ei anneta pisteitä eikä sitä lasketa osallistumiseksi.
 - Virheelliset arvot (esim. ABC, 1TT2 tai 3-T-4) ohitetaan ja raportoidaan virheinä. Muut rivit käsitellään normaalisti.
-- Samat säännöt kuin yksittäisellä tuloskortilla ovat voimassa: päällekkäistä sijoitusta tai sijoitusta, jolle pistetaulukossa ei ole arvoa, ei tallenneta, vaan aiempi sijoitus säilyy.
+- Sama sijoitus voidaan tuoda usealle pelaajalle samassa turnauksessa. Jos sijoitukselle ei ole pistetaulukossa arvoa, sitä ei tallenneta ja aiempi sijoitus säilyy.
 
 Pisteet:
 - Importti tallentaa vain sijoitukset. Pisteet lasketaan automaattisesti uudelleen: sijoitus → pistetaulukko → sarja → kerroin → lasketut pisteet.

@@ -176,6 +176,21 @@ test('import sallii alempien sijoitusten toistumisen', () => {
   assert.equal(getPlayerPlacement(resultCards, 'p-leo', 't-a'), '2');
 });
 
+test('import sallii sijoituksen 5, vaikka toisella pelaajalla on jo sama sijoitus', () => {
+  const state = createState();
+  state.resultCards[0].results[0] = { tournamentId: 't-a', placement: '5' };
+
+  const { resultCards, summary } = importResultCardsFromCsv(state, csv([
+    'PDGA ID;Nimi;T1',
+    '67890;Leo Piironen;5',
+  ]), { now: NOW });
+
+  assert.deepEqual(summary.errors, []);
+  assert.equal(summary.updatedCount, 1);
+  assert.equal(getPlayerPlacement(resultCards, 'p-tuomo', 't-a'), '5');
+  assert.equal(getPlayerPlacement(resultCards, 'p-leo', 't-a'), '5');
+});
+
 test('import hyväksyy useita ykkössijoituksia samalle turnaukselle', () => {
   const state = createState();
   const { resultCards, summary } = importResultCardsFromCsv(state, csv([
