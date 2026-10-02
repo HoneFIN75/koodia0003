@@ -276,6 +276,37 @@ function normalize_state_payload(array $payload): array
     return $payload;
 }
 
+function validate_unique_first_places(array $state): void
+{
+    $firstPlaceTournaments = [];
+    foreach ($state['resultCards'] ?? [] as $card) {
+        if (!is_array($card)) {
+            continue;
+        }
+
+        foreach (is_array($card['results'] ?? null) ? $card['results'] : [] as $result) {
+            if (!is_array($result)) {
+                continue;
+            }
+
+            $placement = strtoupper(trim((string) ($result['placement'] ?? '')));
+            if (preg_match('/^1(?:T(?:[2-9]|[1-9][0-9]))?$/', $placement) !== 1) {
+                continue;
+            }
+
+            if (str_contains($placement, 'T')) {
+                throw new InvalidArgumentException('Turnauksessa voi olla vain yksi sijoitus 1.');
+            }
+
+            $tournamentId = (string) ($result['tournamentId'] ?? '');
+            if (isset($firstPlaceTournaments[$tournamentId])) {
+                throw new InvalidArgumentException('Turnauksessa voi olla vain yksi sijoitus 1.');
+            }
+            $firstPlaceTournaments[$tournamentId] = true;
+        }
+    }
+}
+
 function sync_state_slices(array $state): void
 {
     write_json_atomically_if_changed(jsondb_file_path(STORAGE_FILES['players']), $state['players'] ?? []);
@@ -487,6 +518,7 @@ function save_state(array $state): array
 {
     ensure_jsondb_directory();
     $normalizedState = normalize_state_payload($state);
+    validate_unique_first_places($normalizedState);
 
     write_json_atomically(jsondb_file_path(STORAGE_FILES['snapshot']), $normalizedState);
     sync_state_slices($normalizedState);
@@ -718,6 +750,11 @@ try {
 
     if ($error->getMessage() === 'INCOMPLETE_STATE_PAYLOAD') {
         send_json(400, ['message' => 'Tallennettava tila on puutteellinen. Lähetä koko sovelluksen tila yhdessä pyynnössä.']);
+        return;
+    }
+
+    if ($error->getMessage() === 'Turnauksessa voi olla vain yksi sijoitus 1.') {
+        send_json(400, ['message' => 'Turnauksessa voi olla vain yksi sijoitus 1.']);
         return;
     }
 

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createEmptyState } from '../js/storage.js';
-import { bindUi, renderApp } from '../js/ui.js';
+import { bindUi, renderApp, updatePlayerResultRow } from '../js/ui.js';
 import { HELP_SECTIONS } from '../js/helpData.js';
 
 function createRootStub() {
@@ -46,6 +46,25 @@ function createInteractiveRoot(selectors = {}) {
     },
   };
 }
+
+test('tuloskortin käyttöliittymä näyttää sijoitusvalidoinnin virhetekstin sellaisenaan', () => {
+  const input = { setAttribute(name, value) { this[name] = value; } };
+  const errorElement = { textContent: '', hidden: true };
+  const row = {
+    querySelector(selector) {
+      return selector.includes('data-result-placement-error') ? errorElement : input;
+    },
+  };
+  const root = { querySelector: () => row };
+
+  updatePlayerResultRow(root, {}, 'player-2', 'tournament-1', {
+    error: 'Turnauksessa voi olla vain yksi sijoitus 1.',
+  });
+
+  assert.equal(errorElement.textContent, 'Turnauksessa voi olla vain yksi sijoitus 1.');
+  assert.equal(errorElement.hidden, false);
+  assert.equal(input['aria-invalid'], 'true');
+});
 
 function installDocumentStub() {
   const originalDocument = global.document;

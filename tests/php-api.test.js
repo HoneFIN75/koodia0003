@@ -127,6 +127,45 @@ test('PHP API supports state save/load and compatibility payloads', { skip: !has
     });
     assert.equal(saveResponse.status, 200);
 
+    const duplicateLowerPlacements = {
+      ...fullStatePayload,
+      players: [
+        { id: 'player-1', name: 'Pelaaja 1', division: 'MPO' },
+        { id: 'player-2', name: 'Pelaaja 2', division: 'FPO' },
+      ],
+      tournaments: [{ id: 'tournament-1', name: 'Turnaus', displayOrder: 1 }],
+      resultCards: [
+        { playerId: 'player-1', results: [{ tournamentId: 'tournament-1', placement: '2' }] },
+        { playerId: 'player-2', results: [{ tournamentId: 'tournament-1', placement: '2' }] },
+      ],
+    };
+    const lowerPlacementResponse = await fetch(`http://127.0.0.1:${port}/api/state`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-SFL-Auth-Token': token,
+      },
+      body: JSON.stringify(duplicateLowerPlacements),
+    });
+    assert.equal(lowerPlacementResponse.status, 200);
+
+    const duplicateFirstPlaceResponse = await fetch(`http://127.0.0.1:${port}/api/state`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-SFL-Auth-Token': token,
+      },
+      body: JSON.stringify({
+        ...duplicateLowerPlacements,
+        resultCards: duplicateLowerPlacements.resultCards.map((card) => ({
+          ...card,
+          results: [{ ...card.results[0], placement: '1' }],
+        })),
+      }),
+    });
+    assert.equal(duplicateFirstPlaceResponse.status, 400);
+    assert.equal((await duplicateFirstPlaceResponse.json()).message, 'Turnauksessa voi olla vain yksi sijoitus 1.');
+
     const invalidJsonResponse = await fetch(`http://127.0.0.1:${port}/api/state`, {
       method: 'PUT',
       headers: {

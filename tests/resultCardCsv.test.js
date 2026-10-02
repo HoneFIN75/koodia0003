@@ -162,6 +162,38 @@ test('import tukee tasatuloksia, arvoa 0 ja tyhjää arvoa', () => {
   assert.equal(getPlayerPlacement(resultCards, 'p-leo', 't-c'), '5');
 });
 
+test('import sallii alempien sijoitusten toistumisen', () => {
+  const state = createState();
+  const { resultCards, summary } = importResultCardsFromCsv(state, csv([
+    'PDGA ID;Nimi;T1',
+    '12345;Tuomo Rikman;2',
+    '67890;Leo Piironen;2',
+  ]), { now: NOW });
+
+  assert.deepEqual(summary.errors, []);
+  assert.equal(summary.updatedCount, 2);
+  assert.equal(getPlayerPlacement(resultCards, 'p-tuomo', 't-a'), '2');
+  assert.equal(getPlayerPlacement(resultCards, 'p-leo', 't-a'), '2');
+});
+
+test('import peruu vain turnauksen muutokset, jos samalle turnaukselle tuodaan kaksi ykköstä', () => {
+  const state = createState();
+  const { resultCards, summary } = importResultCardsFromCsv(state, csv([
+    'PDGA ID;Nimi;T1;T2',
+    '12345;Tuomo Rikman;1;2',
+    '67890;Leo Piironen;1;2',
+  ]), { now: NOW });
+
+  assert.deepEqual(summary.errors.map(({ rowNumber, column, reason }) => [rowNumber, column, reason]), [
+    [2, 'T1', 'Turnauksessa voi olla vain yksi sijoitus 1.'],
+    [3, 'T1', 'Turnauksessa voi olla vain yksi sijoitus 1.'],
+  ]);
+  assert.equal(getPlayerPlacement(resultCards, 'p-tuomo', 't-a'), '3T4');
+  assert.equal(getPlayerPlacement(resultCards, 'p-leo', 't-a'), '10');
+  assert.equal(getPlayerPlacement(resultCards, 'p-tuomo', 't-b'), '2');
+  assert.equal(getPlayerPlacement(resultCards, 'p-leo', 't-b'), '2');
+});
+
 test('arvo 0 ei tuota pisteitä eikä lasketa osallistumiseksi', () => {
   const state = createState();
   const { resultCards } = importResultCardsFromCsv(state, csv([

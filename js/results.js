@@ -30,13 +30,13 @@ export function getPlayerPlacement(resultCards = [], playerId, tournamentId) {
   return result ? String(result.placement ?? '') : '';
 }
 
-function listTournamentPlacementsForDivision({ resultCards, players, tournamentId, division, excludePlayerId }) {
+function listTournamentPlacements({ resultCards, players, tournamentId, excludePlayerId }) {
   const playerById = new Map(players.map((player) => [player.id, player]));
 
   return listResultEntries(resultCards)
     .filter((entry) => entry.tournamentId === tournamentId && entry.playerId !== excludePlayerId)
     .map((entry) => ({ ...entry, player: playerById.get(entry.playerId) }))
-    .filter((entry) => entry.player && entry.player.division === division)
+    .filter((entry) => entry.player)
     .map((entry) => ({ playerId: entry.playerId, name: entry.player.name, placement: entry.placement }));
 }
 
@@ -70,7 +70,7 @@ function writePlacement(resultCards, playerId, tournamentId, placement, now) {
 }
 
 // Validoi ja asettaa pelaajan sijoituksen turnaukseen. Heittää virheen, jos sijoitus on virheellinen,
-// menee päällekkäin toisen saman sarjan pelaajan kanssa tai pisteitä ei voida laskea
+// sijoitus 1 on jo toisella pelaajalla tai pisteitä ei voida laskea
 // (esim. pistetaulukon arvo tai turnauksen kerroin puuttuu). Tällöin tulosta ei tallenneta.
 export function setPlayerPlacement(dataState, { playerId, tournamentId, placement, now = new Date().toISOString() }) {
   const resultCards = dataState.resultCards || [];
@@ -109,11 +109,10 @@ export function setPlayerPlacement(dataState, { playerId, tournamentId, placemen
 
   const parsed = validatePlacementAgainstOthers({
     placement: normalizedInput,
-    others: listTournamentPlacementsForDivision({
+    others: listTournamentPlacements({
       resultCards,
       players,
       tournamentId,
-      division: player.division,
       excludePlayerId: playerId,
     }),
   });

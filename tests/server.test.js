@@ -85,6 +85,39 @@ test('API loads and saves shared state through JSON storage', async () => {
     const reloadedState = await reloadedResponse.json();
     assert.equal(reloadedState.players[0].pdgaNumber, 12345);
     assert.deepEqual(reloadedState.pointsTable, { MPO: {}, FPO: {} });
+
+    const duplicateLowerPlacements = {
+      ...reloadedState,
+      players: [
+        { id: 'player-1', name: 'Pelaaja 1', division: 'MPO' },
+        { id: 'player-2', name: 'Pelaaja 2', division: 'FPO' },
+      ],
+      tournaments: [{ id: 'tournament-1', name: 'Turnaus', displayOrder: 1 }],
+      resultCards: [
+        { playerId: 'player-1', results: [{ tournamentId: 'tournament-1', placement: '2' }] },
+        { playerId: 'player-2', results: [{ tournamentId: 'tournament-1', placement: '2' }] },
+      ],
+    };
+    const lowerPlacementResponse = await fetch(`${baseUrl}/api/state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(duplicateLowerPlacements),
+    });
+    assert.equal(lowerPlacementResponse.status, 200);
+
+    const duplicateFirstPlaceResponse = await fetch(`${baseUrl}/api/state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...duplicateLowerPlacements,
+        resultCards: duplicateLowerPlacements.resultCards.map((card) => ({
+          ...card,
+          results: [{ ...card.results[0], placement: '1' }],
+        })),
+      }),
+    });
+    assert.equal(duplicateFirstPlaceResponse.status, 400);
+    assert.equal((await duplicateFirstPlaceResponse.json()).message, 'Turnauksessa voi olla vain yksi sijoitus 1.');
   } finally {
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     await rm(publicDir, { recursive: true, force: true });

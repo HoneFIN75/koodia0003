@@ -2,6 +2,7 @@ import http from 'node:http';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
+import { parsePlacement, UNIQUE_FIRST_PLACE_ERROR } from '../js/scoring.js';
 import {
   SITE_PASSWORD_MAX_LENGTH,
   SITE_PASSWORD_MIN_LENGTH,
@@ -158,6 +159,27 @@ function validateStatePayload(payload) {
   if (missingKeys.length > 0) {
     throw new Error('INCOMPLETE_STATE_PAYLOAD');
   }
+
+  const firstPlaceByTournament = new Set();
+  (Array.isArray(payload.resultCards) ? payload.resultCards : []).forEach((card) => {
+    (Array.isArray(card?.results) ? card.results : []).forEach((result) => {
+      let parsed;
+      try {
+        parsed = parsePlacement(result?.placement);
+      } catch {
+        return;
+      }
+
+      if (parsed?.place !== 1) {
+        return;
+      }
+
+      if (parsed.isTie || firstPlaceByTournament.has(result.tournamentId)) {
+        throw new Error(UNIQUE_FIRST_PLACE_ERROR);
+      }
+      firstPlaceByTournament.add(result.tournamentId);
+    });
+  });
 
   return payload;
 }
@@ -353,6 +375,11 @@ export function createRequestHandler({
         sendJson(response, 400, {
           message: 'Tallennettava tila on puutteellinen. Lähetä koko sovelluksen tila yhdessä pyynnössä.',
         });
+        return;
+      }
+
+      if (error?.message === UNIQUE_FIRST_PLACE_ERROR) {
+        sendJson(response, 400, { message: UNIQUE_FIRST_PLACE_ERROR });
         return;
       }
 
