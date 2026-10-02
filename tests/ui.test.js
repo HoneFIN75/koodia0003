@@ -157,6 +157,79 @@ function createUiState(overrides = {}) {
   };
 }
 
+test('button styling is scoped to requested sections, never navigation or unrelated pages', () => {
+  const root = createRootStub();
+  renderApp(root, createEmptyState(), createUiState());
+
+  for (const view of ['players', 'tournaments', 'multipliers', 'points', 'settings']) {
+    assert.match(root.innerHTML, new RegExp(`<section class="section action-surface" id="section-${view}"`));
+  }
+  for (const view of ['summary', 'compare', 'ranking', 'results', 'help']) {
+    assert.match(root.innerHTML, new RegExp(`<section class="section" id="section-${view}"`));
+  }
+  const navigation = root.innerHTML.match(/<nav[\s\S]*?<\/nav>/)[0];
+  assert.doesNotMatch(navigation, /action-surface|action-icon|class=".*button/);
+  assert.deepEqual(
+    [...navigation.matchAll(/data-view-target="([^"]+)"/g)].map((match) => match[1]),
+    ['summary', 'compare', 'ranking', 'results', 'players', 'tournaments', 'multipliers', 'points', 'settings', 'help'],
+  );
+  assert.match(navigation, /data-view-target="players" aria-current="page"/);
+  assert.match(root.innerHTML, /class="secondary-button" data-export-result-cards/);
+  assert.match(root.innerHTML, /class="button" data-open-result-card-import-dialog/);
+});
+
+test('all scoped add/edit/import dialogs retain form membership, submit semantics and cancel hooks', () => {
+  const dataState = createEmptyState();
+  dataState.players = [{ id: 'player-1', name: 'Testi Pelaaja', division: 'MPO' }];
+  dataState.tournaments = [{ id: 'tournament-1', name: 'Testiturnaus', startDate: '2026-01-01', displayOrder: 1 }];
+  dataState.multipliers = [{ id: 'multiplier-1', name: 'Testi', abbreviation: 'T', multiplier: 1, orderNumber: 1 }];
+  const cases = [
+    ['player-form', 'data-dismiss-player-dialog', { playerDialogOpen: true }],
+    ['player-form', 'data-dismiss-player-dialog', { playerDialogOpen: true, playerFormId: 'player-1' }],
+    ['players-import-form', 'data-cancel-players-import', { playerImportDialogOpen: true }],
+    ['rating-ranking-form', 'data-cancel-rating-ranking-dialog', { ratingRankingDialogOpen: true }],
+    ['result-card-import-form', 'data-cancel-result-card-import', { resultCardImportDialogOpen: true }],
+    ['tournament-form', 'data-dismiss-tournament-dialog', { tournamentDialogOpen: true }],
+    ['tournament-form', 'data-dismiss-tournament-dialog', { tournamentDialogOpen: true, tournamentFormId: 'tournament-1' }],
+    ['tournament-import-form', 'data-cancel-tournament-import', { tournamentImportDialogOpen: true }],
+    ['multiplier-form', 'data-dismiss-multiplier-dialog', { multiplierDialogOpen: true }],
+    ['multiplier-form', 'data-dismiss-multiplier-dialog', { multiplierDialogOpen: true, multiplierFormId: 'multiplier-1' }],
+    ['points-form', 'data-dismiss-points-dialog', { pointsDialogOpen: true }],
+    ['points-form', 'data-dismiss-points-dialog', { pointsDialogOpen: true, pointsForm: { division: 'MPO', place: 1, basePoints: 100, editingKey: 'MPO:1' } }],
+    ['points-import-form', 'data-cancel-points-import', { pointsImportDialogOpen: true }],
+  ];
+
+  for (const [formId, cancelHook, uiOverrides] of cases) {
+    const root = createRootStub();
+    renderApp(root, dataState, createUiState(uiOverrides));
+    const form = root.innerHTML.match(new RegExp(`<form id="${formId}"[\\s\\S]*?<\\/form>`))?.[0];
+    assert.ok(form, formId);
+    assert.match(form, /class="form-actions action-footer"/);
+    assert.match(form, /<button type="submit" class="button"/);
+    assert.match(form, new RegExp(`<button type="button" class="(?:ghost|secondary)-button action-neutral" ${cancelHook}>Peruuta</button>`));
+    assert.ok(form.indexOf('type="submit"') < form.indexOf(cancelHook), 'existing DOM/tab order is retained');
+    const panel = root.innerHTML.match(/<div[^>]*class="dialog-panel[^"]*"[^>]*>/)?.[0];
+    assert.match(panel, /action-surface/);
+  }
+});
+
+test('scoped Settings actions and disabled import/destructive controls keep existing conditions', () => {
+  const root = createRootStub();
+  renderApp(root, createEmptyState(), createUiState({
+    activeView: 'settings',
+    tournamentImportDialogOpen: true,
+  }));
+  assert.match(root.innerHTML, /data-submit-tournament-import disabled>Tuo/);
+  assert.match(root.innerHTML, /data-request-delete-all-players disabled/);
+  assert.match(root.innerHTML, /data-request-delete-all-tournaments disabled/);
+  for (const formId of ['settings-form', 'site-password-form']) {
+    const form = root.innerHTML.match(new RegExp(`<form id="${formId}"[\\s\\S]*?<\\/form>`))?.[0];
+    assert.ok(form);
+    assert.match(form, /class="form-actions action-footer"/);
+    assert.match(form, /<button type="submit" class="button"><span class="action-icon" aria-hidden="true">✓<\/span> Tallenna/);
+  }
+});
+
 test('renderApp shows persisted settings values in settings form', () => {
   const root = createRootStub();
   const dataState = createEmptyState();
@@ -512,7 +585,7 @@ test('renderApp player list uses required column order and add button', () => {
 
   renderApp(root, dataState, createUiState({ activeView: 'players' }));
 
-  assert.match(root.innerHTML, /data-open-player-dialog>Lisää pelaaja<\/button>/);
+  assert.match(root.innerHTML, /data-open-player-dialog><span class="action-icon" aria-hidden="true">\+<\/span> Lisää pelaaja<\/button>/);
   assert.match(root.innerHTML, /data-sort-table="players" data-sort-field="name"/);
   assert.match(root.innerHTML, /data-sort-table="players" data-sort-field="pdgaNumber"/);
   assert.match(root.innerHTML, /data-sort-table="players" data-sort-field="division"/);
@@ -606,7 +679,7 @@ test('renderApp shows a separate rating and ranking import dialog and escaped su
   const root = createRootStub();
   const dataState = createEmptyState();
   renderApp(root, dataState, createUiState({ ratingRankingDialogOpen: true }));
-  assert.match(root.innerHTML, /data-open-rating-ranking-dialog>Päivitä Rating ja Ranking<\/button>/);
+  assert.match(root.innerHTML, /data-open-rating-ranking-dialog><span class="action-icon" aria-hidden="true">↻<\/span> Päivitä Rating ja Ranking<\/button>/);
   assert.match(root.innerHTML, /role="dialog" aria-modal="true" aria-labelledby="rating-ranking-title"/);
   assert.doesNotMatch(root.innerHTML, /class="import-instructions"/);
   assert.match(root.innerHTML, /<textarea id="rating-ranking-csv" name="csv" rows="6" required/);
@@ -771,8 +844,8 @@ test('renderApp shows tournament table with required column order and PDGA event
 
   renderApp(root, dataState, createUiState({ activeView: 'tournaments' }));
 
-  assert.match(root.innerHTML, /data-open-tournament-dialog>Lisää turnaus<\/button>/);
-  assert.match(root.innerHTML, /data-open-tournament-import-dialog>Tuo turnaukset<\/button>/);
+  assert.match(root.innerHTML, /data-open-tournament-dialog><span class="action-icon" aria-hidden="true">\+<\/span> Lisää turnaus<\/button>/);
+  assert.match(root.innerHTML, /data-open-tournament-import-dialog><span class="action-icon" aria-hidden="true">↥<\/span> Tuo turnaukset<\/button>/);
   assert.match(root.innerHTML, /data-request-delete-all-tournaments/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="name"/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="displayOrder"/);
@@ -1043,8 +1116,8 @@ test('renderApp shows score table division actions and Finnish decimals', () => 
 
   renderApp(root, dataState, createUiState({ activeView: 'points' }));
 
-  assert.match(root.innerHTML, /data-open-points-dialog>Lisää rivi<\/button>/);
-  assert.match(root.innerHTML, /data-open-points-import>Tuo pistetaulukko<\/button>/);
+  assert.match(root.innerHTML, /data-open-points-dialog><span class="action-icon" aria-hidden="true">\+<\/span> Lisää rivi<\/button>/);
+  assert.match(root.innerHTML, /data-open-points-import><span class="action-icon" aria-hidden="true">↥<\/span> Tuo pistetaulukko<\/button>/);
   assert.match(root.innerHTML, /data-request-delete-points="MPO">.*Poista kaikki MPO-pisteet<\/button>/);
   assert.match(root.innerHTML, /data-request-delete-points="FPO">.*Poista kaikki FPO-pisteet<\/button>/);
   assert.doesNotMatch(root.innerHTML, /id="points-form"/);
@@ -1102,7 +1175,7 @@ test('renderApp näyttää Kertoimet-välilehden ja taulukon sarakkeet', () => {
 
   assert.match(root.innerHTML, /data-view-target="multipliers"/);
   assert.match(root.innerHTML, /<h2 id="multipliers-title">Kertoimet<\/h2>/);
-  assert.match(root.innerHTML, /data-open-multiplier-dialog>Lisää kerroin<\/button>/);
+  assert.match(root.innerHTML, /data-open-multiplier-dialog><span class="action-icon" aria-hidden="true">\+<\/span> Lisää kerroin<\/button>/);
   assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="orderNumber"/);
   assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="name"/);
   assert.match(root.innerHTML, /data-sort-table="multipliers" data-sort-field="abbreviation"/);
@@ -1349,7 +1422,7 @@ test('renderApp näyttää pelaajan tuloskortin sarakkeet, PDGA Event -linkin, s
   assert.match(root.innerHTML, /data-result-points>200 p<\/td>/);
   assert.match(root.innerHTML, /data-clear-player-placement="t-european" data-player-id="mpo-1" aria-label="Tyhjennä sijoitus: European Open" disabled>Tyhjennä<\/button>/);
   assert.match(root.innerHTML, /data-clear-player-placement="t-tampere" data-player-id="mpo-1" aria-label="Tyhjennä sijoitus: Tampere Open" disabled>Tyhjennä<\/button>/);
-  assert.match(root.innerHTML, /data-edit-player-result-card>Muokkaa<\/button>/);
+  assert.match(root.innerHTML, /data-edit-player-result-card><span class="action-icon" aria-hidden="true">✎<\/span> Muokkaa<\/button>/);
   assert.match(root.innerHTML, /data-close-player-result-card/);
 });
 
@@ -1383,7 +1456,7 @@ test('renderApp näyttää Rankingista avatun tuloskortin lukutilassa ja paluun 
 
   assert.match(root.innerHTML, /data-result-card-mode="read-only"/);
   assert.match(root.innerHTML, /data-close-player-result-card>← Takaisin Rankingiin<\/button>/);
-  assert.match(root.innerHTML, /data-edit-player-result-card>Muokkaa<\/button>/);
+  assert.match(root.innerHTML, /data-edit-player-result-card><span class="action-icon" aria-hidden="true">✎<\/span> Muokkaa<\/button>/);
   assert.match(root.innerHTML, /data-view-target="ranking" aria-current="page"/);
   assert.doesNotMatch(root.innerHTML, /data-view-target="players" aria-current="page"/);
 });
@@ -2007,8 +2080,8 @@ test('renderApp näyttää pelaajasivun toimintopalkin ja erotetun Poista kaikki
   renderApp(root, dataState, createUiState({ activeView: 'players' }));
 
   assert.match(root.innerHTML, /class="action-bar" role="group" aria-label="Pelaajien toiminnot"/);
-  assert.match(root.innerHTML, /data-open-player-dialog>Lisää pelaaja<\/button>/);
-  assert.match(root.innerHTML, /data-open-players-import-dialog>Tuo pelaajat<\/button>/);
+  assert.match(root.innerHTML, /data-open-player-dialog><span class="action-icon" aria-hidden="true">\+<\/span> Lisää pelaaja<\/button>/);
+  assert.match(root.innerHTML, /data-open-players-import-dialog><span class="action-icon" aria-hidden="true">↥<\/span> Tuo pelaajat<\/button>/);
   assert.match(
     root.innerHTML,
     /class="action-bar-group action-bar-danger" role="group" aria-label="Vaaralliset toiminnot"><button type="button" class="danger-button danger-action-button" data-request-delete-all-players><span class="danger-icon" aria-hidden="true">⚠<\/span> Poista kaikki pelaajat<\/button>/,
@@ -2465,7 +2538,7 @@ test('renderApp näyttää Export ja Import Tuloskortit -toiminnot pelaajasivun 
 
   assert.match(
     root.innerHTML,
-    /data-open-rating-ranking-dialog>Päivitä Rating ja Ranking<\/button><button type="button" class="secondary-button" data-export-result-cards>Export Tuloskortit<\/button><button type="button" class="secondary-button" data-open-result-card-import-dialog>Import Tuloskortit<\/button>/,
+    /data-open-rating-ranking-dialog><span class="action-icon" aria-hidden="true">↻<\/span> Päivitä Rating ja Ranking<\/button><button type="button" class="secondary-button" data-export-result-cards><span class="action-icon" aria-hidden="true">↧<\/span> Export Tuloskortit<\/button><button type="button" class="button" data-open-result-card-import-dialog><span class="action-icon" aria-hidden="true">↥<\/span> Import Tuloskortit<\/button>/,
   );
   assert.doesNotMatch(root.innerHTML, /data-result-card-import-dialog-panel/);
 });
