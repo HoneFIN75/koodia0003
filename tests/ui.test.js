@@ -58,10 +58,10 @@ test('tuloskortin käyttöliittymä näyttää sijoitusvalidoinnin virhetekstin 
   const root = { querySelector: () => row };
 
   updatePlayerResultRow(root, {}, 'player-2', 'tournament-1', {
-    error: 'Turnauksessa voi olla vain yksi sijoitus 1.',
+    error: 'Sijoituksen muoto on virheellinen.',
   });
 
-  assert.equal(errorElement.textContent, 'Turnauksessa voi olla vain yksi sijoitus 1.');
+  assert.equal(errorElement.textContent, 'Sijoituksen muoto on virheellinen.');
   assert.equal(errorElement.hidden, false);
   assert.equal(input['aria-invalid'], 'true');
 });

@@ -274,7 +274,6 @@ export function calculatePoints({ basePoints, multiplier }) {
 }
 
 const PLACEMENT_PATTERN = /^(?<place>[1-9]\d{0,2})(?:T(?<tieCount>[1-9]\d{0,1}))?$/;
-export const UNIQUE_FIRST_PLACE_ERROR = 'Turnauksessa voi olla vain yksi sijoitus 1.';
 
 // Sijoitus 0 tarkoittaa, ettei pelaaja osallistunut turnaukseen. Arvo on sallittu ja tallennetaan,
 // mutta siitä ei koskaan lasketa pisteitä eikä sitä tulkita sijoitukseksi.
@@ -314,30 +313,8 @@ export function parsePlacement(value) {
   };
 }
 
-function tryParsePlacement(value) {
-  try {
-    return parsePlacement(value);
-  } catch {
-    return null;
-  }
-}
-
-// Sijoitus 1 on turnauksen ainoa uniikki sijoitus. Muut sijoitukset voivat toistua
-// riippumatta tasatulosmerkinnästä tai siitä, onko tuloksia vielä syötetty muille pelaajille.
 export function validatePlacementAgainstOthers({ placement, others = [] }) {
-  const parsed = parsePlacement(placement);
-  if (!parsed) {
-    return null;
-  }
-
-  if (
-    parsed.place === 1 &&
-    (parsed.isTie || others.some((other) => tryParsePlacement(other.placement)?.place === 1))
-  ) {
-    throw new Error(UNIQUE_FIRST_PLACE_ERROR);
-  }
-
-  return parsed;
+  return parsePlacement(placement);
 }
 
 export function calculatePlacementPoints({

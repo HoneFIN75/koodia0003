@@ -145,8 +145,13 @@ test('calculatePlacementPoints averages tie placements before multiplier', () =>
   }), 120);
 });
 
-test('validatePlacementAgainstOthers sallii toistuvat sijoitukset 2 eteenpäin', () => {
+test('validatePlacementAgainstOthers sallii kaikki toistuvat sijoitukset', () => {
   const accepted = [
+    [1, 1, 2, 3],
+    [1, 2, 3, 1],
+    [1, 2, 2, 3],
+    [1, 5, 5, 5, 8],
+    [1, 1, 1],
     [1, 2, 2, 3, 3, 3, 4],
     [1, 5, 5, 5, 8, 8, 12],
     [1, 2, 2, 2, 2, 2],
@@ -167,36 +172,12 @@ test('validatePlacementAgainstOthers sallii toistuvat sijoitukset 2 eteenpäin',
     placement: '3T2',
     others: [{ playerId: 'player-1', placement: '3T2' }, { playerId: 'player-2', placement: '1' }],
   }).raw, '3T2');
+  assert.equal(validatePlacementAgainstOthers({
+    placement: '1T2',
+    others: [{ playerId: 'player-1', placement: '1' }],
+  }).raw, '1T2');
   assert.equal(validatePlacementAgainstOthers({ placement: '100T10', others: [] }).rangeEnd, 109);
   assert.equal(validatePlacementAgainstOthers({ placement: '', others: [] }), null);
-});
-
-test('validatePlacementAgainstOthers hylkää toisen sijoituksen 1 täsmällisellä virheellä', () => {
-  assert.throws(
-    () => validatePlacementAgainstOthers({ placement: '1T2' }),
-    { message: 'Turnauksessa voi olla vain yksi sijoitus 1.' },
-  );
-
-  const rejected = [
-    [1, 1, 2, 3],
-    [1, 2, 3, 1],
-  ];
-
-  rejected.forEach((placements) => {
-    const alreadySet = [];
-    placements.forEach((place) => {
-      const validate = () => validatePlacementAgainstOthers({
-        placement: String(place),
-        others: alreadySet.map((placement) => ({ placement: String(placement) })),
-      });
-      if (place === 1 && alreadySet.includes(1)) {
-        assert.throws(validate, { message: 'Turnauksessa voi olla vain yksi sijoitus 1.' });
-      } else {
-        validate();
-      }
-      alreadySet.push(place);
-    });
-  });
 });
 
 test('calculatePlacementPoints hylkää tasatuloksen jos jokin sijoituksen piste puuttuu', () => {
