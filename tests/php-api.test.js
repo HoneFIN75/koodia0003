@@ -157,14 +157,35 @@ test('PHP API supports state save/load and compatibility payloads', { skip: !has
       },
       body: JSON.stringify({
         ...duplicateLowerPlacements,
-        resultCards: duplicateLowerPlacements.resultCards.map((card) => ({
+        resultCards: duplicateLowerPlacements.resultCards.map((card, index) => ({
           ...card,
-          results: [{ ...card.results[0], placement: '1' }],
+          results: [{
+            ...card.results[0],
+            placement: '1',
+            tournamentId: index === 1 ? ' tournament-1 ' : 'tournament-1',
+          }],
         })),
       }),
     });
     assert.equal(duplicateFirstPlaceResponse.status, 400);
     assert.equal((await duplicateFirstPlaceResponse.json()).message, 'Turnauksessa voi olla vain yksi sijoitus 1.');
+
+    const tiedFirstPlaceResponse = await fetch(`http://127.0.0.1:${port}/api/state`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-SFL-Auth-Token': token,
+      },
+      body: JSON.stringify({
+        ...duplicateLowerPlacements,
+        resultCards: duplicateLowerPlacements.resultCards.map((card, index) => ({
+          ...card,
+          results: [{ ...card.results[0], placement: index === 0 ? '1T2' : '2' }],
+        })),
+      }),
+    });
+    assert.equal(tiedFirstPlaceResponse.status, 400);
+    assert.equal((await tiedFirstPlaceResponse.json()).message, 'Turnauksessa voi olla vain yksi sijoitus 1.');
 
     const invalidJsonResponse = await fetch(`http://127.0.0.1:${port}/api/state`, {
       method: 'PUT',

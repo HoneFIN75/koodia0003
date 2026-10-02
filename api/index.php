@@ -298,7 +298,7 @@ function validate_unique_first_places(array $state): void
                 throw new InvalidArgumentException('Turnauksessa voi olla vain yksi sijoitus 1.');
             }
 
-            $tournamentId = (string) ($result['tournamentId'] ?? '');
+            $tournamentId = trim((string) ($result['tournamentId'] ?? ''));
             if (isset($firstPlaceTournaments[$tournamentId])) {
                 throw new InvalidArgumentException('Turnauksessa voi olla vain yksi sijoitus 1.');
             }

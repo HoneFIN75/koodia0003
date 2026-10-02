@@ -174,10 +174,13 @@ function validateStatePayload(payload) {
         return;
       }
 
-      if (parsed.isTie || firstPlaceByTournament.has(result.tournamentId)) {
+      const tournamentId = String(result?.tournamentId ?? '').trim();
+      if (parsed.isTie || (tournamentId && firstPlaceByTournament.has(tournamentId))) {
         throw new Error(UNIQUE_FIRST_PLACE_ERROR);
       }
-      firstPlaceByTournament.add(result.tournamentId);
+      if (tournamentId) {
+        firstPlaceByTournament.add(tournamentId);
+      }
     });
   });
 

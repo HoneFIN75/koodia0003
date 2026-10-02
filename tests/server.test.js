@@ -110,14 +110,32 @@ test('API loads and saves shared state through JSON storage', async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...duplicateLowerPlacements,
-        resultCards: duplicateLowerPlacements.resultCards.map((card) => ({
+        resultCards: duplicateLowerPlacements.resultCards.map((card, index) => ({
           ...card,
-          results: [{ ...card.results[0], placement: '1' }],
+          results: [{
+            ...card.results[0],
+            placement: '1',
+            tournamentId: index === 1 ? ' tournament-1 ' : 'tournament-1',
+          }],
         })),
       }),
     });
     assert.equal(duplicateFirstPlaceResponse.status, 400);
     assert.equal((await duplicateFirstPlaceResponse.json()).message, 'Turnauksessa voi olla vain yksi sijoitus 1.');
+
+    const tiedFirstPlaceResponse = await fetch(`${baseUrl}/api/state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...duplicateLowerPlacements,
+        resultCards: duplicateLowerPlacements.resultCards.map((card, index) => ({
+          ...card,
+          results: [{ ...card.results[0], placement: index === 0 ? '1T2' : '2' }],
+        })),
+      }),
+    });
+    assert.equal(tiedFirstPlaceResponse.status, 400);
+    assert.equal((await tiedFirstPlaceResponse.json()).message, 'Turnauksessa voi olla vain yksi sijoitus 1.');
   } finally {
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
     await rm(publicDir, { recursive: true, force: true });
