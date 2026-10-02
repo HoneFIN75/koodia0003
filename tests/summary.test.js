@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildRanking } from '../js/ranking.js';
 import {
+  SUMMARY_TABLES,
   buildTopRows,
-  buildWorldRankingRows,
   getDefaultSummarySort,
   getSummarySort,
+  getSummarySortableFields,
+  isSummaryTable,
   parseWorldRank,
   sortSummaryRows,
   toggleSummarySort,
@@ -31,61 +33,75 @@ test('parseWorldRank hyväksyy vain positiiviset kokonaisluvut', () => {
   assert.equal(parseWorldRank('abc'), null);
 });
 
-test('buildWorldRankingRows jättää pois pelaajat ilman World Rankingia ja järjestää rankingin mukaan', () => {
-  const rows = buildWorldRankingRows(ranking);
+test('TOP 10 -taulukon oletuslajittelu on kokonaispisteet laskevasti', () => {
+  assert.deepEqual(getDefaultSummarySort('summary-top-mpo'), { field: 'totalPoints', direction: 'desc' });
+  assert.deepEqual(getSummarySort({}, 'summary-top-fpo'), { field: 'totalPoints', direction: 'desc' });
+  assert.deepEqual(getSummarySort({ 'summary-top-mpo': { field: 'unknown', direction: 'asc' } }, 'summary-top-mpo'), { field: 'totalPoints', direction: 'desc' });
 
-  assert.deepEqual(rows.map((row) => row.id), ['p2', 'p3', 'p1']);
-  assert.deepEqual(rows.map((row) => row.worldRank), [1, 2, 3]);
-  assert.deepEqual(rows.map((row) => row.totalPoints), [1310, 1245, 1520]);
+  const rows = sortSummaryRows([...ranking].reverse(), getSummarySort(undefined, 'summary-top-mpo'));
+  assert.deepEqual(rows.map((row) => row.totalPoints), [1520, 1310, 1245, 1000, 900, 800]);
 });
 
-test('World Ranking -taulukon oletuslajittelu on World Ranking nousevasti', () => {
-  assert.deepEqual(getDefaultSummarySort('summary-world-ranking-mpo'), { field: 'worldRank', direction: 'asc' });
-  assert.deepEqual(getSummarySort({}, 'summary-world-ranking-fpo'), { field: 'worldRank', direction: 'asc' });
-  assert.deepEqual(getDefaultSummarySort('summary-top-mpo'), { field: 'rankPosition', direction: 'asc' });
-
-  const rows = sortSummaryRows(buildWorldRankingRows([...ranking].reverse()), getSummarySort(undefined, 'summary-world-ranking-mpo'));
-  assert.deepEqual(rows.map((row) => row.worldRank), [1, 2, 3]);
+test('Yhteenvedossa on vain TOP 10 MPO- ja TOP 10 FPO -taulukot, joissa kaikki sarakkeet ovat lajiteltavia', () => {
+  assert.deepEqual(Object.keys(SUMMARY_TABLES), ['summary-top-mpo', 'summary-top-fpo']);
+  assert.equal(isSummaryTable('summary-world-ranking-mpo'), false);
+  assert.deepEqual(getSummarySortableFields('summary-top-mpo'), ['rankPosition', 'name', 'pdgaRating', 'worldRank', 'totalPoints']);
+  assert.deepEqual(getSummarySortableFields('ranking'), []);
 });
 
 test('toggleSummarySort vaihtaa nousevan ja laskevan järjestyksen sarakkeittain', () => {
-  const rows = buildWorldRankingRows(ranking);
-  const tableId = 'summary-world-ranking-mpo';
+  const rows = buildTopRows(ranking);
+  const tableId = 'summary-top-mpo';
 
-  let sort = toggleSummarySort({}, tableId, 'worldRank');
-  assert.deepEqual(sort[tableId], { field: 'worldRank', direction: 'desc' });
-  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.worldRank), [3, 2, 1]);
+  let sort = toggleSummarySort({}, tableId, 'totalPoints');
+  assert.deepEqual(sort[tableId], { field: 'totalPoints', direction: 'asc' });
+  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.totalPoints), [800, 900, 1000, 1245, 1310, 1520]);
+  sort = toggleSummarySort(sort, tableId, 'totalPoints');
+  assert.deepEqual(sort[tableId], { field: 'totalPoints', direction: 'desc' });
 
-  sort = toggleSummarySort(sort, tableId, 'pdgaRating');
-  assert.deepEqual(sort[tableId], { field: 'pdgaRating', direction: 'asc' });
-  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.pdgaRating), [998, 1025, 1045]);
+  sort = toggleSummarySort(sort, tableId, 'rankPosition');
+  assert.deepEqual(sort[tableId], { field: 'rankPosition', direction: 'asc' });
+  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.rankPosition), [1, 2, 3, 4, 5, 6]);
+  sort = toggleSummarySort(sort, tableId, 'rankPosition');
+  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.rankPosition), [6, 5, 4, 3, 2, 1]);
+
+  sort = toggleSummarySort(sort, tableId, 'name');
+  assert.deepEqual(sort[tableId], { field: 'name', direction: 'asc' });
+  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.id), ['p2', 'p1', 'p5', 'p6', 'p3', 'p4']);
+  sort = toggleSummarySort(sort, tableId, 'name');
+  assert.deepEqual(sort[tableId], { field: 'name', direction: 'desc' });
+  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.id), ['p4', 'p3', 'p6', 'p5', 'p1', 'p2']);
 
   sort = toggleSummarySort(sort, tableId, 'pdgaRating');
   assert.deepEqual(sort[tableId], { field: 'pdgaRating', direction: 'desc' });
-  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.pdgaRating), [1045, 1025, 998]);
+  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.pdgaRating), [1045, 1025, 998, 980, 970, 960]);
+  sort = toggleSummarySort(sort, tableId, 'pdgaRating');
+  assert.deepEqual(sort[tableId], { field: 'pdgaRating', direction: 'asc' });
+  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.pdgaRating), [960, 970, 980, 998, 1025, 1045]);
 
-  sort = toggleSummarySort(sort, tableId, 'totalPoints');
-  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.totalPoints), [1245, 1310, 1520]);
-  sort = toggleSummarySort(sort, tableId, 'totalPoints');
-  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.totalPoints), [1520, 1310, 1245]);
+  sort = toggleSummarySort(sort, tableId, 'worldRank');
+  assert.deepEqual(sort[tableId], { field: 'worldRank', direction: 'asc' });
+  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.id).slice(0, 3), ['p2', 'p3', 'p1']);
+  sort = toggleSummarySort(sort, tableId, 'worldRank');
+  assert.deepEqual(sort[tableId], { field: 'worldRank', direction: 'desc' });
+  assert.deepEqual(sortSummaryRows(rows, sort[tableId]).map((row) => row.id).slice(-3), ['p1', 'p3', 'p2']);
 });
 
 test('toggleSummarySort pitää MPO- ja FPO-taulukoiden lajittelut erillään', () => {
   const original = {};
-  let sort = toggleSummarySort(original, 'summary-world-ranking-mpo', 'pdgaRating');
-  sort = toggleSummarySort(sort, 'summary-world-ranking-fpo', 'totalPoints');
-  sort = toggleSummarySort(sort, 'summary-world-ranking-fpo', 'totalPoints');
+  let sort = toggleSummarySort(original, 'summary-top-mpo', 'pdgaRating');
+  sort = toggleSummarySort(sort, 'summary-top-fpo', 'name');
+  sort = toggleSummarySort(sort, 'summary-top-fpo', 'name');
 
   assert.deepEqual(original, {});
-  assert.deepEqual(getSummarySort(sort, 'summary-world-ranking-mpo'), { field: 'pdgaRating', direction: 'asc' });
-  assert.deepEqual(getSummarySort(sort, 'summary-world-ranking-fpo'), { field: 'totalPoints', direction: 'desc' });
-  assert.deepEqual(getSummarySort(sort, 'summary-top-mpo'), { field: 'rankPosition', direction: 'asc' });
+  assert.deepEqual(getSummarySort(sort, 'summary-top-mpo'), { field: 'pdgaRating', direction: 'desc' });
+  assert.deepEqual(getSummarySort(sort, 'summary-top-fpo'), { field: 'name', direction: 'desc' });
 });
 
 test('toggleSummarySort ohittaa tuntemattomat taulukot ja sarakkeet', () => {
-  assert.deepEqual(toggleSummarySort({}, 'summary-world-ranking-mpo', 'name'), {});
+  assert.deepEqual(toggleSummarySort({}, 'summary-top-mpo', 'division'), {});
   assert.deepEqual(toggleSummarySort({}, 'ranking', 'totalPoints'), {});
-  assert.deepEqual(toggleSummarySort({}, 'summary-top-mpo', 'worldRank'), {});
+  assert.deepEqual(toggleSummarySort({}, 'summary-world-ranking-mpo', 'worldRank'), {});
 });
 
 test('buildTopRows säilyttää TOP 10 -jäsenet ja rankinglaskennan järjestyksen', () => {

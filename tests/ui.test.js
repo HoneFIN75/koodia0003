@@ -370,7 +370,7 @@ test('renderApp näyttää yhteenvetosivulla vain dashboardin avainluvut ja TOP 
 
   renderApp(root, dataState, createUiState({ activeView: 'summary' }));
 
-  assert.match(root.innerHTML, /<h1 id="summary-title">Yhteenveto<\/h1>/);
+  assert.doesNotMatch(getSummarySectionHtml(root.innerHTML), /<h1|summary-title|>Yhteenveto</);
   assert.match(root.innerHTML, /TOP 10 MPO/);
   assert.match(root.innerHTML, /TOP 10 FPO/);
   assert.match(root.innerHTML, /Matti Meikäläinen/);
@@ -1403,7 +1403,7 @@ test('renderApp näyttää Yhteenvedosta avatun tuloskortin lukutilassa ja paluu
   assert.match(root.innerHTML, /data-view-target="summary" aria-current="page"/);
 });
 
-test('renderApp näyttää Yhteenvedossa World Ranking -taulukot TOP 10 -taulukoiden yläpuolella', () => {
+test('renderApp näyttää Yhteenvedossa vain TOP 10 MPO- ja TOP 10 FPO -taulukot', () => {
   const root = createRootStub();
   const dataState = createResultsDataState();
   dataState.players = [
@@ -1416,23 +1416,57 @@ test('renderApp näyttää Yhteenvedossa World Ranking -taulukot TOP 10 -tauluko
   renderApp(root, dataState, createUiState({ activeView: 'summary' }));
   const html = getSummarySectionHtml(root.innerHTML);
 
-  assert.match(html, /World Ranking MPO[\s\S]*World Ranking FPO[\s\S]*TOP 10 MPO[\s\S]*TOP 10 FPO/);
-  const worldRankingMpo = html.match(/data-summary-table="summary-world-ranking-mpo"[\s\S]*?<\/article>/)[0];
-  assert.match(worldRankingMpo, /<th scope="col">Nimi<\/th>/);
-  assert.match(worldRankingMpo, /aria-sort="ascending">\s*<button type="button" class="table-sort-button is-active" data-sort-table="summary-world-ranking-mpo" data-sort-field="worldRank" aria-label="World Ranking -sijoitus">\s*<span>#<\/span>\s*<span class="table-sort-indicator" aria-hidden="true">▲<\/span>/);
-  assert.match(worldRankingMpo, /data-sort-field="pdgaRating"[\s\S]*<span>Rating<\/span>/);
-  assert.match(worldRankingMpo, /data-sort-field="totalPoints"[\s\S]*<span>Kokonaispisteet<\/span>/);
-  assert.match(worldRankingMpo, /<td>1<\/td>[\s\S]*Aapo Aalto[\s\S]*<td>2<\/td>[\s\S]*Niklas Anttila/);
-  assert.match(worldRankingMpo, /data-open-player-result-card="mpo-1" data-result-card-origin="summary"/);
-  assert.doesNotMatch(worldRankingMpo, /Ilman Rankingia/);
-
-  const worldRankingFpo = html.match(/data-summary-table="summary-world-ranking-fpo"[\s\S]*?<\/article>/)[0];
-  assert.match(worldRankingFpo, /Sarjassa FPO ei ole pelaajia, joilla on World Ranking -sijoitus\./);
+  assert.doesNotMatch(html, /World Ranking MPO|World Ranking FPO|summary-world-ranking/);
+  assert.equal((html.match(/<table class="table summary-table"/g) || []).length, 2);
+  assert.match(html, /<div class="two-column summary-tables">[\s\S]*TOP 10 MPO[\s\S]*TOP 10 FPO/);
 
   const topMpo = html.match(/data-summary-table="summary-top-mpo"[\s\S]*?<\/article>/)[0];
-  assert.match(topMpo, /data-sort-table="summary-top-mpo" data-sort-field="rankPosition" aria-label="Sijoitus"/);
+  assert.match(topMpo, /<h2 id="summary-top-mpo-title" class="summary-table-title">TOP 10 MPO<\/h2>/);
+  const headers = [...topMpo.matchAll(/data-sort-field="([^"]+)"[^>]*>\s*<span>([^<]+)<\/span>/g)].map((match) => [match[1], match[2]]);
+  assert.deepEqual(headers, [
+    ['rankPosition', '#'],
+    ['name', 'Nimi'],
+    ['pdgaRating', 'Rating'],
+    ['worldRank', 'WR'],
+    ['totalPoints', 'Pts'],
+  ]);
+  assert.match(topMpo, /aria-sort="descending">\s*<button type="button" class="table-sort-button is-active" data-sort-table="summary-top-mpo" data-sort-field="totalPoints" aria-label="Kokonaispisteet">\s*<span>Pts<\/span>\s*<span class="table-sort-indicator" aria-hidden="true">▼<\/span>/);
+  assert.match(topMpo, /data-sort-field="worldRank" aria-label="World Ranking -sijoitus"/);
+  assert.match(topMpo, /data-sort-field="rankPosition" aria-label="Sijoitus"/);
+  assert.match(topMpo, /data-open-player-result-card="mpo-1" data-result-card-origin="summary"/);
   assert.match(topMpo, /Ilman Rankingia/);
   assert.match(topMpo, /<td class="number">1025<\/td>/);
+  assert.match(topMpo, /Ilman Rankingia[\s\S]*?<td class="number">990<\/td>\s*<td class="number">—<\/td>/);
+
+  const topFpo = html.match(/data-summary-table="summary-top-fpo"[\s\S]*?<\/article>/)[0];
+  assert.match(topFpo, /TOP 10 FPO/);
+});
+
+test('renderApp näyttää Yhteenvedon TOP 10 -taulukossa 10 pelaajaa pisteiden mukaan laskevasti', () => {
+  const root = createRootStub();
+  const dataState = createResultsDataState();
+  dataState.players = Array.from({ length: 12 }, (_, index) => ({
+    id: `mpo-${index + 1}`,
+    name: `Pelaaja ${String(index + 1).padStart(2, '0')}`,
+    division: 'MPO',
+    pdgaNumber: 1000 + index,
+    pdgaRating: 900 + index,
+    worldRank: index + 1,
+  }));
+  dataState.tournaments = [{ id: 't1', name: 'Testi', startDate: '2026-07-01', multiplierId: 'multiplier-major' }];
+  dataState.pointsTable = { MPO: Object.fromEntries(Array.from({ length: 12 }, (_, index) => [index + 1, 120 - index * 10])), FPO: {} };
+  dataState.resultCards = dataState.players.map((player, index) => ({
+    id: `result-card-${player.id}`,
+    playerId: player.id,
+    results: [{ tournamentId: 't1', placement: String(12 - index) }],
+  }));
+
+  renderApp(root, dataState, createUiState({ activeView: 'summary' }));
+  const topMpo = getSummarySectionHtml(root.innerHTML).match(/data-summary-table="summary-top-mpo"[\s\S]*?<\/article>/)[0];
+  const names = [...topMpo.matchAll(/data-open-player-result-card="([^"]+)"/g)].map((match) => match[1]);
+
+  assert.equal(names.length, 10);
+  assert.deepEqual(names, ['mpo-12', 'mpo-11', 'mpo-10', 'mpo-9', 'mpo-8', 'mpo-7', 'mpo-6', 'mpo-5', 'mpo-4', 'mpo-3']);
 });
 
 test('renderApp käyttää Yhteenvedon taulukoissa toisistaan riippumatonta lajittelua', () => {
@@ -1448,16 +1482,15 @@ test('renderApp käyttää Yhteenvedon taulukoissa toisistaan riippumatonta laji
   renderApp(
     root,
     dataState,
-    createUiState({ activeView: 'summary', summarySort: { 'summary-world-ranking-mpo': { field: 'pdgaRating', direction: 'desc' } } }),
+    createUiState({ activeView: 'summary', summarySort: { 'summary-top-mpo': { field: 'worldRank', direction: 'asc' } } }),
   );
   const html = getSummarySectionHtml(root.innerHTML);
-  const worldRankingMpo = html.match(/data-summary-table="summary-world-ranking-mpo"[\s\S]*?<\/article>/)[0];
-  const worldRankingFpo = html.match(/data-summary-table="summary-world-ranking-fpo"[\s\S]*?<\/article>/)[0];
+  const topMpo = html.match(/data-summary-table="summary-top-mpo"[\s\S]*?<\/article>/)[0];
+  const topFpo = html.match(/data-summary-table="summary-top-fpo"[\s\S]*?<\/article>/)[0];
 
-  assert.match(worldRankingMpo, /Niklas Anttila[\s\S]*Aapo Aalto/);
-  assert.match(worldRankingMpo, /aria-sort="descending">\s*<button[^>]*data-sort-field="pdgaRating"[\s\S]*?▼/);
-  assert.match(worldRankingFpo, /Henna Blomroos[\s\S]*Eveliina Salonen/);
-  assert.match(worldRankingFpo, /aria-sort="ascending">\s*<button[^>]*data-sort-field="worldRank"/);
+  assert.match(topMpo, /Aapo Aalto[\s\S]*Niklas Anttila/);
+  assert.match(topMpo, /aria-sort="ascending">\s*<button[^>]*data-sort-field="worldRank"[\s\S]*?▲/);
+  assert.match(topFpo, /aria-sort="descending">\s*<button[^>]*data-sort-field="totalPoints"/);
 });
 
 test('renderApp avaa tuloskortin lukutilaan, jossa sijoituksia ei voi muokata', () => {
