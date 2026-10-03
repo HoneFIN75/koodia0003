@@ -1881,6 +1881,41 @@ button.compare-suggestion {
   border-left-style: solid;
 }
 
+.maintenance-panel {
+  border-color: var(--color-error);
+}
+
+.maintenance-panel .maintenance-warning {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin: var(--spacing-sm) 0 0;
+  color: var(--color-error);
+  font-weight: 700;
+}
+
+.maintenance-actions {
+  display: grid;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.maintenance-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.maintenance-action p {
+  margin: 0;
+}
+
+.maintenance-action .danger-action-button {
+  min-width: 12rem;
+}
+
 .action-surface :is(.form-actions, .table-actions, .inline-actions) {
   align-items: center;
   gap: var(--button-gap);
@@ -1930,6 +1965,14 @@ button.compare-suggestion {
   .action-surface :is(.action-bar-group, .action-footer, .danger-zone) {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .maintenance-action {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .maintenance-action .danger-action-button {
+    width: 100%;
   }
 
   .action-surface .action-bar-group {
