@@ -1259,18 +1259,6 @@ function renderPlayerSection(dataState, uiState) {
           '<button type="button" class="secondary-button" data-export-result-cards><span class="action-icon" aria-hidden="true">↧</span> Export Tuloskortit</button>',
           '<button type="button" class="button" data-open-result-card-import-dialog><span class="action-icon" aria-hidden="true">↥</span> Import Tuloskortit</button>',
         ],
-        dangerActions: [
-          renderDangerActionButton({
-            attribute: 'data-request-delete-all-players',
-            label: 'Poista kaikki pelaajat',
-            disabled: !dataState.players.length,
-          }),
-          renderDangerActionButton({
-            attribute: 'data-request-clear-all-results',
-            label: 'Poista kaikki tulokset',
-            disabled: !dataState.resultCards.length,
-          }),
-        ],
       })}
       <article class="panel">
         ${renderTableToolbar({
@@ -1718,13 +1706,6 @@ function renderTournamentSection(dataState, uiState) {
         actions: [
           '<button type="button" class="button" data-open-tournament-dialog><span class="action-icon" aria-hidden="true">+</span> Lisää turnaus</button>',
           '<button type="button" class="button" data-open-tournament-import-dialog><span class="action-icon" aria-hidden="true">↥</span> Tuo turnaukset</button>',
-        ],
-        dangerActions: [
-          renderDangerActionButton({
-            attribute: 'data-request-delete-all-tournaments',
-            label: 'Poista kaikki turnaukset',
-            disabled: !dataState.tournaments.length,
-          }),
         ],
       })}
       <article class="panel">
@@ -2429,6 +2410,40 @@ function renderSettingsSection(dataState, uiState) {
           </div>
       </form>
       ${renderSecuritySettingsPanel(uiState)}
+      <article class="panel maintenance-panel" aria-labelledby="maintenance-title">
+        <div class="section-heading">
+          <div>
+            <h3 id="maintenance-title">Ylläpito</h3>
+            <p class="maintenance-warning"><span aria-hidden="true">⚠</span> Huoltotoiminnot poistavat tietoja pysyvästi, eikä niitä voi perua.</p>
+          </div>
+        </div>
+        <div class="maintenance-actions">
+          <div class="maintenance-action">
+            <p>Poistaa kaikki pelaajat sekä heidän tuloskorttinsa ja tallennetut sijoituksensa.</p>
+            ${renderDangerActionButton({
+              attribute: 'data-request-delete-all-players',
+              label: 'Poista kaikki pelaajat',
+              disabled: !dataState.players.length,
+            })}
+          </div>
+          <div class="maintenance-action">
+            <p>Tyhjentää kaikkien pelaajien tuloskortit ja turnaussijoitukset. Muut tiedot säilyvät.</p>
+            ${renderDangerActionButton({
+              attribute: 'data-request-clear-all-results',
+              label: 'Poista kaikki tulokset',
+              disabled: !dataState.resultCards.length,
+            })}
+          </div>
+          <div class="maintenance-action">
+            <p>Poistaa kaikki turnaukset ja niihin liittyvät turnaustulokset.</p>
+            ${renderDangerActionButton({
+              attribute: 'data-request-delete-all-tournaments',
+              label: 'Poista kaikki turnaukset',
+              disabled: !dataState.tournaments.length,
+            })}
+          </div>
+        </div>
+      </article>
     </section>
   `;
 }
