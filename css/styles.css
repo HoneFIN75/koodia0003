@@ -1101,39 +1101,33 @@ textarea {
   table-layout: fixed;
 }
 
-.summary-table th:nth-child(1),
-.summary-table td:nth-child(1) {
+.summary-table .table-sort-button {
+  gap: 0;
+  padding: 0.25rem 0.1rem;
+}
+
+.summary-table th:first-child {
   width: 7%;
 }
 
-.summary-table th:nth-child(2),
-.summary-table td:nth-child(2) {
+.summary-table th:nth-child(2) {
   width: 36%;
 }
 
-.summary-table th:nth-child(3),
-.summary-table td:nth-child(3) {
+.summary-table th:nth-child(3) {
   width: 16%;
 }
 
-.summary-table th:nth-child(4),
-.summary-table td:nth-child(4) {
+.summary-table th:nth-child(4) {
   width: 11%;
 }
 
-.summary-table th:nth-child(5),
-.summary-table td:nth-child(5) {
+.summary-table th:nth-child(5) {
   width: 9%;
 }
 
-.summary-table th:nth-child(6),
-.summary-table td:nth-child(6) {
+.summary-table th:nth-child(6) {
   width: 21%;
-}
-
-.summary-table th:first-child,
-.summary-table td:first-child {
-  width: 7%;
 }
 
 .summary-table td.number,
@@ -1151,6 +1145,12 @@ textarea {
   table-layout: fixed;
 }
 
+.tournaments-table .table-sort-button {
+  gap: 0.15rem;
+  padding: 0.4rem 0.2rem;
+  font-size: 0.8125rem;
+}
+
 .tournaments-table th,
 .tournaments-table td {
   padding: 0.65rem 0.4rem;
@@ -1160,48 +1160,38 @@ textarea {
   white-space: nowrap;
 }
 
-.tournaments-table th:nth-child(1),
-.tournaments-table td:nth-child(1) {
-  width: 4%;
+.tournaments-table th:first-child {
+  width: 5%;
 }
 
-.tournaments-table th:nth-child(2),
-.tournaments-table td:nth-child(2) {
-  width: 18%;
+.tournaments-table th:nth-child(2) {
+  width: 16%;
 }
 
-.tournaments-table th:nth-child(3),
-.tournaments-table td:nth-child(3) {
+.tournaments-table th:nth-child(3) {
   width: 7%;
 }
 
-.tournaments-table th:nth-child(4),
-.tournaments-table td:nth-child(4) {
+.tournaments-table th:nth-child(4) {
   width: 10%;
 }
 
 .tournaments-table th:nth-child(5),
-.tournaments-table td:nth-child(5),
-.tournaments-table th:nth-child(6),
-.tournaments-table td:nth-child(6) {
+.tournaments-table th:nth-child(6) {
   width: 8%;
 }
 
 .tournaments-table th:nth-child(7),
-.tournaments-table td:nth-child(7),
-.tournaments-table th:nth-child(8),
-.tournaments-table td:nth-child(8) {
-  width: 12%;
+.tournaments-table th:nth-child(9) {
+  width: 11%;
 }
 
-.tournaments-table th:nth-child(9),
-.tournaments-table td:nth-child(9) {
-  width: 9%;
+.tournaments-table th:nth-child(8) {
+  width: 10%;
 }
 
-.tournaments-table th:nth-child(10),
-.tournaments-table td:nth-child(10) {
-  width: 12%;
+.tournaments-table th:nth-child(10) {
+  width: 14%;
 }
 
 .tournaments-table td:last-child .secondary-button {
@@ -1227,8 +1217,11 @@ textarea {
 }
 
 @media (max-width: 780px) {
-  .tournaments-table {
-    min-width: 760px;
+  .tournaments-table td {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
   }
 }
 

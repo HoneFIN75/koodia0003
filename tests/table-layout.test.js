@@ -11,9 +11,9 @@ test('Yhteenveto-taulukot mahtuvat rinnakkaisiin kortteihin', () => {
   assert.match(css, /@media \(max-width:\s*780px\)[\s\S]*\.two-column,\s*\.form-grid[\s\S]*grid-template-columns:\s*1fr/);
 });
 
-test('Turnaustaulukko käyttää kiinteää asettelua ja jättää vaakavierityksen vain pienille näytöille', () => {
+test('Turnaustaulukko käyttää kiinteää asettelua ja mukautuu kapeilla näytöillä korteiksi', () => {
   assert.match(css, /\.tournaments-table\s*\{[^}]*table-layout:\s*fixed/s);
   assert.match(css, /\.tournaments-table th,\s*\.tournaments-table td\s*\{[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis;[^}]*white-space:\s*nowrap/s);
-  assert.match(css, /@media \(max-width:\s*780px\)\s*\{\s*\.tournaments-table\s*\{\s*min-width:\s*760px/s);
+  assert.match(css, /@media \(max-width:\s*780px\)[\s\S]*\.tournaments-table td\s*\{[^}]*overflow:\s*visible;[^}]*white-space:\s*normal/s);
   assert.match(css, /\.tournaments-table td:last-child \.secondary-button\s*\{[^}]*padding-right:\s*0\.5rem;[^}]*padding-left:\s*0\.5rem/s);
 });

@@ -1780,30 +1780,34 @@ function renderTournamentSection(dataState, uiState) {
                        ${renderSortableHeader({
                          table: 'tournaments',
                          field: 'pdgaEventId',
-                         label: 'PDGA Event ID',
+                         label: 'PDGA ID',
                          sortField: uiState.tournamentSortField,
                          sortDirection: uiState.tournamentSortDirection,
+                         ariaLabel: 'PDGA Event ID',
                        })}
                        ${renderSortableHeader({
                          table: 'tournaments',
                          field: 'startDate',
-                         label: 'Alkamispäivä',
+                         label: 'Alku',
                          sortField: uiState.tournamentSortField,
                          sortDirection: uiState.tournamentSortDirection,
+                         ariaLabel: 'Alkamispäivä',
                        })}
                        ${renderSortableHeader({
                          table: 'tournaments',
                          field: 'endDate',
-                         label: 'Päättymispäivä',
+                         label: 'Loppu',
                          sortField: uiState.tournamentSortField,
                          sortDirection: uiState.tournamentSortDirection,
+                         ariaLabel: 'Päättymispäivä',
                        })}
                        ${renderSortableHeader({
                          table: 'tournaments',
                          field: 'location',
-                         label: 'Paikkakunta',
+                         label: 'Paikka',
                          sortField: uiState.tournamentSortField,
                          sortDirection: uiState.tournamentSortDirection,
+                         ariaLabel: 'Paikkakunta',
                        })}
                        ${renderSortableHeader({
                          table: 'tournaments',
