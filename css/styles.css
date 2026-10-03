@@ -46,6 +46,12 @@
   --font-size-xl: clamp(1.75rem, 2vw, 2.4rem);
   --font-size-2xl: clamp(2rem, 3vw, 3rem);
   --line-height-base: 1.5;
+  --button-height: 2.875rem;
+  --button-padding: 0.65rem 1rem;
+  --button-radius: var(--border-radius-sm);
+  --button-font-size: var(--font-size-sm);
+  --button-font-weight: 600;
+  --button-gap: var(--spacing-sm);
   --login-background-image: url("../assets/login-background.png");
   --login-scrim: linear-gradient(160deg, rgba(16, 34, 47, 0.45) 0%, rgba(16, 34, 47, 0.25) 100%);
 }
@@ -418,7 +424,7 @@ a {
 .segmented-control {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-sm);
+  gap: var(--button-gap);
 }
 
 .segmented-control label {
@@ -506,101 +512,125 @@ a {
   background: rgba(161, 52, 52, 0.08);
 }
 
-.button,
-button.button,
-button.secondary-button,
-button.ghost-button,
-button.danger-button,
+/* Painikkeet: yhteinen tyyli kaikille päänavigaation ulkopuolisille toiminnoille. */
+button:not(.main-nav button),
 .secondary-link-button {
-  border-radius: 999px;
-  padding: 0.8rem 1.1rem;
-  cursor: pointer;
-  border: 1px solid transparent;
-  min-height: 2.85rem;
-}
-
-.button,
-button.button {
-  background: var(--color-primary);
-  color: #fff;
-}
-
-.button:hover,
-button.button:hover {
-  background: var(--color-primary-hover);
-}
-
-button.secondary-button {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border-color: var(--color-border);
-}
-
-.secondary-link-button {
+  --button-background: var(--color-surface);
+  --button-color: var(--color-text);
+  --button-border-color: var(--color-border);
+  --button-hover-background: var(--color-surface-muted);
+  --button-hover-color: var(--color-primary);
+  --button-hover-border-color: var(--color-primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-surface);
-  color: var(--color-text);
-  border-color: var(--color-border);
-  text-decoration: none;
+  gap: var(--button-gap);
+  height: var(--button-height);
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: var(--button-padding);
+  border: 1px solid var(--button-border-color);
+  border-radius: var(--button-radius);
+  background: var(--button-background);
+  color: var(--button-color);
+  font-family: inherit;
+  font-size: var(--button-font-size);
+  font-weight: var(--button-font-weight);
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
 }
 
+button:not(.main-nav button) > *,
+.secondary-link-button > * {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+button:not(.main-nav button) > :is(.action-icon, .danger-icon, .help-marker, .table-sort-indicator) {
+  flex: 0 0 auto;
+}
+
+button:not(.main-nav button).button {
+  --button-background: var(--color-primary);
+  --button-color: var(--color-surface);
+  --button-border-color: var(--color-primary);
+  --button-hover-background: var(--color-primary-hover);
+  --button-hover-color: var(--color-surface);
+  --button-hover-border-color: var(--color-primary-hover);
+}
+
+button:not(.main-nav button):is(.secondary-button, .ghost-button, .action-neutral, .filter-button, .table-sort-button, .player-name-button, .help-section-summary, .help-topic-summary, .compare-suggestion, .compare-remove-button),
+.secondary-link-button {
+  --button-background: var(--color-surface);
+  --button-color: var(--color-text);
+  --button-border-color: var(--color-border);
+  --button-hover-background: var(--color-surface-muted);
+  --button-hover-color: var(--color-primary);
+  --button-hover-border-color: var(--color-primary);
+}
+
+button:not(.main-nav button).danger-button {
+  --button-background: var(--color-error-surface);
+  --button-color: var(--color-error);
+  --button-border-color: var(--color-error);
+  --button-hover-background: var(--color-error);
+  --button-hover-color: var(--color-surface);
+  --button-hover-border-color: var(--color-error);
+}
+
+button:not(.main-nav button):is([aria-pressed="true"], .table-sort-button.is-active) {
+  --button-background: var(--color-secondary);
+  --button-color: var(--color-surface);
+  --button-border-color: var(--color-secondary);
+  --button-hover-background: var(--color-secondary);
+  --button-hover-color: var(--color-surface);
+  --button-hover-border-color: var(--color-secondary);
+}
+
+button:not(.main-nav button):not(:disabled):hover,
 .secondary-link-button:hover {
-  color: var(--color-primary);
-  border-color: var(--color-primary);
+  background: var(--button-hover-background);
+  color: var(--button-hover-color);
+  border-color: var(--button-hover-border-color);
 }
 
+button:not(.main-nav button):not(:disabled):active,
+.secondary-link-button:active {
+  box-shadow: inset 0 2px 4px rgba(16, 34, 47, 0.2);
+}
+
+button:not(.main-nav button):focus-visible,
 .secondary-link-button:focus-visible {
   outline: 3px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
 
-button.ghost-button {
-  background: transparent;
-  color: var(--color-secondary);
-  border-color: transparent;
-  padding-inline: 0;
-}
-
-button.danger-button {
-  background: rgba(161, 52, 52, 0.1);
-  color: var(--color-error);
-  border-color: rgba(161, 52, 52, 0.2);
-}
-
-button.button[aria-pressed="true"],
-button.secondary-button[aria-pressed="true"] {
-  background: var(--color-secondary);
-  color: #fff;
-  border-color: var(--color-secondary);
-}
-
-button:disabled,
-button[disabled] {
-  cursor: not-allowed;
+button:not(.main-nav button):disabled {
   opacity: 0.55;
+  cursor: not-allowed;
 }
 
-button.danger-button.danger-action-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-xs);
-  background: var(--color-error);
-  color: #fff;
-  border-color: var(--color-error);
-  font-weight: 700;
+button:not(.main-nav button)[aria-busy="true"] {
+  cursor: progress;
 }
 
-button.danger-button.danger-action-button:not(:disabled):hover {
-  background: var(--color-error-hover);
-  border-color: var(--color-error-hover);
+.secondary-link-button {
+  text-decoration: none;
 }
 
-button.danger-button.danger-action-button:focus-visible {
-  outline: 3px solid rgba(161, 52, 52, 0.4);
-  outline-offset: 2px;
+@media (prefers-reduced-motion: reduce) {
+  button:not(.main-nav button),
+  .secondary-link-button {
+    transition: none;
+  }
 }
 
 .danger-icon {
@@ -613,7 +643,7 @@ button.danger-button.danger-action-button:focus-visible {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-md);
+  gap: var(--button-gap);
   padding: var(--spacing-sm) var(--spacing-md);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
@@ -625,7 +655,7 @@ button.danger-button.danger-action-button:focus-visible {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--button-gap);
 }
 
 .action-bar-group > button {
@@ -660,34 +690,11 @@ button.danger-button.danger-action-button:focus-visible {
 .filter-group {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: var(--spacing-2xs);
+  gap: var(--button-gap);
   padding: var(--spacing-2xs);
   border: 1px solid var(--color-border);
   border-radius: 999px;
   background: var(--color-surface-muted);
-}
-
-button.filter-button {
-  min-height: 2.5rem;
-  padding: 0.45rem 1rem;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--color-text);
-  cursor: pointer;
-  font-weight: 500;
-}
-
-button.filter-button:hover {
-  border-color: var(--color-border);
-  background: var(--color-surface);
-}
-
-button.filter-button[aria-pressed="true"] {
-  background: var(--color-secondary);
-  border-color: var(--color-secondary);
-  color: #fff;
-  font-weight: 700;
 }
 
 button.filter-button[aria-pressed="true"]::before {
@@ -817,27 +824,7 @@ textarea {
 }
 
 .table-sort-button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-2xs);
   width: 100%;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: inherit;
-  cursor: pointer;
-}
-
-.table-sort-button.is-active {
-  color: var(--color-text);
-}
-
-.table-sort-button:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
 }
 
 .table-sort-indicator {
@@ -863,15 +850,10 @@ textarea {
   text-align: right;
 }
 
-.action-surface .tournaments-table [data-edit-tournament],
-.tournaments-table [data-edit-tournament] {
-  white-space: nowrap;
-}
-
 .table-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-xs);
+  gap: var(--button-gap);
 }
 
 .players-table td[data-label]::before,
@@ -897,35 +879,6 @@ textarea {
 .tournament-name-text,
 .pdga-id-unassigned {
   font-weight: 700;
-}
-
-/* Rankingin pelaajan nimi on sovelluksen sisäinen painike. Alleviivaus ja osoitinkursori
-   kertovat klikattavuudesta ilman, että käyttö perustuu pelkkään väriin. */
-button.player-name-button {
-  display: inline;
-  padding: 0;
-  margin: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-weight: 700;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 0.15em;
-}
-
-button.player-name-button:hover {
-  color: var(--color-primary);
-  text-decoration-thickness: 0.15em;
-}
-
-button.player-name-button:focus-visible {
-  outline: 3px solid var(--color-focus-ring);
-  outline-offset: 2px;
-  border-radius: 0.2rem;
-  text-decoration-thickness: 0.15em;
 }
 
 .pdga-id-unassigned {
@@ -1039,36 +992,11 @@ button.player-name-button:focus-visible {
 .help-topic-summary {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  cursor: pointer;
   width: 100%;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  color: var(--color-text);
-  text-align: left;
-  font: inherit;
-}
-
-.help-section-summary {
-  padding: var(--spacing-md) var(--spacing-lg);
-  font-size: var(--font-size-lg);
-  font-weight: 700;
 }
 
 .help-section-summary[aria-expanded="true"] {
-  border-bottom: 1px solid var(--color-border);
-}
-
-.help-section-summary:hover,
-.help-topic-summary:hover {
-  background: var(--color-surface-muted);
-}
-
-.help-section-summary:focus-visible,
-.help-topic-summary:focus-visible {
-  outline: 3px solid var(--color-focus-ring);
-  outline-offset: -3px;
+  border-bottom-color: var(--color-border);
 }
 
 .help-marker::before {
@@ -1089,8 +1017,6 @@ button.player-name-button:focus-visible {
 
 .help-topic-count {
   flex: 0 0 auto;
-  font-size: var(--font-size-sm);
-  font-weight: 400;
   color: var(--color-text-muted);
 }
 
@@ -1109,11 +1035,6 @@ button.player-name-button:focus-visible {
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius-sm);
   background: var(--color-surface-muted);
-}
-
-.help-topic-summary {
-  padding: var(--spacing-sm) var(--spacing-md);
-  font-weight: 600;
 }
 
 .help-topic-content {
@@ -1162,10 +1083,6 @@ button.player-name-button:focus-visible {
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-}
-
-.summary-table th.number .table-sort-button {
-  justify-content: flex-end;
 }
 
 .summary-table tbody tr:hover td,
@@ -1350,12 +1267,6 @@ button.player-name-button:focus-visible {
   grid-column: 2;
   grid-row: 1;
   flex-shrink: 0;
-}
-
-.site-header .logout-button {
-  min-height: 2.5rem;
-  padding: var(--spacing-xs) var(--spacing-md);
-  font-size: var(--font-size-sm);
 }
 
 .security-settings {
@@ -1649,11 +1560,7 @@ button.player-name-button:focus-visible {
     font-size: var(--font-size-sm);
   }
 
-  .site-header .logout-button {
-    min-height: 2.75rem;
-    padding: var(--spacing-2xs) var(--spacing-sm);
-    font-size: 0.8125rem;
-  }
+
 
   .main-nav {
     width: 100%;
@@ -1848,27 +1755,12 @@ button.player-name-button:focus-visible {
 button.compare-suggestion {
   display: flex;
   width: 100%;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border: 1px solid transparent;
-  border-radius: var(--border-radius-sm);
-  background: transparent;
-  color: var(--color-text);
-  text-align: left;
-  cursor: pointer;
-}
-
-button.compare-suggestion:hover,
-button.compare-suggestion:focus-visible {
-  background: var(--color-surface-muted);
-  border-color: var(--color-border);
 }
 
 .compare-suggestion-meta {
   color: var(--color-text-muted);
-  font-size: var(--font-size-small, 0.875rem);
 }
 
 .compare-suggestions-empty {
@@ -1901,25 +1793,6 @@ button.compare-suggestion:focus-visible {
 .compare-player-card-title {
   margin: 0;
   font-size: 1.05rem;
-}
-
-button.compare-remove-button {
-  min-width: 2rem;
-  min-height: 2rem;
-  padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 1.1rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-button.compare-remove-button:hover,
-button.compare-remove-button:focus-visible {
-  border-color: var(--color-sfl-blue);
-  color: var(--color-sfl-blue);
 }
 
 .compare-player-card-meta {
@@ -1978,94 +1851,7 @@ button.compare-remove-button:focus-visible {
   }
 }
 
-/* Sisältötoiminnot: rajaus ei ulotu navigaatioon tai muihin näkymiin. */
-.action-surface :is(button.button, button.secondary-button, button.ghost-button, button.danger-button, .secondary-link-button) {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-xs);
-  min-height: 2.875rem;
-  max-width: 100%;
-  padding: 0.65rem 1rem;
-  border-radius: var(--border-radius-sm);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  line-height: 1.4;
-  text-align: center;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
-}
-
-.action-surface button.button {
-  border-color: var(--color-primary);
-  box-shadow: 0 2px 4px rgba(16, 34, 47, 0.12);
-}
-
-.action-surface :is(button.secondary-button, .secondary-link-button) {
-  color: var(--color-secondary);
-}
-
-.action-surface :is(button.ghost-button, button.action-neutral) {
-  background: var(--color-surface-muted);
-  color: var(--color-text-muted);
-  border-color: var(--color-border);
-  box-shadow: none;
-}
-
-.action-surface button.danger-button {
-  background: var(--color-error-surface);
-  color: var(--color-error);
-  border-color: var(--color-error);
-}
-
-.action-surface button.button:not(:disabled):hover {
-  background: var(--color-primary-hover);
-  border-color: var(--color-primary-hover);
-  box-shadow: 0 3px 8px rgba(16, 34, 47, 0.16);
-}
-
-.action-surface :is(button.secondary-button, button.ghost-button, .secondary-link-button):not(:disabled):hover {
-  background: var(--color-surface-muted);
-  color: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.action-surface button.danger-button:not(:disabled):hover {
-  background: var(--color-error);
-  color: var(--color-surface);
-  border-color: var(--color-error);
-}
-
-.action-surface :is(button.button, button.secondary-button, button.ghost-button, button.danger-button, .secondary-link-button):not(:disabled):active {
-  box-shadow: inset 0 2px 4px rgba(16, 34, 47, 0.2);
-}
-
-.action-surface :is(button, .secondary-link-button):focus-visible {
-  outline: 3px solid var(--color-primary);
-  outline-offset: 3px;
-}
-
-.action-surface button.danger-button:focus-visible {
-  outline-color: var(--color-error);
-}
-
-.action-surface :is(button.button, button.secondary-button, button.ghost-button, button.danger-button):disabled {
-  box-shadow: none;
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.action-surface button.button:disabled:hover {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.action-surface button[aria-busy="true"] {
-  cursor: progress;
-  box-shadow: none;
-}
-
+/* Sisältötoiminnot: asettelu pysyy erillään painikkeiden yhteisestä tyylistä. */
 .action-surface .action-icon {
   flex: 0 0 auto;
   font-size: 1.1em;
@@ -2074,14 +1860,14 @@ button.compare-remove-button:focus-visible {
 
 .action-surface .action-bar {
   align-items: center;
-  gap: var(--spacing-lg);
+  gap: var(--button-gap);
   padding: var(--spacing-md);
 }
 
 .action-surface .action-bar-group {
   flex: 1 1 24rem;
   align-items: stretch;
-  gap: var(--spacing-sm);
+  gap: var(--button-gap);
 }
 
 .action-surface .action-bar-group > button {
@@ -2091,13 +1877,13 @@ button.compare-remove-button:focus-visible {
 
 .action-surface .action-bar-danger {
   flex: 0 1 auto;
-  gap: var(--spacing-sm);
+  gap: var(--button-gap);
   border-left-style: solid;
 }
 
 .action-surface :is(.form-actions, .table-actions, .inline-actions) {
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--button-gap);
 }
 
 .action-surface :is(.panel, .two-column) {
@@ -2106,6 +1892,7 @@ button.compare-remove-button:focus-visible {
 
 .action-surface .action-footer {
   align-items: stretch;
+  gap: var(--button-gap);
   margin-top: var(--spacing-lg);
   padding-top: var(--spacing-md);
   border-top: 1px solid var(--color-border);
@@ -2113,7 +1900,6 @@ button.compare-remove-button:focus-visible {
 
 .action-surface .action-footer > :is(.button, .danger-action-button) {
   order: 1;
-  margin-inline-start: auto;
 }
 
 .action-surface .action-footer > .action-neutral {
@@ -2123,10 +1909,6 @@ button.compare-remove-button:focus-visible {
 .action-surface.dialog-panel {
   max-height: calc(100dvh - 2rem);
   overflow-y: auto;
-}
-
-.action-surface button.filter-button {
-  min-height: 2.75rem;
 }
 
 @media (min-width: 601px) and (max-width: 780px) {
@@ -2154,18 +1936,8 @@ button.compare-remove-button:focus-visible {
     flex-basis: auto;
   }
 
-  .action-surface .action-footer > :is(.button, .danger-action-button) {
-    margin-inline-start: 0;
-  }
-
   .action-surface .action-footer > button,
   .action-surface .danger-zone > button {
     width: 100%;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .action-surface :is(button.button, button.secondary-button, button.ghost-button, button.danger-button, button.filter-button, button.table-sort-button, .secondary-link-button) {
-    transition: none;
   }
 }
