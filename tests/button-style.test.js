@@ -3,34 +3,30 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
+const buttonStyles = css.slice(css.indexOf('/* Painikkeet:'));
 const actionStyles = css.slice(css.indexOf('/* Sisältötoiminnot:'));
 
-test('button polish only targets explicitly scoped content, including responsive and motion rules', () => {
-  assert.ok(actionStyles.length > 0);
-  const selectors = [...actionStyles.matchAll(/([^{}]+)\{/g)]
-    .map((match) => match[1].replace(/\/\*[\s\S]*?\*\//g, '').trim())
-    .filter((selector) => !selector.startsWith('@media'));
-
-  assert.ok(selectors.length > 20);
-  for (const selector of selectors) {
-    assert.ok(selector.startsWith('.action-surface ') || selector.startsWith('.action-surface.'), selector);
-    assert.doesNotMatch(selector, /main-nav|site-header|:root/);
-  }
-  assert.match(actionStyles, /min-height:\s*2\.875rem/);
-  assert.match(actionStyles, /:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--color-primary\)/s);
-  assert.match(actionStyles, /:disabled\s*\{[^}]*box-shadow:\s*none;[^}]*cursor:\s*not-allowed/s);
-  assert.match(actionStyles, /\[aria-busy="true"\]\s*\{[^}]*cursor:\s*progress/s);
-  assert.match(actionStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*transition:\s*none/);
+test('all non-navigation buttons share dimensions and single-line labels', () => {
+  assert.match(css, /--button-height:\s*2\.875rem/);
+  assert.match(css, /--button-padding:\s*0\.65rem 1rem/);
+  assert.match(css, /--button-radius:\s*var\(--border-radius-sm\)/);
+  assert.match(buttonStyles, /button:not\(\.main-nav button\),\s*\.secondary-link-button\s*\{[^}]*height:\s*var\(--button-height\);[^}]*padding:\s*var\(--button-padding\);[^}]*border-radius:\s*var\(--button-radius\);[^}]*font-size:\s*var\(--button-font-size\);[^}]*font-weight:\s*var\(--button-font-weight\);[^}]*white-space:\s*nowrap;[^}]*overflow:\s*hidden;[^}]*text-overflow:\s*ellipsis/s);
+  assert.match(buttonStyles, /button:not\(\.main-nav button\):focus-visible,\s*\.secondary-link-button:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--color-focus-ring\)/s);
+  assert.match(buttonStyles, /button:not\(\.main-nav button\):not\(:disabled\):hover,\s*\.secondary-link-button:hover\s*\{/);
+  assert.match(buttonStyles, /button:not\(\.main-nav button\):disabled\s*\{[^}]*cursor:\s*not-allowed/s);
+  assert.match(buttonStyles, /@media \(prefers-reduced-motion: reduce\)[\s\S]*transition:\s*none/);
+  assert.match(css, /\.main-nav button\s*\{[^}]*min-height:\s*2\.5rem/);
 });
 
-test('scoped footers align neutral left and submit right without changing DOM/tab order', () => {
-  assert.match(actionStyles, /\.action-footer > :is\(\.button, \.danger-action-button\)\s*\{[^}]*order:\s*1;[^}]*margin-inline-start:\s*auto/s);
-  assert.match(actionStyles, /\.action-footer > \.action-neutral\s*\{[^}]*order:\s*-1/s);
+test('button variants only customize colors and keep shared spacing', () => {
+  assert.match(css, /--button-gap:\s*var\(--spacing-sm\)/);
+  assert.match(buttonStyles, /\.button\s*\{[^}]*--button-background:\s*var\(--color-primary\)/s);
+  assert.match(buttonStyles, /\.danger-button\s*\{[^}]*--button-background:\s*var\(--color-error-surface\)/s);
+  assert.match(actionStyles, /\.action-footer\s*\{[^}]*gap:\s*var\(--button-gap\)/s);
+  assert.doesNotMatch(actionStyles, /margin-inline-start:\s*auto/);
+});
+
+test('button groups retain responsive layout', () => {
   assert.match(actionStyles, /@media \(max-width: 600px\)[\s\S]*flex-direction:\s*column/);
   assert.match(actionStyles, /@media \(min-width: 601px\) and \(max-width: 780px\)[\s\S]*flex-direction:\s*row/);
-});
-
-test('tournament edit button text does not wrap', () => {
-  assert.match(css, /\.tournaments-table \[data-edit-tournament\]\s*\{[^}]*white-space:\s*nowrap/s);
-  assert.match(css, /\.action-surface \.tournaments-table \[data-edit-tournament\],\s*\.tournaments-table \[data-edit-tournament\]\s*\{[^}]*white-space:\s*nowrap/s);
 });
