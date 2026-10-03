@@ -3,7 +3,7 @@ import { DEFAULT_PDGA_SETTINGS, extractPdgaEventId, extractPdgaPlayerId, sanitiz
 import { AuthRequiredError, getAuthHeaders } from './auth.js';
 import { createDefaultMultipliers, ensureLegacyMultiplier, sanitizeMultipliers } from './multipliers.js';
 
-export const STORAGE_VERSION = 4;
+export const STORAGE_VERSION = 5;
 
 function createDefaultPointsTable() {
   return {

@@ -211,7 +211,7 @@ test('loadState migrates old tournament-based result cards to player-centric car
     }),
   });
 
-  assert.equal(state.version, 4);
+  assert.equal(state.version, 5);
   assert.deepEqual(
     state.resultCards.map((card) => [card.playerId, card.results]),
     [
