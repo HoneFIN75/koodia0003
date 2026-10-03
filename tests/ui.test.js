@@ -1004,6 +1004,63 @@ test('renderApp shows shared tournament modal and delete action only in edit mod
   assert.doesNotMatch(root.innerHTML, /data-delete-tournament="tournament-1">Poista turnaus<\/button>/);
 });
 
+test('turnauslomake näyttää maanosan ja uuden kenttäjärjestyksen', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.tournaments = [
+    {
+      id: 'tournament-1',
+      name: 'Testi Open',
+      displayOrder: 1,
+      pdgaEventId: 123456,
+      startDate: '2026-07-03',
+      endDate: '2026-07-04',
+      location: 'Helsinki',
+      venue: 'Tali',
+      multiplierId: 'multiplier-major',
+      division: '',
+      continent: 'europe',
+      externalUrl: '',
+      notes: '',
+    },
+  ];
+
+  renderApp(root, dataState, createUiState({ activeView: 'tournaments', tournamentDialogOpen: true, tournamentFormId: 'tournament-1' }));
+
+  const formStart = root.innerHTML.indexOf('<form id="tournament-form"');
+  const form = root.innerHTML.slice(formStart, root.innerHTML.indexOf('</form>', formStart));
+  const fieldOrder = [
+    'tournament-name',
+    'tournament-display-order',
+    'tournament-multiplier-id',
+    'tournament-pdga-event-id',
+    'tournament-start-date',
+    'tournament-end-date',
+    'tournament-division',
+    'tournament-continent',
+    'tournament-location',
+    'tournament-venue',
+    'tournament-external-url',
+    'tournament-notes',
+  ];
+  const fieldPositions = fieldOrder.map((fieldId) => form.indexOf(`id="${fieldId}"`));
+
+  assert.ok(fieldPositions.every((position, index) => position >= 0 && (!index || position > fieldPositions[index - 1])));
+  assert.match(form, /<label for="tournament-start-date">Alkamispäivä \*<\/label>/);
+  assert.match(form, /<label for="tournament-pdga-event-id">Virallinen PDGA Event ID<\/label>/);
+  assert.match(form, /<fieldset class="tournament-date-group full-width">/);
+  assert.match(form, /<div class="form-field full-width">\s*<label for="tournament-external-url">Turnauksen verkkosivun URL<\/label>/);
+  assert.match(form, /<option value="">Ei valintaa<\/option>/);
+  assert.match(form, /<option value="europe" selected>Eurooppa<\/option>/);
+  assert.match(form, /<option value="asia"\s*>Aasia<\/option>/);
+  assert.match(form, /<option value="africa"\s*>Afrikka<\/option>/);
+  assert.match(form, /<option value="north-america"\s*>Pohjois-Amerikka<\/option>/);
+  assert.match(form, /<option value="south-america"\s*>Etelä-Amerikka<\/option>/);
+  assert.match(form, /<option value="australia"\s*>Australia<\/option>/);
+  assert.match(form, /<option value="antarctica"\s*>Etelämanner \(Antarktis\)<\/option>/);
+  assert.match(root.innerHTML, /<td data-label="Maanosa">Eurooppa<\/td>/);
+});
+
 test('renderApp shows required tournament delete confirmation dialog copy', () => {
   const root = createRootStub();
   const dataState = createEmptyState();
@@ -1252,7 +1309,7 @@ function createResultsDataState() {
   ];
   dataState.tournaments = [
     { id: 't-tampere', name: 'Tampere Open', pdgaEventId: '000000', startDate: '2026-08-01', endDate: '', displayOrder: 2, multiplierId: 'multiplier-c-tier' },
-    { id: 't-european', name: 'European Open', pdgaEventId: 97339, startDate: '2026-07-17', endDate: '2026-07-20', displayOrder: 1, multiplierId: 'multiplier-major' },
+    { id: 't-european', name: 'European Open', pdgaEventId: 97339, startDate: '2026-07-17', endDate: '2026-07-20', displayOrder: 1, multiplierId: 'multiplier-major', continent: 'europe' },
   ];
   dataState.pointsTable = { MPO: { 1: 100, 2: 90 }, FPO: { 1: 60 } };
   dataState.resultCards = [
@@ -1272,7 +1329,7 @@ test('renderApp näyttää Tulokset-sivulla turnausyhteenvedon järjestysnumeron
   const section = root.innerHTML.slice(root.innerHTML.indexOf('id="section-results"'));
   assert.match(
     section,
-    /<th scope="col">Turnauksen nimi<\/th>\s*<th scope="col">Tila<\/th>\s*<th scope="col" class="number">Kerroin<\/th>\s*<th scope="col">PDGA Event ID<\/th>\s*<th scope="col">Alkupäivä<\/th>\s*<th scope="col">Loppupäivä<\/th>\s*<th scope="col">Paras MPO<\/th>\s*<th scope="col">Paras FPO<\/th>/,
+    /<th scope="col">Turnauksen nimi<\/th>\s*<th scope="col">Tila<\/th>\s*<th scope="col" class="number">Kerroin<\/th>\s*<th scope="col">PDGA Event ID<\/th>\s*<th scope="col">Alkupäivä<\/th>\s*<th scope="col">Loppupäivä<\/th>\s*<th scope="col">Maanosa<\/th>\s*<th scope="col">Paras MPO<\/th>\s*<th scope="col">Paras FPO<\/th>/,
   );
   assert.match(section, /European Open[\s\S]*Tampere Open/);
   assert.match(section, /<span class="tournament-name-text">European Open<\/span>/);
@@ -1327,6 +1384,7 @@ test('renderApp näyttää turnauksen tuloskortin otsakkeen, sarjat ja mitalikor
   assert.match(html, /<h2 id="tournament-result-card-title" class="tournament-result-card-title">European Open<\/h2>/);
   assert.match(html, /data-tournament-result-card-date>17\.07\.2026 - 20\.07\.2026<\/dd>/);
   assert.match(html, /<dt>Paikkakunta<\/dt><dd>Nokia<\/dd>/);
+  assert.match(html, /<dt>Maanosa<\/dt><dd>Eurooppa<\/dd>/);
   assert.match(html, /<dt>Tila<\/dt><dd><span class="status-chip tournament-result-card-status">MAJ<\/span><\/dd>/);
   assert.match(
     html,

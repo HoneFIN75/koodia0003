@@ -117,7 +117,7 @@ Julkaisuworkflow käyttää olemassa olevia GitHub Actions -salaisuuksia `SSH_US
 - Oletuskertoimet: **Major 2×**, **National Tour 1,5×**, **C-Tier 1×**; ylläpito Kertoimet-näkymässä.
 - PDGA-perusosoitteet: `https://www.pdga.com/player/` ja `https://www.pdga.com/tour/event/`; linkki muodostetaan perusosoitteesta ja tunnuksesta.
 - Pisteiden näyttötarkkuus: **2 desimaalia**, valittavissa 0–4. Näyttöpyöristys ei muuta laskennan tarkkuutta.
-- Datan skeemaversio on `js/storage.js`-moduulin `STORAGE_VERSION` (nykyisin **4**).
+- Datan skeemaversio on `js/storage.js`-moduulin `STORAGE_VERSION` (nykyisin **5**).
 - HTML5, ES-moduulit, UTF-8, JSON ja HTTP-rajapinta. Käyttöliittymän kieli on suomi.
 
 ## 🚀 Kehitysohjeet
