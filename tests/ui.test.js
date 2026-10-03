@@ -875,6 +875,9 @@ test('renderApp shows tournament table with required column order and PDGA event
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="endDate"/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="location"/);
   assert.match(root.innerHTML, /data-sort-table="tournaments" data-sort-field="venue"/);
+  assert.match(root.innerHTML, /data-sort-field="pdgaEventId" aria-label="PDGA Event ID"[^>]*>\s*<span>PDGA ID<\/span>/);
+  assert.match(root.innerHTML, /data-sort-field="startDate" aria-label="Alkamispäivä"[^>]*>\s*<span>Alku<\/span>/);
+  assert.match(root.innerHTML, /data-sort-field="endDate" aria-label="Päättymispäivä"[^>]*>\s*<span>Loppu<\/span>/);
   assert.match(root.innerHTML, /data-label="Järjestysnumero">1<\/td>/);
   assert.match(root.innerHTML, /<th>Muokkaa<\/th>/);
   assert.match(root.innerHTML, /<span class="tournament-name-text">Finnish Nationals 2027<\/span>/);
