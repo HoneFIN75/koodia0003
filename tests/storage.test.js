@@ -42,11 +42,16 @@ test('loadState sanitizes API payload and strips unknown legacy fields', async (
             name: 'Testiturnaus',
             externalUrl: 'https://www.pdga.com/tour/event/98765',
             startDate: '2026-01-01',
+            continent: 'europe',
             multiplierKey: 'fpt',
             multiplier: 1,
             venue: 'Keskuspuisto',
             legacyField: 'poistuva arvo',
             [removedTournamentField]: 'Suomi',
+          },
+          {
+            id: 'tournament-2',
+            name: 'Vanha turnaus',
           },
         ],
         tournamentResults: [
@@ -74,6 +79,8 @@ test('loadState sanitizes API payload and strips unknown legacy fields', async (
   assert.equal(state.players[0].pdgaNumber, 45678);
   assert.equal(state.tournaments[0].pdgaEventId, 98765);
   assert.equal(state.tournaments[0].venue, 'Keskuspuisto');
+  assert.equal(state.tournaments[0].continent, 'europe');
+  assert.equal(state.tournaments[1].continent, '');
   assert.equal(state.tournaments[0].displayOrder, 999);
   assert.ok(state.tournaments[0].multiplierId);
   assert.ok(state.multipliers.length > 0);
@@ -114,6 +121,7 @@ test('saveState sanitizes payload before sending it to API', async () => {
           name: 'Testiturnaus',
           displayOrder: 4,
           venue: 'Keskuspuisto',
+          continent: 'antarctica',
           legacyField: 'poistuva arvo',
           [removedTournamentField]: 'Suomi',
           pdgaEventUrl: 'https://www.pdga.com/tour/event/321',
@@ -142,6 +150,7 @@ test('saveState sanitizes payload before sending it to API', async () => {
   const sentState = JSON.parse(request.options.body);
   assert.ok(!Object.hasOwn(sentState.players[0], 'legacyField'));
   assert.ok(!Object.hasOwn(sentState.tournaments[0], 'legacyField'));
+  assert.equal(sentState.tournaments[0].continent, 'antarctica');
   assert.ok(!Object.hasOwn(sentState.players[0], removedTournamentField));
   assert.ok(!Object.hasOwn(sentState.players[0], removedPlayerField));
   assert.ok(!Object.hasOwn(sentState.tournaments[0], removedTournamentField));

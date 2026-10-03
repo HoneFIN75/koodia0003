@@ -1,6 +1,15 @@
 export const DEFAULT_TOURNAMENT_DISPLAY_ORDER = 999;
 
 const ALLOWED_DIVISIONS = ['', 'MPO', 'FPO'];
+export const TOURNAMENT_CONTINENTS = [
+  { value: 'asia', label: 'Aasia' },
+  { value: 'africa', label: 'Afrikka' },
+  { value: 'europe', label: 'Eurooppa' },
+  { value: 'north-america', label: 'Pohjois-Amerikka' },
+  { value: 'south-america', label: 'Etelä-Amerikka' },
+  { value: 'australia', label: 'Australia' },
+  { value: 'antarctica', label: 'Etelämanner (Antarktis)' },
+];
 
 export class TournamentValidationError extends Error {
   constructor(fieldErrors) {
@@ -16,6 +25,18 @@ function createId(prefix = 'tournament') {
 
 function normalizeText(value) {
   return String(value ?? '').trim();
+}
+
+export function normalizeTournamentContinent(value) {
+  const normalized = normalizeText(value).toLocaleLowerCase('fi-FI');
+  if (!normalized) {
+    return '';
+  }
+
+  const continent = TOURNAMENT_CONTINENTS.find(
+    (option) => option.value === normalized || option.label.toLocaleLowerCase('fi-FI') === normalized,
+  );
+  return continent?.value ?? null;
 }
 
 function normalizeCsvInteger(value) {
@@ -254,6 +275,7 @@ export function validateTournamentInput(tournaments, multipliers, input, current
   const startDate = normalizeText(input.startDate);
   const endDate = normalizeText(input.endDate);
   const division = normalizeText(input.division).toUpperCase();
+  const continent = normalizeTournamentContinent(input.continent);
   const displayOrder = normalizeDisplayOrder(input.displayOrder, fieldErrors);
   const multiplierId = normalizeMultiplierId(input.multiplierId, multipliers, fieldErrors);
 
@@ -271,6 +293,10 @@ export function validateTournamentInput(tournaments, multipliers, input, current
 
   if (!ALLOWED_DIVISIONS.includes(division)) {
     addFieldError(fieldErrors, 'division', 'Turnauksen sarjarajaus voi olla vain MPO, FPO tai tyhjä.');
+  }
+
+  if (continent === null) {
+    addFieldError(fieldErrors, 'continent', 'Valitse luettelossa oleva maanosa.');
   }
 
   ensureDisplayOrderIsUnique(tournaments, displayOrder, currentTournamentId, fieldErrors);
@@ -292,6 +318,7 @@ export function validateTournamentInput(tournaments, multipliers, input, current
     venue: normalizeText(input.venue),
     multiplierId,
     division,
+    continent: continent ?? '',
     externalUrl,
     notes: normalizeText(input.notes),
   };
@@ -308,7 +335,7 @@ export function createTournament(tournaments, multipliers, input) {
   };
 }
 
-function buildImportedTournament({ name, pdgaEventId, displayOrder }) {
+function buildImportedTournament({ name, pdgaEventId, displayOrder, continent }) {
   const now = new Date().toISOString();
   return {
     id: createId(),
@@ -321,6 +348,7 @@ function buildImportedTournament({ name, pdgaEventId, displayOrder }) {
     venue: '',
     multiplierId: '',
     division: '',
+    continent,
     externalUrl: '',
     notes: '',
     createdAt: now,
@@ -336,6 +364,7 @@ function parseTournamentImportRow(columns, rowNumber, existingPdgaEventIds, exis
   const displayOrderText = normalizeText(columns[0]);
   const pdgaEventIdText = normalizeText(columns[1]);
   const name = normalizeText(columns[2]);
+  const continent = normalizeTournamentContinent(columns[3]);
   const parsedDisplayOrder = normalizeCsvInteger(displayOrderText);
   const parsedPdgaEventId = normalizeCsvInteger(pdgaEventIdText);
 
@@ -357,6 +386,10 @@ function parseTournamentImportRow(columns, rowNumber, existingPdgaEventIds, exis
 
   if (!name) {
     return { failure: { rowNumber, reason: 'Turnauksen nimi puuttuu' } };
+  }
+
+  if (continent === null) {
+    return { failure: { rowNumber, reason: 'Virheellinen maanosa' } };
   }
 
   if (existingDisplayOrders.has(parsedDisplayOrder)) {
@@ -382,6 +415,7 @@ function parseTournamentImportRow(columns, rowNumber, existingPdgaEventIds, exis
       displayOrder: parsedDisplayOrder,
       pdgaEventId: parsedPdgaEventId,
       name,
+      continent,
     }),
   };
 }

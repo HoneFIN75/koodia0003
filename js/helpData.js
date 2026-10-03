@@ -429,10 +429,10 @@ Lista lajitellaan sarakeotsikkoa napsauttamalla: ensimmäinen napsautus lajittel
         content: `Tuo turnaukset -toiminto luo vain uusia turnauksia eikä koskaan ylikirjoita olemassa olevia.
 
 Tuettu muoto:
-Järjestysnumero;PDGA Event ID;Turnauksen nimi
+Järjestysnumero;PDGA Event ID;Turnauksen nimi;Maanosa
 
 Esimerkki:
-1;123456;European Open 2027
+1;123456;European Open 2027;Eurooppa
 2;123457;Finnish Nationals 2027
 3;123458;Tyyni 2027
 
@@ -441,6 +441,7 @@ Vaatimukset:
 - Otsikkorivi on sallittu
 - UTF-8-koodaus on suositeltu (å, ä, ö)
 - Pakolliset kentät: Järjestysnumero, PDGA Event ID ja Turnauksen nimi
+- Valinnainen neljäs kenttä Maanosa hyväksyy arvot Aasia, Afrikka, Eurooppa, Pohjois-Amerikka, Etelä-Amerikka, Australia ja Etelämanner (Antarktis)
 
 PDGA Event ID toimii turnauksen yksilöivänä avaimena: jos sama tunnus löytyy jo sovelluksesta, rivi ohitetaan duplikaattina.`,
       },

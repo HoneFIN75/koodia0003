@@ -1,4 +1,4 @@
-import { DEFAULT_TOURNAMENT_DISPLAY_ORDER } from './tournaments.js';
+import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, normalizeTournamentContinent } from './tournaments.js';
 import { DEFAULT_PDGA_SETTINGS, extractPdgaEventId, extractPdgaPlayerId, sanitizePdgaSettings } from './pdga.js';
 import { AuthRequiredError, getAuthHeaders } from './auth.js';
 import { createDefaultMultipliers, ensureLegacyMultiplier, sanitizeMultipliers } from './multipliers.js';
@@ -77,6 +77,7 @@ function sanitizeTournament(tournament = {}) {
     venue: tournament.venue,
     multiplierId: tournament.multiplierId,
     division: tournament.division,
+    continent: normalizeTournamentContinent(tournament.continent) || '',
     externalUrl: tournament.externalUrl,
     notes: tournament.notes,
     createdAt: tournament.createdAt,
@@ -191,6 +192,7 @@ export function sanitizeState(candidate = {}) {
       venue: tournament.venue,
       multiplierId,
       division: tournament.division,
+      continent: tournament.continent,
       externalUrl: tournament.externalUrl,
       notes: tournament.notes,
       createdAt: tournament.createdAt,
