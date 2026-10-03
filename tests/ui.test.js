@@ -13,6 +13,12 @@ function createRootStub() {
   };
 }
 
+function getSectionMarkup(html, sectionName) {
+  const sectionStart = html.indexOf(`id="section-${sectionName}"`);
+  const nextSectionStart = html.indexOf('id="section-', sectionStart + 1);
+  return html.slice(sectionStart, nextSectionStart < 0 ? html.length : nextSectionStart);
+}
+
 function createFocusableElement() {
   return {
     listeners: {},
@@ -2087,7 +2093,7 @@ function createTestPlayer(overrides = {}) {
   };
 }
 
-test('renderApp näyttää pelaajasivun toimintopalkin ja erotetun Poista kaikki -toiminnon', () => {
+test('renderApp näyttää pelaajasivun normaalit toiminnot ilman tuhoisia ylläpitotoimintoja', () => {
   const root = createRootStub();
   const dataState = createEmptyState();
   dataState.players = [createTestPlayer()];
@@ -2102,11 +2108,8 @@ test('renderApp näyttää pelaajasivun toimintopalkin ja erotetun Poista kaikki
   assert.match(root.innerHTML, /class="action-bar" role="group" aria-label="Pelaajien toiminnot"/);
   assert.match(root.innerHTML, /data-open-player-dialog><span class="action-icon" aria-hidden="true">\+<\/span> Lisää pelaaja<\/button>/);
   assert.match(root.innerHTML, /data-open-players-import-dialog><span class="action-icon" aria-hidden="true">↥<\/span> Tuo pelaajat<\/button>/);
-  assert.match(
-    root.innerHTML,
-    /class="action-bar-group action-bar-danger" role="group" aria-label="Vaaralliset toiminnot"><button type="button" class="danger-button danger-action-button" data-request-delete-all-players><span class="danger-icon" aria-hidden="true">⚠<\/span> Poista kaikki pelaajat<\/button>/,
-  );
-  assert.match(root.innerHTML, /class="danger-button danger-action-button" data-request-clear-all-results><span class="danger-icon" aria-hidden="true">⚠<\/span> Poista kaikki tulokset<\/button>/);
+  const playersSection = getSectionMarkup(root.innerHTML, 'players');
+  assert.doesNotMatch(playersSection, /data-request-delete-all-players|data-request-clear-all-results/);
   assert.doesNotMatch(root.innerHTML, /id="players-import-form"/);
   assert.doesNotMatch(root.innerHTML, /data-players-import-dialog-panel/);
 });
@@ -2153,7 +2156,7 @@ test('renderApp näyttää turnaussivun toimintopalkin, tilasuodattimet ja ilman
   renderApp(root, dataState, createUiState({ activeView: 'tournaments', tournamentStatusFilter: firstMultiplier.id }));
 
   assert.match(root.innerHTML, /aria-label="Turnausten toiminnot"/);
-  assert.match(root.innerHTML, /action-bar-danger[^>]*><button type="button" class="danger-button danger-action-button" data-request-delete-all-tournaments>/);
+  assert.doesNotMatch(getSectionMarkup(root.innerHTML, 'tournaments'), /data-request-delete-all-tournaments/);
   assert.doesNotMatch(root.innerHTML, /Vaaravyöhyke: poista kaikki turnaukset/);
   assert.match(root.innerHTML, /data-tournament-status-filter="ALL" aria-pressed="false">Kaikki<\/button>/);
   assert.match(root.innerHTML, new RegExp(`data-tournament-status-filter="${firstMultiplier.id}" aria-pressed="true"`));
@@ -2161,15 +2164,36 @@ test('renderApp näyttää turnaussivun toimintopalkin, tilasuodattimet ja ilman
   assert.match(root.innerHTML, /id="tournament-search" type="search" data-tournament-search/);
 });
 
-test('renderApp poistaa kaikki -painikkeet ovat pois käytöstä, kun poistettavaa ei ole', () => {
+test('renderApp näyttää ylläpidon poistopainikkeet pois käytöstä, kun poistettavaa ei ole', () => {
   const root = createRootStub();
   const dataState = createEmptyState();
 
-  renderApp(root, dataState, createUiState({ activeView: 'players' }));
+  renderApp(root, dataState, createUiState({ activeView: 'settings' }));
   assert.match(root.innerHTML, /data-request-delete-all-players disabled>/);
   assert.match(root.innerHTML, /data-request-clear-all-results disabled>/);
   assert.match(root.innerHTML, /data-request-delete-all-tournaments disabled>/);
   assert.match(root.innerHTML, /data-request-delete-points="MPO" disabled>/);
+});
+
+test('renderApp sijoittaa selitetyt vaaralliset toiminnot Asetusten ylläpito-osioon', () => {
+  const root = createRootStub();
+  const dataState = createEmptyState();
+  dataState.players = [createTestPlayer()];
+  dataState.resultCards = [{ id: 'result-card-player-1', playerId: 'player-1', results: [] }];
+  dataState.tournaments = [{ id: 'tournament-1', name: 'Testi Open' }];
+
+  renderApp(root, dataState, createUiState({ activeView: 'settings' }));
+
+  const settingsSection = getSectionMarkup(root.innerHTML, 'settings');
+  assert.match(settingsSection, /<h3 id="maintenance-title">Ylläpito<\/h3>/);
+  assert.match(settingsSection, /class="panel maintenance-panel"/);
+  assert.match(settingsSection, /class="maintenance-warning"/);
+  assert.match(settingsSection, /Poistaa kaikki pelaajat sekä heidän tuloskorttinsa ja tallennetut sijoituksensa/);
+  assert.match(settingsSection, /Tyhjentää kaikkien pelaajien tuloskortit ja turnaussijoitukset/);
+  assert.match(settingsSection, /Poistaa kaikki turnaukset ja niihin liittyvät turnaustulokset/);
+  assert.match(settingsSection, /class="danger-button danger-action-button" data-request-delete-all-players/);
+  assert.match(settingsSection, /class="danger-button danger-action-button" data-request-clear-all-results/);
+  assert.match(settingsSection, /class="danger-button danger-action-button" data-request-delete-all-tournaments/);
 });
 
 test('renderApp näyttää ranking-suodattimet taulukon yläpuolella korostettuna', () => {
