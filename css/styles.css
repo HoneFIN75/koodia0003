@@ -1070,6 +1070,16 @@ textarea {
   display: grid;
   gap: var(--spacing-md);
   align-content: start;
+  min-width: 0;
+}
+
+.summary-tables {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.summary-tables .table-wrap {
+  min-width: 0;
 }
 
 .summary-table-title {
@@ -1082,23 +1092,111 @@ textarea {
 .summary-table td {
   padding: 0.6rem 0.7rem;
   vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.summary-table th:first-child,
-.summary-table td:first-child {
-  width: 3rem;
+.summary-table {
+  table-layout: fixed;
+}
+
+.summary-table .table-sort-button {
+  gap: 0;
+  padding: 0.25rem 0.1rem;
+}
+
+.summary-table th:first-child {
+  width: 7%;
+}
+
+.summary-table th:nth-child(2) {
+  width: 36%;
+}
+
+.summary-table th:nth-child(3) {
+  width: 16%;
+}
+
+.summary-table th:nth-child(4) {
+  width: 11%;
+}
+
+.summary-table th:nth-child(5) {
+  width: 9%;
+}
+
+.summary-table th:nth-child(6) {
+  width: 21%;
 }
 
 .summary-table td.number,
 .summary-table th.number {
   text-align: right;
-  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
 .summary-table tbody tr:hover td,
 .summary-table tbody tr:focus-within td {
   background: rgba(13, 95, 115, 0.06);
+}
+
+.tournaments-table {
+  table-layout: fixed;
+}
+
+.tournaments-table .table-sort-button {
+  gap: 0.15rem;
+  padding: 0.4rem 0.2rem;
+  font-size: 0.8125rem;
+}
+
+.tournaments-table th,
+.tournaments-table td {
+  padding: 0.65rem 0.4rem;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournaments-table th:first-child {
+  width: 5%;
+}
+
+.tournaments-table th:nth-child(2) {
+  width: 16%;
+}
+
+.tournaments-table th:nth-child(3) {
+  width: 7%;
+}
+
+.tournaments-table th:nth-child(4) {
+  width: 10%;
+}
+
+.tournaments-table th:nth-child(5),
+.tournaments-table th:nth-child(6) {
+  width: 8%;
+}
+
+.tournaments-table th:nth-child(7),
+.tournaments-table th:nth-child(9) {
+  width: 11%;
+}
+
+.tournaments-table th:nth-child(8) {
+  width: 10%;
+}
+
+.tournaments-table th:nth-child(10) {
+  width: 14%;
+}
+
+.tournaments-table td:last-child .secondary-button {
+  padding-right: 0.5rem;
+  padding-left: 0.5rem;
 }
 
 @media (max-width: 480px) {
@@ -1115,6 +1213,15 @@ textarea {
   .summary-table th:first-child,
   .summary-table td:first-child {
     width: 2rem;
+  }
+}
+
+@media (max-width: 780px) {
+  .tournaments-table td {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
   }
 }
 
