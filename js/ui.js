@@ -1,5 +1,11 @@
 import { DIVISIONS, getVisiblePlayers } from './players.js';
-import { DEFAULT_TOURNAMENT_DISPLAY_ORDER, sortTournaments, filterAndSortTournaments, formatTournamentDateRange } from './tournaments.js';
+import {
+  DEFAULT_TOURNAMENT_DISPLAY_ORDER,
+  TOURNAMENT_CONTINENTS,
+  sortTournaments,
+  filterAndSortTournaments,
+  formatTournamentDateRange,
+} from './tournaments.js';
 import { buildPdgaEventUrl, buildPdgaPlayerUrl, DEFAULT_PDGA_SETTINGS, isUnassignedPdgaEventId, POINT_DECIMALS_OPTIONS, sanitizePointDecimals } from './pdga.js';
 import { listPointsTableEntries } from './scoring.js';
 import {
@@ -154,6 +160,7 @@ function getTournamentFieldSelector(fieldName) {
     name: '#tournament-name',
     startDate: '#tournament-start-date',
     endDate: '#tournament-end-date',
+    continent: '#tournament-continent',
     displayOrder: '#tournament-display-order',
     location: '#tournament-location',
     venue: '#tournament-venue',
@@ -838,6 +845,11 @@ function renderTournamentName(tournament) {
   return `<span class="tournament-name-text">${escapeHtml(tournament?.name || '—')}</span>`;
 }
 
+function renderTournamentContinent(tournament) {
+  const continent = TOURNAMENT_CONTINENTS.find((option) => option.value === tournament?.continent);
+  return escapeHtml(continent?.label || '—');
+}
+
 function renderPdgaEventIdLink(tournament, settings) {
   const rawId = tournament?.pdgaEventId;
   if (isUnassignedPdgaEventId(rawId)) {
@@ -878,6 +890,7 @@ function renderResultsSection(dataState, uiState) {
                       <th scope="col">PDGA Event ID</th>
                       <th scope="col">Alkupäivä</th>
                       <th scope="col">Loppupäivä</th>
+                      <th scope="col">Maanosa</th>
                       <th scope="col">Paras MPO</th>
                       <th scope="col">Paras FPO</th>
                       <th scope="col"><span class="visually-hidden">Turnauksen tulokset</span></th>
@@ -896,6 +909,7 @@ function renderResultsSection(dataState, uiState) {
                             <td data-label="PDGA Event ID">${renderPdgaEventIdLink(tournament, dataState.settings)}</td>
                             <td data-label="Alkupäivä">${formatDate(tournament.startDate)}</td>
                             <td data-label="Loppupäivä">${formatDate(tournament.endDate)}</td>
+                            <td data-label="Maanosa">${renderTournamentContinent(tournament)}</td>
                             <td data-label="Paras MPO">${escapeHtml(formatBestResult(best.MPO))}</td>
                             <td data-label="Paras FPO">${escapeHtml(formatBestResult(best.FPO))}</td>
                             <td data-label="Turnauksen tulokset"><button type="button" class="secondary-button" data-open-tournament-result-card="${escapeHtml(tournament.id)}" aria-label="Avaa turnauksen ${escapeHtml(tournament.name || 'Nimetön turnaus')} tulokset">Tulokset</button></td>
@@ -995,6 +1009,7 @@ function renderTournamentResultCardSection(dataState, uiState) {
           <dl class="tournament-result-card-meta">
             <div><dt>Päivämäärä</dt><dd data-tournament-result-card-date>${escapeHtml(dateRange || '—')}</dd></div>
             <div><dt>Paikkakunta</dt><dd>${escapeHtml(renderValueOrDash(tournament.location))}</dd></div>
+            <div><dt>Maanosa</dt><dd>${renderTournamentContinent(tournament)}</dd></div>
             <div><dt>Tila</dt><dd><span class="status-chip tournament-result-card-status">${escapeHtml(renderValueOrDash(multiplier?.abbreviation))}</span></dd></div>
             <div><dt>PDGA Event ID</dt><dd>${renderTournamentResultCardEventId(tournament, dataState.settings)}</dd></div>
           </dl>
@@ -1797,6 +1812,7 @@ function renderTournamentSection(dataState, uiState) {
                          sortField: uiState.tournamentSortField,
                          sortDirection: uiState.tournamentSortDirection,
                        })}
+                       <th scope="col">Maanosa</th>
                        <th>Muokkaa</th>
                       </tr>
                     </thead>
@@ -1813,6 +1829,7 @@ function renderTournamentSection(dataState, uiState) {
                               <td data-label="Päättymispäivä">${formatDate(tournament.endDate)}</td>
                               <td data-label="Paikkakunta">${escapeHtml(renderValueOrDash(tournament.location))}</td>
                               <td data-label="Rata">${escapeHtml(renderValueOrDash(tournament.venue))}</td>
+                              <td data-label="Maanosa">${renderTournamentContinent(tournament)}</td>
                               <td data-label="Muokkaa">
                                 <button type="button" class="secondary-button" data-edit-tournament="${escapeHtml(tournament.id)}">Muokkaa</button>
                               </td>
@@ -1942,19 +1959,7 @@ function renderTournamentDialog(dataState, uiState) {
               ${renderFieldError(fieldErrors, 'name')}
             </div>
             <div class="form-field">
-              <label for="tournament-start-date">Päivämäärä *</label>
-              <input
-                id="tournament-start-date"
-                name="startDate"
-                type="date"
-                required
-                ${getFieldAttributes(fieldErrors, 'startDate')}
-                value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'startDate'))}"
-              />
-              ${renderFieldError(fieldErrors, 'startDate')}
-            </div>
-            <div class="form-field">
-              <label for="tournament-display-order">Järjestysnumero *</label>
+              <label for="tournament-display-order">Järjestysnumero (#) *</label>
               <input
                 id="tournament-display-order"
                 name="displayOrder"
@@ -1980,13 +1985,44 @@ function renderTournamentDialog(dataState, uiState) {
               ${renderFieldError(fieldErrors, 'multiplierId')}
             </div>
             <div class="form-field">
-              <label for="tournament-location">Paikkakunta</label>
-              <input id="tournament-location" name="location" value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'location'))}" />
+              <label for="tournament-pdga-event-id">Virallinen PDGA Event ID</label>
+              <input
+                id="tournament-pdga-event-id"
+                name="pdgaEventId"
+                inputmode="numeric"
+                ${getFieldAttributes(fieldErrors, 'pdgaEventId')}
+                value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'pdgaEventId'))}"
+              />
+              ${renderFieldError(fieldErrors, 'pdgaEventId')}
             </div>
-            <div class="form-field">
-              <label for="tournament-venue">Kilpailupaikka / rata</label>
-              <input id="tournament-venue" name="venue" value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'venue'))}" />
-            </div>
+            <fieldset class="tournament-date-group full-width">
+              <legend>Päivämäärät</legend>
+              <div class="tournament-date-fields">
+                <div class="form-field">
+                  <label for="tournament-start-date">Alkamispäivä *</label>
+                  <input
+                    id="tournament-start-date"
+                    name="startDate"
+                    type="date"
+                    required
+                    ${getFieldAttributes(fieldErrors, 'startDate')}
+                    value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'startDate'))}"
+                  />
+                  ${renderFieldError(fieldErrors, 'startDate')}
+                </div>
+                <div class="form-field">
+                  <label for="tournament-end-date">Päättymispäivä</label>
+                  <input
+                    id="tournament-end-date"
+                    name="endDate"
+                    type="date"
+                    ${getFieldAttributes(fieldErrors, 'endDate')}
+                    value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'endDate'))}"
+                  />
+                  ${renderFieldError(fieldErrors, 'endDate')}
+                </div>
+              </div>
+            </fieldset>
             <div class="form-field">
               <label for="tournament-division">Sarjarajaus</label>
               <select id="tournament-division" name="division" ${getFieldAttributes(fieldErrors, 'division')}>
@@ -1999,7 +2035,26 @@ function renderTournamentDialog(dataState, uiState) {
               ${renderFieldError(fieldErrors, 'division')}
             </div>
             <div class="form-field">
-              <label for="tournament-external-url">Linkki kilpailusivulle</label>
+              <label for="tournament-continent">Maanosa</label>
+              <select id="tournament-continent" name="continent" ${getFieldAttributes(fieldErrors, 'continent')}>
+                <option value="">Ei valintaa</option>
+                ${TOURNAMENT_CONTINENTS.map(
+                  (continent) =>
+                    `<option value="${continent.value}" ${getTournamentFormValue(formValues, editingTournament, 'continent') === continent.value ? 'selected' : ''}>${continent.label}</option>`,
+                ).join('')}
+              </select>
+              ${renderFieldError(fieldErrors, 'continent')}
+            </div>
+            <div class="form-field">
+              <label for="tournament-location">Kaupunki</label>
+              <input id="tournament-location" name="location" value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'location'))}" />
+            </div>
+            <div class="form-field">
+              <label for="tournament-venue">Paikka / rata</label>
+              <input id="tournament-venue" name="venue" value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'venue'))}" />
+            </div>
+            <div class="form-field full-width">
+              <label for="tournament-external-url">Turnauksen verkkosivun URL</label>
               <input
                 id="tournament-external-url"
                 name="externalUrl"
@@ -2008,28 +2063,6 @@ function renderTournamentDialog(dataState, uiState) {
                 value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'externalUrl'))}"
               />
               ${renderFieldError(fieldErrors, 'externalUrl')}
-            </div>
-            <div class="form-field">
-              <label for="tournament-end-date">Päättymispäivä</label>
-              <input
-                id="tournament-end-date"
-                name="endDate"
-                type="date"
-                ${getFieldAttributes(fieldErrors, 'endDate')}
-                value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'endDate'))}"
-              />
-              ${renderFieldError(fieldErrors, 'endDate')}
-            </div>
-            <div class="form-field">
-              <label for="tournament-pdga-event-id">PDGA-kilpailutunnus</label>
-              <input
-                id="tournament-pdga-event-id"
-                name="pdgaEventId"
-                inputmode="numeric"
-                ${getFieldAttributes(fieldErrors, 'pdgaEventId')}
-                value="${escapeHtml(getTournamentFormValue(formValues, editingTournament, 'pdgaEventId'))}"
-              />
-              ${renderFieldError(fieldErrors, 'pdgaEventId')}
             </div>
             <div class="form-field full-width">
               <label for="tournament-notes">Kuvaus</label>

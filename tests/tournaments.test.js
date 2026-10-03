@@ -23,7 +23,34 @@ test('creates a tournament without unknown legacy fields', () => {
   assert.equal(tournament.multiplierId, 'multiplier-1');
   assert.equal(tournament.displayOrder, 7);
   assert.equal(tournament.pdgaEventId, 123456);
+  assert.equal(tournament.continent, '');
   assert.ok(!Object.hasOwn(tournament, 'legacyField'));
+});
+
+test('accepts an optional continent and rejects unknown values', () => {
+  const tournament = createTournament([], [{ id: 'multiplier-1' }], {
+    name: 'SFL Open',
+    multiplierId: 'multiplier-1',
+    startDate: '2026-07-03',
+    displayOrder: '7',
+    continent: 'europe',
+  });
+
+  assert.equal(tournament.continent, 'europe');
+  assert.throws(
+    () =>
+      createTournament([], [{ id: 'multiplier-1' }], {
+        name: 'SFL Open',
+        multiplierId: 'multiplier-1',
+        startDate: '2026-07-03',
+        displayOrder: '7',
+        continent: 'unknown',
+      }),
+    (error) => {
+      assert.equal(error.fieldErrors.continent, 'Valitse luettelossa oleva maanosa.');
+      return true;
+    },
+  );
 });
 
 test('rejects empty or invalid display order with field error', () => {
@@ -203,6 +230,19 @@ test('imports tournaments from CSV and skips duplicates by PDGA Event ID', () =>
     { rowNumber: 2, reason: 'PDGA Event ID on jo olemassa (123456)' },
     { rowNumber: 4, reason: 'PDGA Event ID on jo olemassa (123457)' },
   ]);
+});
+
+test('imports an optional continent from the fourth CSV column', () => {
+  const csv =
+    'Järjestysnumero;PDGA Event ID;Turnauksen nimi;Maanosa\n1;123456;Europe Open;Eurooppa\n2;123457;Asia Open;asia\n3;123458;No Continent;\n4;123459;Unknown Continent;Atlantis\n';
+  const { importedTournaments, summary } = importTournamentsFromCsv([], csv);
+
+  assert.deepEqual(
+    importedTournaments.map(({ continent }) => continent),
+    ['europe', 'asia', ''],
+  );
+  assert.equal(summary.validationErrorCount, 1);
+  assert.deepEqual(summary.failures, [{ rowNumber: 5, reason: 'Virheellinen maanosa' }]);
 });
 
 test('imports tournaments CSV reports required and validation errors', () => {
